@@ -42,20 +42,24 @@ import { IMPORT_STATUS } from "./utils/constants";
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
   const { admin } = await authenticate.admin(request);
-  const response = await admin.graphql(
-    `#graphql
-      query {
-          metaobjectByHandle(handle: {handle: "nieuwkoop-data", type: "nieuwkoop"}) {
-            id
-            fields {
-              key
-              value
-            }
-          }
-        }`,
-  );
-  const data = await response.json();
-  return json(data);
+  // const response = await admin.graphql(
+  //   `#graphql
+  //     query {
+  //         metaobjectByHandle(handle: {handle: "nieuwkoop-data", type: "nieuwkoop"}) {
+  //           id
+  //           fields {
+  //             key
+  //             value
+  //           }
+  //         }
+  //       }`,
+  // );
+  // const data = await response.json();
+  // return json(data);
+  // return null;
+  const { NODE_ENV } = process.env;
+
+  return json({ NODE_ENV });
 };
 
 export const action = async ({ request }) => {
@@ -82,9 +86,16 @@ export const action = async ({ request }) => {
 
 export default function Index() {
   const data = useLoaderData();
-  const appUrl = data?.data.metaobjectByHandle.fields.find(
-    (field) => field.key == "app_url",
-  )?.value;
+  // const appUrl = data?.data.metaobjectByHandle.fields.find(
+  //   (field) => field.key == "app_url",
+  // )?.value;
+  let appUrl;
+  if (data?.NODE_ENV) {
+    appUrl =
+      data?.NODE_ENV == "development"
+        ? "http://localhost:4000"
+        : "https://nieuwkoop.onrender.com ";
+  }
   const itemsPerPage = 25;
 
   const [products, setProducts] = useState([]);
