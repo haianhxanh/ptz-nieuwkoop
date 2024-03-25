@@ -14,7 +14,7 @@ app.use(logger("dev"));
 app.use(express.urlencoded({ extended: false }));
 var corsOptions = {
   origin: [
-    "https://you-optimal-caught-loc.trycloudflare.com",
+    "https://ptz-nieuwkoop.onrender.com",
     "https://admin.shopify.com/store/potzillas",
     "https://potzillas.myshopify.com",
   ],
