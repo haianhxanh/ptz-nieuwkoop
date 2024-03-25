@@ -3,7 +3,7 @@
 client_id = "755a175a3e61e9bb931279adde32391c"
 name = "nieuwkoop"
 handle = "nieuwkoop"
-application_url = "https://you-optimal-caught-loc.trycloudflare.com"
+application_url = "https://ptz-nieuwkoop.onrender.com"
 embedded = true
 
 [build]
@@ -17,9 +17,8 @@ scopes = "read_metaobjects,read_products,unauthenticated_read_metaobjects,unauth
 
 [auth]
 redirect_urls = [
-  "https://you-optimal-caught-loc.trycloudflare.com/auth/callback",
-  "https://you-optimal-caught-loc.trycloudflare.com/auth/shopify/callback",
-  "https://you-optimal-caught-loc.trycloudflare.com/api/auth/callback"
+  "https://ptz-nieuwkoop.onrender.com/auth/callback",
+  "https://ptz-nieuwkoop.onrender.com/auth/shopify/callback",
 ]
 
 [webhooks]
