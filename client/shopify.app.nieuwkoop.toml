@@ -1,0 +1,29 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "755a175a3e61e9bb931279adde32391c"
+name = "nieuwkoop"
+handle = "nieuwkoop"
+application_url = "https://you-optimal-caught-loc.trycloudflare.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = ""
+include_config_on_deploy = true
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_metaobjects,read_products,unauthenticated_read_metaobjects,unauthenticated_read_product_inventory,unauthenticated_read_product_listings,write_products"
+
+[auth]
+redirect_urls = [
+  "https://you-optimal-caught-loc.trycloudflare.com/auth/callback",
+  "https://you-optimal-caught-loc.trycloudflare.com/auth/shopify/callback",
+  "https://you-optimal-caught-loc.trycloudflare.com/api/auth/callback"
+]
+
+[webhooks]
+api_version = "2024-01"
+
+[pos]
+embedded = false
