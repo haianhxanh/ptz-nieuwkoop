@@ -30,6 +30,10 @@ export default async function handleRequest(
           const stream = createReadableStreamFromReadable(body);
 
           responseHeaders.set("Content-Type", "text/html");
+          responseHeaders.set(
+            "Content-Security-Policy",
+            "frame-ancestors https://potzillas.myshopify.com https://admin.myshopify.com",
+          );
           resolve(
             new Response(stream, {
               headers: responseHeaders,
