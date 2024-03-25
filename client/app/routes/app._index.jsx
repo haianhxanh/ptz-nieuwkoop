@@ -94,7 +94,7 @@ export default function Index() {
     appUrl =
       data?.NODE_ENV == "development"
         ? "http://localhost:4000"
-        : "https://nieuwkoop.onrender.com ";
+        : "https://nieuwkoop.onrender.com";
   }
   const itemsPerPage = 25;
 
