@@ -389,7 +389,7 @@ export const createVariantSpecs = async (matchingVariant: any) => {
     variantSpecs += `<p>Výška: ${matchingVariant.Height} cm</p>`;
   }
   if (matchingVariant.Weight) {
-    variantSpecs += `<p>Hmotnost: ${matchingVariant.Weight} kg</p>`;
+    variantSpecs += `<p>Hmotnost: ${matchingVariant.Weight.toFixed(2)} kg</p>`;
   }
   if (matchingVariant.Depth) {
     variantSpecs += `<p>Hloubka: ${matchingVariant.Depth} cm</p>`;

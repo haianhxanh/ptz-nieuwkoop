@@ -260,7 +260,7 @@ export default function Index() {
             material:
               product.Tags.find((tag: any) => tag.Code == "Material")?.Values[0]
                 .Description_EN || "",
-            weight: product.Weight || null,
+            weight: product.Weight.toFixed(2) || null,
             length: product.Length || null,
             width: product.Width || null,
             height: product.Height || null,

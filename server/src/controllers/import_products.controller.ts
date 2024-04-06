@@ -77,7 +77,7 @@ export const import_products = async (req: Request, res: Response) => {
       }
 
       if (matchingProduct && matchingProduct.length > 0) {
-        let inventoryPolicy = "deny";
+        let firstVariantInventoryPolicy = "deny";
         let firstVariantStock = await getVariantStock(
           matchingProduct[0].Itemcode
         );
@@ -85,10 +85,10 @@ export const import_products = async (req: Request, res: Response) => {
         let firstVariantAvailable = firstVariantStock.FirstAvailable;
 
         if (
-          firstVariantStock.StockAvailable == 0 &&
+          firstVariantStock.StockAvailable <= 0 &&
           isFutureDate(firstVariantAvailable)
         ) {
-          inventoryPolicy = "continue";
+          firstVariantInventoryPolicy = "continue";
         }
 
         let firstOptionSize = extractSizeInTitles(
@@ -130,10 +130,10 @@ export const import_products = async (req: Request, res: Response) => {
                 sku: matchingProduct[0].Itemcode,
                 price: 0,
                 inventory_quantity: firstVariantStock.StockAvailable,
-                grams: matchingProduct[0].Weight * 1000,
+                grams: matchingProduct[0].Weight.toFixed(2) * 1000,
                 barcode: matchingProduct[0].GTINCode,
                 inventory_management: "shopify",
-                inventory_policy: inventoryPolicy,
+                inventory_policy: firstVariantInventoryPolicy,
                 requires_shipping: true,
                 metafields: [
                   {
@@ -151,11 +151,19 @@ export const import_products = async (req: Request, res: Response) => {
         if (product.length > 1) {
           for (const [index, variant] of product.entries()) {
             let matchingVariant = await getApiVariant(variant);
-            // console.log("Matching variant:", matchingVariant);
-
+            let variantInventoryPolicy = "deny";
             let variantStock = await getVariantStock(
-              matchingVariant[0].Itemcode
+              matchingProduct[0].Itemcode
             );
+
+            let firstVariantAvailable = firstVariantStock.FirstAvailable;
+
+            if (
+              variantStock.StockAvailable <= 0 &&
+              isFutureDate(firstVariantAvailable)
+            ) {
+              variantInventoryPolicy = "continue";
+            }
 
             let optionSize = extractSizeInTitles(
               matchingVariant[0].ItemDescription_EN
@@ -170,10 +178,10 @@ export const import_products = async (req: Request, res: Response) => {
                 sku: matchingVariant[0].Itemcode,
                 price: 0,
                 inventory_quantity: variantStock.StockAvailable,
-                grams: matchingVariant[0].Weight * 1000,
+                grams: matchingVariant[0].Weight.toFixed(2) * 1000,
                 barcode: matchingVariant[0].GTINCode,
                 inventory_management: "shopify",
-                inventory_policy: "deny",
+                inventory_policy: variantInventoryPolicy,
                 requires_shipping: true,
                 metafields: [
                   {
