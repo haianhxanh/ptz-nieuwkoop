@@ -1,4 +1,10 @@
-export const TAG_CODES = {
+type TagCodesType = {
+  [key: string]: {
+    [key: string]: string;
+  };
+};
+
+export const TAG_CODES: TagCodesType = {
   Location: {
     Indoor: "vnitřní",
     Outdoor: "venkovní",
