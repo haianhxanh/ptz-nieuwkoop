@@ -11,3 +11,22 @@ export const IMPORT_STATUS = {
   COMPLETED: "Import completed",
   FAILED: "Something went wrong, please contact support",
 };
+
+export const ITEM_STATUS = [
+  {
+    code: "A",
+    status: "Active",
+  },
+  {
+    code: "E",
+    status: "Inactive",
+  },
+  {
+    code: "D",
+    status: "Discontinued",
+  },
+  {
+    code: "B",
+    status: "Blocked",
+  },
+];

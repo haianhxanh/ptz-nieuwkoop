@@ -17,7 +17,6 @@ var corsOptions = {
     "https://ptz-nieuwkoop.onrender.com",
     "https://admin.shopify.com/store/potzillas",
     "https://potzillas.myshopify.com",
-    "https://*.trycloudflare.com",
   ],
   optionsSuccessStatus: 200,
   methods: "GET, PUT, POST",

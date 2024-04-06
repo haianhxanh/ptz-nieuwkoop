@@ -1,11 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { json } from "@remix-run/node";
-import {
-  useActionData,
-  useLoaderData,
-  useNavigation,
-  useSubmit,
-} from "@remix-run/react";
+import { useLoaderData } from "@remix-run/react";
 import {
   Page,
   Text,
@@ -18,21 +13,17 @@ import {
   Pagination,
   OptionList,
   Scrollable,
-  Divider,
-  CalloutCard,
-  Checkbox,
-  TextField,
   Button,
   Popover,
   ActionList,
-  Box,
   Banner,
-  MediaCard,
-  EmptyState,
+  IndexFilters,
+  useSetIndexFiltersMode,
 } from "@shopify/polaris";
+import type { IndexFiltersProps } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import {
-  getExchangeRate,
+  getItemStatus,
   getProducts,
   importProducts,
   removeSizeInTitles,
@@ -42,21 +33,6 @@ import { IMPORT_STATUS } from "./utils/constants";
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
   const { admin } = await authenticate.admin(request);
-  // const response = await admin.graphql(
-  //   `#graphql
-  //     query {
-  //         metaobjectByHandle(handle: {handle: "nieuwkoop-data", type: "nieuwkoop"}) {
-  //           id
-  //           fields {
-  //             key
-  //             value
-  //           }
-  //         }
-  //       }`,
-  // );
-  // const data = await response.json();
-  // return json(data);
-  // return null;
   const { NODE_ENV } = process.env;
 
   return json({ NODE_ENV });
@@ -86,10 +62,7 @@ export const action = async ({ request }) => {
 
 export default function Index() {
   const data = useLoaderData();
-  // const appUrl = data?.data.metaobjectByHandle.fields.find(
-  //   (field) => field.key == "app_url",
-  // )?.value;
-  let appUrl;
+  let appUrl: string = "";
   if (data?.NODE_ENV) {
     appUrl =
       data?.NODE_ENV == "development"
@@ -101,6 +74,7 @@ export default function Index() {
   const [products, setProducts] = useState([]);
   const [items, setItems] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
+  const [selectedProducts, setSelectedProducts] = useState([]);
   const [displayedProducts, setDisplayedProducts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [brands, setBrands] = useState([]);
@@ -111,6 +85,42 @@ export default function Index() {
   const [popoverActive, setPopoverActive] = useState(false);
   const [importStatus, setImportStatus] = useState("");
   const [init, setInit] = useState(true);
+
+  const [sortSelected, setSortSelected] = useState(["product asc"]);
+  const { mode, setMode } = useSetIndexFiltersMode();
+  const onHandleCancel = () => {
+    setQueryValue("");
+  };
+  const [selected, setSelected] = useState(0);
+  const [productStatus, setProductStatus] = useState<string[] | undefined>(
+    undefined,
+  );
+
+  const [queryValue, setQueryValue] = useState("");
+
+  const handleFiltersQueryChange = useCallback(
+    (value: string) => setQueryValue(value),
+    [],
+  );
+  const handleAccountStatusRemove = useCallback(
+    () => setProductStatus(undefined),
+    [],
+  );
+  const handleQueryValueRemove = useCallback(() => setQueryValue(""), []);
+
+  const handleFiltersClearAll = useCallback(() => {
+    handleQueryValueRemove();
+  }, [handleQueryValueRemove]);
+
+  const appliedFilters: IndexFiltersProps["appliedFilters"] = [];
+  if (productStatus && !isEmpty(productStatus)) {
+    const key = "productStatus";
+    appliedFilters.push({
+      key,
+      label: disambiguateLabel(key, productStatus),
+      onRemove: handleAccountStatusRemove,
+    });
+  }
 
   const togglePopoverActive = useCallback(
     () => setPopoverActive((popoverActive) => !popoverActive),
@@ -133,8 +143,15 @@ export default function Index() {
     togglePopoverActive();
     setImportStatus(IMPORT_STATUS.IN_PROGRESS);
 
-    let productsToImport = [];
-    for (const [index, variant] of items.entries()) {
+    let productsToImport: any = [];
+
+    let inputItems;
+    if (selectedProducts.length > 0) {
+      inputItems = selectedProducts;
+    } else {
+      inputItems = items;
+    }
+    for (const [index, variant] of inputItems.entries()) {
       let singleProduct = {};
       let variants = items.filter(
         (item) =>
@@ -148,7 +165,7 @@ export default function Index() {
       }
 
       const isProductIncluded = productsToImport.some(
-        (product) =>
+        (product: any) =>
           product.length === singleProduct.length &&
           product.every((value, index) => value === singleProduct[index]),
       );
@@ -169,7 +186,7 @@ export default function Index() {
         setImportStatus(IMPORT_STATUS.FAILED);
       }
     }
-  }, [togglePopoverActive, items]);
+  }, [togglePopoverActive, items, selectedProducts, appUrl]);
 
   const nextPage = () => {
     if (currentPage <= Math.ceil(items.length / itemsPerPage)) {
@@ -193,40 +210,55 @@ export default function Index() {
   }, [currentPage, items]);
 
   useEffect(() => {
+    let items;
+
     if (filteredProducts.length > 0) {
       setItems(filteredProducts);
+      items = filteredProducts;
     } else {
       setItems(products);
+      items = products;
     }
-  }, [filteredProducts, products]);
+
+    if (sortSelected[0] == "product asc") {
+      items = items.sort((a, b) => a.title.localeCompare(b.title));
+      setItems(items);
+    } else if (sortSelected[0] == "product desc") {
+      items = items.sort((a, b) => b.title.localeCompare(a.title));
+      setItems(items);
+    }
+
+    if (queryValue != "") {
+      const queriedItems = items.filter(
+        (item: any) =>
+          item.title.toLowerCase().includes(queryValue.toLowerCase()) ||
+          item.sku.toLowerCase().includes(queryValue.toLowerCase()),
+      );
+      setItems(queriedItems);
+    }
+  }, [filteredProducts, products, sortSelected, queryValue]);
 
   useEffect(() => {
-    // declare the data fetching function
-    // async function getRate() {
-    //   const rate = await getExchangeRate("EUR");
-    //   console.log(rate);
-    // }
-    // getRate();
-
     const fetchData = async () => {
       const data = await getProducts(appUrl);
       const flatData = data?.data.products
-        .map((product) => {
+        .map((product: any) => {
           return {
+            id: product.Itemcode,
             title: product.Description,
             sku: product.Itemcode,
             brand:
-              product.Tags.find((tag) => tag.Code == "Brand")?.Values[0]
+              product.Tags.find((tag: any) => tag.Code == "Brand")?.Values[0]
                 .Description_EN || "",
             price: (product.Salesprice * 26).toFixed(2),
             collection:
-              product.Tags.find((tag) => tag.Code == "Collection")?.Values[0]
-                .Description_EN || "",
+              product.Tags.find((tag: any) => tag.Code == "Collection")
+                ?.Values[0].Description_EN || "",
             color:
-              product.Tags.find((tag) => tag.Code == "ColourPlanter")?.Values[0]
-                .Description_EN || "",
+              product.Tags.find((tag: any) => tag.Code == "ColourPlanter")
+                ?.Values[0].Description_EN || undefined,
             material:
-              product.Tags.find((tag) => tag.Code == "Material")?.Values[0]
+              product.Tags.find((tag: any) => tag.Code == "Material")?.Values[0]
                 .Description_EN || "",
             weight: product.Weight || null,
             length: product.Length || null,
@@ -238,18 +270,31 @@ export default function Index() {
               "https://images.nieuwkoop-europe.com/images/" +
               product.ItemPictureName,
             matchingElement: removeSizeInTitles(product.ItemVariety_EN) || null,
+            itemStatus: product.ItemStatus,
+            isStockItem: product.IsStockItem,
+            mainGroupCode: product.MainGroupCode,
+            deliveryTime: product.DeliveryTimeInDays,
           };
         })
-        .sort((a, b) => a.matchingElement.localeCompare(b.matchingElement));
+        .filter(
+          (product: any) =>
+            product.isStockItem == true &&
+            product.mainGroupCode == "200" &&
+            product.itemStatus != "E" &&
+            product.deliveryTime != 999,
+        )
+        .sort((a: any, b: any) =>
+          a.matchingElement.localeCompare(b.matchingElement),
+        );
 
       // get all unique brands and collections
-      const brands = [...new Set(flatData.map((product) => product.brand))]
+      const brands = [...new Set(flatData.map((product: any) => product.brand))]
         .filter((brand) => brand != "")
         .map((brand) => ({ label: brand, value: brand }))
         .sort((a, b) => a.label.localeCompare(b.label));
 
       const collections = [
-        ...new Set(flatData.map((product) => product.collection)),
+        ...new Set(flatData.map((product: any) => product.collection)),
       ]
         .filter((collection) => collection != "")
         .map((collection) => ({ label: collection, value: collection }))
@@ -257,6 +302,7 @@ export default function Index() {
 
       setBrands(brands);
       setCollections(collections);
+
       setProducts(flatData);
       setDisplayedProducts(flatData.slice(0, itemsPerPage));
       setInit(false);
@@ -275,13 +321,24 @@ export default function Index() {
 
   const rowMarkup = displayedProducts.map(
     (
-      { title, sku, price, image, brand, collection, matchingElement },
+      {
+        id,
+        title,
+        sku,
+        price,
+        image,
+        brand,
+        collection,
+        matchingElement,
+        itemStatus,
+        deliveryTime,
+      },
       index,
     ) => (
       <IndexTable.Row
-        id={sku}
+        id={id}
         key={sku}
-        selected={selectedResources.includes(sku)}
+        selected={selectedResources.includes(id)}
         position={index}
       >
         <IndexTable.Cell>
@@ -297,6 +354,8 @@ export default function Index() {
         <IndexTable.Cell>{collection}</IndexTable.Cell>
         <IndexTable.Cell>{matchingElement}</IndexTable.Cell>
         <IndexTable.Cell>{price}</IndexTable.Cell>
+        <IndexTable.Cell>{getItemStatus(itemStatus)}</IndexTable.Cell>
+        <IndexTable.Cell>{deliveryTime}</IndexTable.Cell>
       </IndexTable.Row>
     ),
   );
@@ -328,7 +387,31 @@ export default function Index() {
       setCurrentPage(1);
       setFilteredProducts([]);
     }
+    setSelectedProducts([]);
   }, [filteredBrands, filteredCollections, products]);
+
+  useEffect(() => {
+    if (selectedResources.length > 0) {
+      let selectedFilteredProducts = [];
+      if (filteredProducts.length > 0) {
+        selectedFilteredProducts = filteredProducts.filter((product) =>
+          selectedResources.includes(product.id),
+        );
+      } else if (products.length > 0) {
+        selectedFilteredProducts = products.filter((product) =>
+          selectedResources.includes(product.id),
+        );
+      }
+      setSelectedProducts(selectedFilteredProducts);
+    } else {
+      setSelectedProducts([]);
+    }
+  }, [selectedResources, filteredProducts, products]);
+
+  const sortOptions: IndexFiltersProps["sortOptions"] = [
+    { label: "Product", value: "product asc", directionLabel: "A-Z" },
+    { label: "Product", value: "product desc", directionLabel: "Z-A" },
+  ];
 
   return (
     <Page>
@@ -384,7 +467,7 @@ export default function Index() {
                   actionRole="menuitem"
                   items={[
                     {
-                      content: `Import filtered products - in total ${items.length} items`,
+                      content: `Import filtered products - in total ${selectedProducts.length > 0 ? selectedProducts.length : items.length} items`,
                       onAction: handleImportAction,
                     },
                     {
@@ -415,11 +498,38 @@ export default function Index() {
 
         <Page fullWidth>
           <Card>
+            <IndexFilters
+              sortOptions={sortOptions}
+              sortSelected={sortSelected}
+              queryValue={queryValue}
+              queryPlaceholder="Search products"
+              onQueryChange={handleFiltersQueryChange}
+              onQueryClear={() => setQueryValue("")}
+              onSort={setSortSelected}
+              // primaryAction={primaryAction}
+              cancelAction={{
+                onAction: onHandleCancel,
+                disabled: false,
+                loading: false,
+              }}
+              tabs={[]}
+              selected={selected}
+              onSelect={setSelected}
+              filters={[]}
+              // appliedFilters={appliedFilters}
+              onClearAll={handleFiltersClearAll}
+              mode={mode}
+              setMode={setMode}
+            />
             <IndexTable
               condensed={useBreakpoints().smDown}
               resourceName={resourceName}
               itemCount={items.length}
-              selectable={false}
+              selectable={true}
+              selectedItemsCount={
+                allResourcesSelected ? "All" : selectedResources.length
+              }
+              onSelectionChange={handleSelectionChange}
               headings={[
                 { title: "Image" },
                 { title: "Product" },
@@ -428,6 +538,8 @@ export default function Index() {
                 { title: "Collection" },
                 { title: "Variety" },
                 { title: "Price Kč" },
+                { title: "Status" },
+                { title: "Delivery days" },
               ]}
             >
               {rowMarkup}
@@ -456,4 +568,25 @@ export default function Index() {
       {/* )} */}
     </Page>
   );
+
+  function disambiguateLabel(key: string, value: string | any[]): string {
+    switch (key) {
+      case "moneySpent":
+        return `Money spent is between $${value[0]} and $${value[1]}`;
+      case "taggedWith":
+        return `Tagged with ${value}`;
+      case "accountStatus":
+        return (value as string[]).map((val) => `Customer ${val}`).join(", ");
+      default:
+        return value as string;
+    }
+  }
+
+  function isEmpty(value: string | string[]): boolean {
+    if (Array.isArray(value)) {
+      return value.length === 0;
+    } else {
+      return value === "" || value == null;
+    }
+  }
 }

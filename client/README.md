@@ -10,9 +10,11 @@ Visit the [`shopify.dev` documentation](https://shopify.dev/docs/api/shopify-app
 
 ### Prerequisites
 
-1. You must [download and install Node.js](https://nodejs.org/en/download/) if you don't already have it.
-2. You must [create a Shopify partner account](https://partners.shopify.com/signup) if you don’t have one.
-3. You must create a store for testing if you don't have one, either a [development store](https://help.shopify.com/en/partners/dashboard/development-stores#create-a-development-store) or a [Shopify Plus sandbox store](https://help.shopify.com/en/partners/dashboard/managing-stores/plus-sandbox-store).
+Before you begin, you'll need the following:
+
+1. **Node.js**: [Download and install](https://nodejs.org/en/download/) it if you haven't already.
+2. **Shopify Partner Account**: [Create an account](https://partners.shopify.com/signup) if you don't have one.
+3. **Test Store**: Set up either a [development store](https://help.shopify.com/en/partners/dashboard/development-stores#create-a-development-store) or a [Shopify Plus sandbox store](https://help.shopify.com/en/partners/dashboard/managing-stores/plus-sandbox-store) for testing your app.
 
 ### Setup
 
@@ -88,7 +90,7 @@ export async function loader({ request }) {
 }
 ```
 
-This template come preconfigured with examples of:
+This template comes preconfigured with examples of:
 
 1. Setting up your Shopify app in [/app/shopify.server.ts](https://github.com/Shopify/shopify-app-template-remix/blob/main/app/shopify.server.ts)
 2. Querying data using Graphql. Please see: [/app/routes/app.\_index.tsx](https://github.com/Shopify/shopify-app-template-remix/blob/main/app/routes/app._index.tsx).
@@ -242,6 +244,12 @@ in this situation, please update the [.graphqlrc.ts](https://github.com/Shopify/
 ### First parameter has member 'readable' that is not a ReadableStream.
 
 See [hosting on Vercel](#hosting-on-vercel).
+
+### Admin object undefined on webhook events triggered by the CLI
+
+When you trigger a webhook event using the Shopify CLI, the `admin` object will be `undefined`. This is because the CLI triggers an event with a valid, but non-existent, shop. The `admin` object is only available when the webhook is triggered by a shop that has installed the app.
+
+Webhooks triggered by the CLI are intended for initial experimentation testing of your webhook configuration. For more information on how to test your webhooks, see the [Shopify CLI documentation](https://shopify.dev/docs/apps/tools/cli/commands#webhook-trigger).
 
 ## Benefits
 

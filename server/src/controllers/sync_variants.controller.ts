@@ -40,7 +40,7 @@ export const sync_variants = async (req: Request, res: Response) => {
           }
           let syncVariantStockRes = await syncVariantStock(
             variant.node.id.replace("gid://shopify/ProductVariant/", ""),
-            variantStock
+            variantStock.StockAvailable
           );
           await sleep(400);
         }

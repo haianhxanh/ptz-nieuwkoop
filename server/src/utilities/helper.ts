@@ -1,5 +1,6 @@
 import axios from "axios";
 import { promisify } from "util";
+import { TAG_CODES } from "./constants";
 const sleep = promisify(setTimeout);
 const {
   ACCESS_TOKEN,
@@ -86,7 +87,7 @@ export async function getVariantStock(sku: any) {
   });
 
   if (variant.data) {
-    return variant.data[0].StockAvailable;
+    return variant.data[0];
   } else {
     return 0;
   }
@@ -106,12 +107,12 @@ export async function createProduct(product: any) {
   return newProductRes.data.product;
 }
 
-export const createImages = async (productId: any, variant: any) => {
+export const createImages = async (productId: any, sku: any, variant: any) => {
   const auth = Buffer.from(
     `${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`
   ).toString("base64");
 
-  let url = NIEUWKOOP_API_IMAGE_ENDPOINT?.replace("[sku]", variant.sku);
+  let url = NIEUWKOOP_API_IMAGE_ENDPOINT?.replace("[sku]", sku);
 
   if (url) {
     let api_image = await axios.get(url, {
@@ -120,11 +121,20 @@ export const createImages = async (productId: any, variant: any) => {
       },
       timeout: 15000,
     });
-    let image = {
-      product_id: productId,
-      attachment: api_image.data.Image,
-      variant_ids: [variant.id],
-    };
+    let image;
+
+    if (variant && variant.id) {
+      image = {
+        product_id: productId,
+        attachment: api_image.data.Image,
+        variant_ids: [variant.id],
+      };
+    } else {
+      image = {
+        product_id: productId,
+        attachment: api_image.data.Image,
+      };
+    }
     const res_image = await axios.post(
       `https://${STORE}/admin/api/${API_VERSION}/products/${productId}/images.json`,
       { image },
@@ -140,10 +150,12 @@ export const createImages = async (productId: any, variant: any) => {
   }
 };
 
-export async function createAiDescription(product: any) {
+export async function createAiDescription(product: any, matchingProduct: any) {
   let content = `Projdi tento produkt ${JSON.stringify(
     product
-  )}, a zkus napsat stručný popis produktu. Zaměř spíše na vlastnosti produktu vycházející z informací, které máš k dispozici, ale není třeba uvést SKU nebo rozměry nebo cenu v popisu, jelikož parametry produktu budeme zobrazovat zvlášť. Pokud budeš potřebovat, můžeš se inspirovat na webu výrobce. Můžeš použít HTML pro zvýraznění některých částí textu. Nic jiného kromě popisu prosím nepiš. 
+  )} a tento zdroj ${JSON.stringify(
+    matchingProduct
+  )}, a zkus napsat stručný popis produktu. Zaměř na vlastnosti produktu vycházející z informací, které máš k dispozici, ale není třeba uvést SKU nebo rozměry nebo cenu v popisu, jelikož parametry produktu budeme zobrazovat zvlášť. Nezmiňuj Potzillas jelikož je to název obchodu. Pokud budeš potřebovat, můžeš se inspirovat na webu výrobce. Můžeš použít HTML pro zvýraznění některých částí textu. Rozděl text do odstavců s mezerou mezi odstavci pro čitelnost. Nic jiného kromě popisu prosím nepiš. Také určité výrazy neopakuj příliš víckrát, jako název produktu, nebo značku. 
   Inspirovat se můžeš tímhle textem: "Černý květináč Jesslyn z kolekce Granite﻿ od holandské značky Pottery Pots, je vrcholem elegance a robustnosti, jehož textura a půlnočně černá barva se nápadně blíží vzhledu opravdového granitového kamene. Jeho unikátní povrchová úprava přidává každému prostoru prvek surového luxusu a je zárukou, že každá rostlina v něm zazáří v plné kráse. Designový a praktický květináč je vyroben z odolného Fiberstone, aby odolal vlivům počasí a byl vhodný jak pro interiér, tak pro exteriér. Ideální pro ty, kteří hledají květináč, který je lehký, odolný a vizuálně impozantní. Pro venkovní použití je nutné v květináči vyvrtat otvor po odtékání přebytečné vody. Při vnitřním použití bez plastového květníku se doporučuje použít plastový 'liner' nebo jinou ochranu pro dlouhodobý kontakt mokrého materiálu s květináčem."
   Děkuji!`;
 
@@ -244,10 +256,39 @@ export async function syncVariantStock(variantId: any, stock: any) {
   return inventory_item.data;
 }
 
-export async function getTag(Tags: any, tagCode: any) {
-  let tag =
-    Tags.find((tag: any) => tag.Code == tagCode)?.Values[0].Description_EN ||
-    "";
+export async function getTag(Tags: any, tagCode: string) {
+  let tag;
+
+  if (
+    tagCode == "MaterialProperties" ||
+    tagCode == "Material" ||
+    tagCode == "Location" ||
+    tagCode == "Finish" ||
+    tagCode == "Shape" ||
+    tagCode == "ColourPlanter"
+  ) {
+    let properties =
+      Tags.filter((tag: any) => tag.Code == tagCode).map((tag: any) =>
+        tag.Values.map((value: any) => value.Description_EN)
+      ) || undefined;
+
+    if (properties) {
+      tag =
+        properties[0].map((t: string) => TAG_CODES[tagCode][t] || undefined) ||
+        undefined;
+    } else {
+      tag = undefined;
+    }
+
+    if (tag) {
+      tag = tag.filter((t: any) => t != undefined).join(", ");
+    }
+  } else {
+    tag =
+      Tags.find((tag: any) => tag.Code == tagCode)?.Values[0].Description_EN ||
+      undefined;
+  }
+
   return tag;
 }
 
@@ -320,49 +361,64 @@ export const createOptionTitle = (optionSize: any, matchingVariant: any) => {
     optionTitle += ` V ${matchingVariant.Height} cm`;
   }
 
-  if (!optionSize && !matchingVariant.Diameter && !matchingVariant.Height) {
+  if (matchingVariant.Length) {
+    optionTitle += ` D ${matchingVariant.Length} cm`;
+  }
+
+  if (
+    !optionSize &&
+    !matchingVariant.Diameter &&
+    !matchingVariant.Height &&
+    !matchingVariant.Length
+  ) {
     optionTitle = matchingVariant.ItemVariety_EN;
   }
 
   return optionTitle;
 };
 
-export const createVariantSpecs = (matchingVariant: any) => {
+export const createVariantSpecs = async (matchingVariant: any) => {
   let variantSpecs = "";
   if (matchingVariant.Diameter) {
-    variantSpecs += `<p>Průměr: ${matchingVariant.Diameter} cm</p>`;
+    variantSpecs += `<p>Průměr vnější: ${matchingVariant.Diameter} cm</p>`;
+  }
+  if (matchingVariant.Opening) {
+    variantSpecs += `<p>Průměr vnitřní: ${matchingVariant.Diameter} cm</p>`;
   }
   if (matchingVariant.Height) {
     variantSpecs += `<p>Výška: ${matchingVariant.Height} cm</p>`;
   }
-  if (matchingVariant.Depth) {
-    variantSpecs += `<p>Hloubka: ${matchingVariant.Depth} cm</p>`;
-  }
   if (matchingVariant.Weight) {
     variantSpecs += `<p>Hmotnost: ${matchingVariant.Weight} kg</p>`;
   }
-
-  // let variant = {
-  //   metafields: [
-  //     {
-  //       key: "specifikace",
-  //       value: variantSpecs,
-  //       value_type: "multi_line_text_field",
-  //       namespace: "custom",
-  //     },
-  //   ],
-  // };
-
-  // let updateVariant = await axios.put(
-  //   `https://${STORE}/admin/api/${API_VERSION}/variants/${variantId}.json`,
-  //   variant,
-  //   {
-  //     headers: {
-  //       "X-Shopify-Access-Token": ACCESS_TOKEN!,
-  //       "Content-Type": "application/json",
-  //     },
-  //   }
-  // );
+  if (matchingVariant.Depth) {
+    variantSpecs += `<p>Hloubka: ${matchingVariant.Depth} cm</p>`;
+  }
+  if (matchingVariant.Volume) {
+    variantSpecs += `<p>Objem: ${matchingVariant.Volume} l</p>`;
+  }
+  let brand = await getTag(matchingVariant.Tags, "Brand");
+  let material = await getTag(matchingVariant.Tags, "Material");
+  let location = await getTag(matchingVariant.Tags, "Location");
+  let finish = await getTag(matchingVariant.Tags, "Finish");
+  let properties = await getTag(matchingVariant.Tags, "MaterialProperties");
+  let shape = await getTag(matchingVariant.Tags, "Shape");
+  if (material) {
+    variantSpecs += `<p>Materiál: ${material}</p>`;
+  }
+  if (finish) {
+    variantSpecs += `<p>Povrchová: ${finish}</p>`;
+  }
+  if (shape) {
+    variantSpecs += `<p>Tvar: ${shape}</p>`;
+  }
+  if (location) {
+    variantSpecs += `<p>Použití: ${location}</p>`;
+  }
+  if (properties) {
+    variantSpecs += `<p>Extra Vlastnosti: ${properties}</p>`;
+  }
+  variantSpecs += `<p>Značka: ${brand}</p>`;
 
   return variantSpecs;
 };
@@ -390,4 +446,32 @@ export const updateProductDescription = async (
   );
 
   return updateProduct.data;
+};
+
+export const updateVariantCost = async (inventoryItemId: any, cost: any) => {
+  let inventory_item = {
+    inventory_item: {
+      id: inventoryItemId,
+      cost: cost,
+    },
+  };
+
+  let updateCost = await axios.put(
+    `https://${STORE}/admin/api/${API_VERSION}/inventory_items/${inventoryItemId}.json`,
+    inventory_item,
+    {
+      headers: {
+        "X-Shopify-Access-Token": ACCESS_TOKEN!,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  return updateCost.data;
+};
+
+export const isFutureDate = (date: string) => {
+  let currentDate = new Date();
+  let futureDate = new Date(date);
+  return futureDate > currentDate;
 };

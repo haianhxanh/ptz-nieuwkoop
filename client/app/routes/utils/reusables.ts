@@ -1,7 +1,7 @@
 import axios from "axios";
-import { API_ROUTES } from "../utils/constants";
+import { API_ROUTES, ITEM_STATUS } from "../utils/constants";
 
-export const getProducts = async (appUrl) => {
+export const getProducts = async (appUrl: string) => {
   try {
     const api_response = await axios.get(appUrl + API_ROUTES.GET_PRODUCTS, {
       headers: {
@@ -14,7 +14,7 @@ export const getProducts = async (appUrl) => {
   }
 };
 
-export const getAppMetaobject = async (appUrl) => {
+export const getAppMetaobject = async (appUrl: string) => {
   try {
     const api_response = await axios.get(
       appUrl + API_ROUTES.GET_APP_METAOBJECT,
@@ -30,7 +30,7 @@ export const getAppMetaobject = async (appUrl) => {
   }
 };
 
-export const updateAppMetaobject = async (data, appUrl) => {
+export const updateAppMetaobject = async (data: any, appUrl: string) => {
   try {
     const api_response = await axios.post(
       appUrl + API_ROUTES.UPDATE_APP_METAOBJECT,
@@ -47,7 +47,7 @@ export const updateAppMetaobject = async (data, appUrl) => {
   }
 };
 
-export const importProducts = async (data, appUrl) => {
+export const importProducts = async (data: any, appUrl: string) => {
   try {
     const api_response = await axios.post(
       appUrl + API_ROUTES.IMPORT_PRODUCTS,
@@ -64,7 +64,7 @@ export const importProducts = async (data, appUrl) => {
   }
 };
 
-export const removeSizeInTitles = (title) => {
+export const removeSizeInTitles = (title: string) => {
   const sizes = [
     " XXXS ",
     " XXS ",
@@ -91,9 +91,19 @@ export const removeSizeInTitles = (title) => {
   return title;
 };
 
-export const getExchangeRate = async (currency) => {
+export const getExchangeRate = async (currency: string) => {
   let url = `https://api.cnb.cz/cnbapi/exrates/monthly-averages-currency?currency=${currency}`;
 
   let rate = await axios.get(url);
   return rate.data;
+};
+
+export const getItemStatus = (code: string) => {
+  let status = "";
+  ITEM_STATUS.forEach((item) => {
+    if (item.code === code) {
+      status = item.status;
+    }
+  });
+  return status;
 };

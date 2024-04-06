@@ -1,23 +1,28 @@
 import fs from "fs";
-import { LATEST_API_VERSION } from "@shopify/shopify-api";
+
 import { shopifyApiProject, ApiType } from "@shopify/api-codegen-preset";
+import type { IGraphQLConfig } from "graphql-config";
+import { apiVersion } from "./app/shopify.server";
+
 function getConfig() {
-  const config = {
+  const config: IGraphQLConfig = {
     projects: {
       default: shopifyApiProject({
         apiType: ApiType.Admin,
-        apiVersion: LATEST_API_VERSION,
+        apiVersion: apiVersion,
         documents: ["./app/**/*.{js,ts,jsx,tsx}"],
         outputDir: "./app/types",
       }),
     },
   };
-  let extensions = [];
+
+  let extensions: string[] = [];
   try {
     extensions = fs.readdirSync("./extensions");
   } catch {
     // ignore if no extensions
   }
+
   for (const entry of extensions) {
     const extensionPath = `./extensions/${entry}`;
     const schema = `${extensionPath}/schema.graphql`;
@@ -29,6 +34,8 @@ function getConfig() {
       documents: [`${extensionPath}/**/*.graphql`],
     };
   }
+
   return config;
 }
+
 module.exports = getConfig();
