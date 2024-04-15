@@ -19,10 +19,8 @@ import {
   Banner,
   IndexFilters,
   useSetIndexFiltersMode,
-  Icon,
   Link,
 } from "@shopify/polaris";
-import { ExternalIcon } from "@shopify/polaris-icons";
 import type { IndexFiltersProps } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import {
@@ -382,7 +380,7 @@ export default function Index() {
                 )
               }
             >
-              <Icon source={ExternalIcon} />
+              View
             </Link>
           ) : (
             ""
