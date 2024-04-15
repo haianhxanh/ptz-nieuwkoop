@@ -1,5 +1,6 @@
 import {
   createOptionTitle,
+  createRangeTags,
   createVariantSpecs,
   extractSizeInTitles,
   isFutureDate,
@@ -23,10 +24,15 @@ import {
 
 dotenv.config();
 
+type Variant = {
+  productId: string;
+  sku: string;
+};
+
 export const import_products = async (req: Request, res: Response) => {
   try {
     let products = req.body;
-    // console.log("Products:", products);
+    let variants = [];
 
     for (const [index, product] of products.entries()) {
       let newProduct;
@@ -41,10 +47,14 @@ export const import_products = async (req: Request, res: Response) => {
         "MaterialProperties"
       );
       let itemVariety = matchingProduct[0].ItemVariety_EN;
-
       let color = await getTag(matchingProduct[0].Tags, "ColourPlanter");
       let location = await getTag(matchingProduct[0].Tags, "Location");
-      let deliveryTime = matchingProduct[0].DeliveryTimeInDays;
+      let finish = await getTag(matchingProduct[0].Tags, "Finish");
+
+      let firstVariantHeightAndDiameterTag = await createRangeTags(
+        matchingProduct[0]
+      );
+      tags += firstVariantHeightAndDiameterTag + ",";
 
       if (collection) {
         tags += collection + ",";
@@ -64,7 +74,10 @@ export const import_products = async (req: Request, res: Response) => {
       if (location) {
         tags += location + ",";
       }
-      tags += "Pending approval";
+      if (finish) {
+        tags += finish + ",";
+      }
+      tags += "Pending approval" + ",";
 
       let productTitle = matchingProduct[0].ItemDescription_EN;
       if (itemVariety) {
@@ -77,6 +90,7 @@ export const import_products = async (req: Request, res: Response) => {
       }
 
       if (matchingProduct && matchingProduct.length > 0) {
+        let firstVariantDeliveryTime = matchingProduct[0].DeliveryTimeInDays;
         let firstVariantInventoryPolicy = "deny";
         let firstVariantStock = await getVariantStock(
           matchingProduct[0].Itemcode
@@ -110,25 +124,13 @@ export const import_products = async (req: Request, res: Response) => {
             giftCard: false,
             tags: tags,
             body_html: "",
-            metafields: [
-              {
-                key: "available_date",
-                value: firstVariantAvailable,
-                value_type: "date_time",
-                namespace: "custom",
-              },
-              {
-                key: "delivery_time",
-                value: deliveryTime,
-                value_type: "number_integer",
-                namespace: "custom",
-              },
-            ],
             variants: [
               {
                 option1: firstOptionTitle,
                 sku: matchingProduct[0].Itemcode,
-                price: 0,
+                price: Math.ceil(
+                  matchingProduct[0].Salesprice * 26 * 2 * 1.21
+                ).toFixed(0),
                 inventory_quantity: firstVariantStock.StockAvailable,
                 grams: matchingProduct[0].Weight.toFixed(2) * 1000,
                 barcode: matchingProduct[0].GTINCode,
@@ -142,6 +144,18 @@ export const import_products = async (req: Request, res: Response) => {
                     value_type: "multi_line_text_field",
                     namespace: "custom",
                   },
+                  {
+                    key: "available_date",
+                    value: firstVariantAvailable,
+                    value_type: "date_time",
+                    namespace: "custom",
+                  },
+                  {
+                    key: "delivery_time",
+                    value: firstVariantDeliveryTime,
+                    value_type: "number_integer",
+                    namespace: "custom",
+                  },
                 ],
               },
             ],
@@ -151,16 +165,21 @@ export const import_products = async (req: Request, res: Response) => {
         if (product.length > 1) {
           for (const [index, variant] of product.entries()) {
             let matchingVariant = await getApiVariant(variant);
+            let variantDeliveryTime = matchingVariant[0].DeliveryTimeInDays;
             let variantInventoryPolicy = "deny";
             let variantStock = await getVariantStock(
-              matchingProduct[0].Itemcode
+              matchingVariant[0].Itemcode
             );
+            let variantAvailable = variantStock.FirstAvailable;
 
-            let firstVariantAvailable = firstVariantStock.FirstAvailable;
+            let variantHeightAndDiameterTag = await createRangeTags(
+              matchingVariant[0]
+            );
+            newProduct.product.tags += variantHeightAndDiameterTag + ",";
 
             if (
               variantStock.StockAvailable <= 0 &&
-              isFutureDate(firstVariantAvailable)
+              isFutureDate(variantAvailable)
             ) {
               variantInventoryPolicy = "continue";
             }
@@ -176,7 +195,9 @@ export const import_products = async (req: Request, res: Response) => {
               newProduct.product.variants.push({
                 option1: optionTitle,
                 sku: matchingVariant[0].Itemcode,
-                price: 0,
+                price: Math.ceil(
+                  matchingVariant[0].Salesprice * 26 * 2 * 1.21
+                ).toFixed(0),
                 inventory_quantity: variantStock.StockAvailable,
                 grams: matchingVariant[0].Weight.toFixed(2) * 1000,
                 barcode: matchingVariant[0].GTINCode,
@@ -188,6 +209,18 @@ export const import_products = async (req: Request, res: Response) => {
                     key: "specifikace",
                     value: variantSpecs,
                     value_type: "multi_line_text_field",
+                    namespace: "custom",
+                  },
+                  {
+                    key: "available_date",
+                    value: variantAvailable,
+                    value_type: "date_time",
+                    namespace: "custom",
+                  },
+                  {
+                    key: "delivery_time",
+                    value: variantDeliveryTime,
+                    value_type: "number_integer",
                     namespace: "custom",
                   },
                 ],
@@ -243,6 +276,11 @@ export const import_products = async (req: Request, res: Response) => {
                 inventoryItemId,
                 variantCost
               );
+              let variantObj = {
+                productId: newProductId,
+                sku: variant.sku,
+              };
+              variants.push(variantObj);
               await sleep(500);
             } catch (error) {
               console.error("App Error getting variant cost:", error);
@@ -253,6 +291,7 @@ export const import_products = async (req: Request, res: Response) => {
     }
 
     return res.status(200).json({
+      variants: variants,
       message: "Products imported successfully",
       time: new Date().toLocaleString(),
     });

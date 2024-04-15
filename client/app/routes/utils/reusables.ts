@@ -107,3 +107,16 @@ export const getItemStatus = (code: string) => {
   });
   return status;
 };
+
+export const getAllVariants = async (appUrl: string) => {
+  try {
+    const api_response = await axios.get(appUrl + API_ROUTES.GET_ALL_VARIANTS, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return api_response;
+  } catch (error) {
+    console.log(error);
+  }
+};

@@ -3,6 +3,9 @@ export const API_ROUTES = {
   GET_APP_METAOBJECT: "/get-app-metaobject",
   UPDATE_APP_METAOBJECT: "/update-app-metaobject",
   IMPORT_PRODUCTS: "/import-products",
+  GET_ALL_VARIANTS: "/all-variants",
+  SHOPIFY_ADMIN_URL_DEV: "https://admin.shopify.com/store/floragreensprouts/",
+  SHOPIFY_ADMIN_URL_PROD: "https://admin.shopify.com/store/potzillas/",
 };
 
 export const IMPORT_STATUS = {

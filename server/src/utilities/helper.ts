@@ -1,6 +1,6 @@
 import axios from "axios";
 import { promisify } from "util";
-import { TAG_CODES } from "./constants";
+import { ITEM_DIAMETERS, ITEM_HEIGHTS, TAG_CODES } from "./constants";
 const sleep = promisify(setTimeout);
 const {
   ACCESS_TOKEN,
@@ -202,6 +202,23 @@ export async function allVariants() {
                 id
                 sku
                 title
+                product {
+                  id
+                }
+                inventoryItem {
+                  id
+                }
+                metafields(first: 10) {
+                  edges {
+                    node {
+                      id
+                      namespace
+                      key
+                      value
+                      type
+                    }
+                  }
+                }
               }
             }
           }
@@ -224,21 +241,21 @@ export async function allVariants() {
   return variants;
 }
 
-export async function syncVariantStock(variantId: any, stock: any) {
-  let variant = await axios.get(
-    `https://${STORE}/admin/api/${API_VERSION}/variants/${variantId}.json`,
-    {
-      headers: {
-        "X-Shopify-Access-Token": ACCESS_TOKEN!,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-  let inventory_item_id = variant.data.variant.inventory_item_id;
+export async function syncVariantStock(
+  variant: any,
+  matchingStockVariant: any,
+  matchingApiVariant: any
+) {
+  if (!matchingStockVariant || !matchingApiVariant) {
+    return;
+  }
 
   let inventory_level = {
-    inventory_item_id: inventory_item_id,
-    available: stock,
+    inventory_item_id: variant.node.inventoryItem.id.replace(
+      "gid://shopify/InventoryItem/",
+      ""
+    ),
+    available: matchingStockVariant.StockAvailable,
     location_id: STORE_LOCATION_ID,
   };
 
@@ -252,6 +269,67 @@ export async function syncVariantStock(variantId: any, stock: any) {
       },
     }
   );
+
+  // Update variant metafields for available date and delivery time
+  const metafields_query = `
+    mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
+    metafieldsSet(metafields: $metafields) {
+      metafields {
+        id
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+  `;
+  let metafields = [];
+  for (const metafield of variant.node.metafields.edges) {
+    if (metafield.node.key == "available_date") {
+      metafields.push({
+        namespace: metafield.node.namespace,
+        type: metafield.node.type,
+        key: metafield.node.key,
+        value: matchingStockVariant.FirstAvailable,
+        ownerId: variant.node.id,
+      });
+    }
+    if (metafield.node.key == "delivery_time") {
+      metafields.push({
+        namespace: metafield.node.namespace,
+        type: metafield.node.type,
+        key: metafield.node.key,
+        value: matchingApiVariant.DeliveryTimeInDays.toString(),
+        ownerId: variant.node.id,
+      });
+    }
+  }
+
+  let metafields_variables = {
+    metafields,
+  };
+
+  const variant_metafields = await axios
+    .post(
+      `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+      {
+        query: metafields_query,
+        variables: metafields_variables,
+      },
+      {
+        headers: {
+          "X-Shopify-Access-Token": ACCESS_TOKEN!,
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((response) => {
+      return response.data;
+    })
+    .catch((error) => {
+      console.error(error);
+    });
 
   return inventory_item.data;
 }
@@ -267,8 +345,12 @@ export async function getTag(Tags: any, tagCode: string) {
     tagCode == "Shape" ||
     tagCode == "ColourPlanter"
   ) {
+    let tagProperties = Tags.filter((tag: any) => tag.Code == tagCode);
+    if (tagProperties.length == 0) {
+      return undefined;
+    }
     let properties =
-      Tags.filter((tag: any) => tag.Code == tagCode).map((tag: any) =>
+      tagProperties.map((tag: any) =>
         tag.Values.map((value: any) => value.Description_EN)
       ) || undefined;
 
@@ -289,7 +371,7 @@ export async function getTag(Tags: any, tagCode: string) {
       undefined;
   }
 
-  return tag;
+  return capitalizeFirstLetter(tag);
 }
 
 export const removeSizeInTitles = (title: string) => {
@@ -383,7 +465,7 @@ export const createVariantSpecs = async (matchingVariant: any) => {
     variantSpecs += `<p>Průměr vnější: ${matchingVariant.Diameter} cm</p>`;
   }
   if (matchingVariant.Opening) {
-    variantSpecs += `<p>Průměr vnitřní: ${matchingVariant.Diameter} cm</p>`;
+    variantSpecs += `<p>Průměr vnitřní: ${matchingVariant.Opening} cm</p>`;
   }
   if (matchingVariant.Height) {
     variantSpecs += `<p>Výška: ${matchingVariant.Height} cm</p>`;
@@ -397,17 +479,19 @@ export const createVariantSpecs = async (matchingVariant: any) => {
   if (matchingVariant.Volume) {
     variantSpecs += `<p>Objem: ${matchingVariant.Volume} l</p>`;
   }
+
   let brand = await getTag(matchingVariant.Tags, "Brand");
   let material = await getTag(matchingVariant.Tags, "Material");
   let location = await getTag(matchingVariant.Tags, "Location");
   let finish = await getTag(matchingVariant.Tags, "Finish");
+
   let properties = await getTag(matchingVariant.Tags, "MaterialProperties");
   let shape = await getTag(matchingVariant.Tags, "Shape");
   if (material) {
     variantSpecs += `<p>Materiál: ${material}</p>`;
   }
   if (finish) {
-    variantSpecs += `<p>Povrchová: ${finish}</p>`;
+    variantSpecs += `<p>Povrch: ${finish}</p>`;
   }
   if (shape) {
     variantSpecs += `<p>Tvar: ${shape}</p>`;
@@ -474,4 +558,37 @@ export const isFutureDate = (date: string) => {
   let currentDate = new Date();
   let futureDate = new Date(date);
   return futureDate > currentDate;
+};
+
+export const capitalizeFirstLetter = (string: string) => {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+};
+
+export const createRangeTags = async (matchingVariant: any) => {
+  if (!matchingVariant) {
+    return "";
+  }
+  let tag = "";
+  if (matchingVariant.Height) {
+    let matchingHeight = ITEM_HEIGHTS.find(
+      (height) =>
+        matchingVariant.Height >= height.min &&
+        matchingVariant.Height <= height.max
+    );
+    if (matchingHeight) {
+      tag += matchingHeight.tag + ",";
+    }
+  }
+
+  if (matchingVariant.Diameter) {
+    let matchingDiameter = ITEM_DIAMETERS.find(
+      (diameter) =>
+        matchingVariant.Diameter >= diameter.min &&
+        matchingVariant.Diameter <= diameter.max
+    );
+    if (matchingDiameter) {
+      tag += matchingDiameter.tag + ",";
+    }
+  }
+  return tag;
 };

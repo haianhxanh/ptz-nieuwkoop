@@ -7,22 +7,13 @@ import dotenv from "dotenv";
 
 import {
   allVariants,
+  getApiVariant,
   getVariantStock,
   syncVariantStock,
 } from "../utilities/helper";
 
 dotenv.config();
-const {
-  ACCESS_TOKEN,
-  STORE,
-  API_VERSION,
-  NIEUWKOOP_API_ENDPOINT,
-  NIEUWKOOP_USERNAME,
-  NIEUWKOOP_PASSWORD,
-  OPEN_AI_KEY,
-  OPEN_AI_MODEL,
-  VARIANTS_STOCK_SYNC_INTERVAL_MINUTES,
-} = process.env;
+const { VARIANTS_STOCK_SYNC_INTERVAL_MINUTES } = process.env;
 
 export const sync_variants = async (req: Request, res: Response) => {
   let interval;
@@ -30,26 +21,27 @@ export const sync_variants = async (req: Request, res: Response) => {
     interval = parseInt(VARIANTS_STOCK_SYNC_INTERVAL_MINUTES) * 60 * 1000;
   }
   try {
-    setInterval(async () => {
-      let variants = await allVariants();
-      for (const [index, variant] of variants.entries()) {
-        if (variant.node.sku && variant.node.sku != "") {
-          let variantStock = await getVariantStock(variant.node.sku);
-          if (!variantStock) {
-            continue;
-          }
-          let syncVariantStockRes = await syncVariantStock(
-            variant.node.id.replace("gid://shopify/ProductVariant/", ""),
-            variantStock.StockAvailable
-          );
-          await sleep(400);
+    let variants = await allVariants();
+    for (const [index, variant] of variants.entries()) {
+      if (variant.node.sku && variant.node.sku != "") {
+        let matchingStockVariant = await getVariantStock(variant.node.sku);
+        let matchingApiVariant = await getApiVariant(variant.node.sku);
+        if (!matchingStockVariant || !matchingStockVariant) {
+          continue;
         }
+        let syncVariantStockRes = await syncVariantStock(
+          variant,
+          matchingStockVariant,
+          matchingApiVariant[0]
+        );
+
+        await sleep(1000);
       }
-      res.status(200).json({
-        message: "Inventory synced successfully",
-        time: new Date().toLocaleString(),
-      });
-    }, interval);
+    }
+    res.status(200).json({
+      message: "Inventory synced successfully",
+      time: new Date().toLocaleString(),
+    });
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
   }

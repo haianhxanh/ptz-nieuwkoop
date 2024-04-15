@@ -19,16 +19,25 @@ import {
   Banner,
   IndexFilters,
   useSetIndexFiltersMode,
+  Icon,
+  Link,
 } from "@shopify/polaris";
+import { ExternalIcon } from "@shopify/polaris-icons";
 import type { IndexFiltersProps } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import {
+  getAllVariants,
   getItemStatus,
   getProducts,
   importProducts,
   removeSizeInTitles,
 } from "./utils/reusables";
-import { IMPORT_STATUS } from "./utils/constants";
+import { IMPORT_STATUS, API_ROUTES } from "./utils/constants";
+
+type Variant = {
+  productId: string;
+  sku: string;
+};
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
@@ -71,6 +80,7 @@ export default function Index() {
   }
   const itemsPerPage = 25;
 
+  const [variants, setVariants] = useState<Variant[]>([]);
   const [products, setProducts] = useState([]);
   const [items, setItems] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -179,6 +189,9 @@ export default function Index() {
     if (importProductsRes?.status) {
       if (importProductsRes?.status == 200) {
         setImportStatus(IMPORT_STATUS.COMPLETED);
+        let variantsRes = importProductsRes?.data?.variants;
+        setVariants((prevVariants) => [...prevVariants, ...variantsRes]);
+
         setTimeout(() => {
           setImportStatus("");
         }, 5000);
@@ -266,6 +279,7 @@ export default function Index() {
             height: product.Height || null,
             depth: product.Depth || null,
             diameter: product.Diameter || null,
+            opening: product.Opening || null,
             image:
               "https://images.nieuwkoop-europe.com/images/" +
               product.ItemPictureName,
@@ -274,6 +288,11 @@ export default function Index() {
             isStockItem: product.IsStockItem,
             mainGroupCode: product.MainGroupCode,
             deliveryTime: product.DeliveryTimeInDays,
+            searchUrl: `https://www.nieuwkoop-europe.com/en/search-results?q=${product.Itemcode}`,
+            adminUrl:
+              process.env.NODE_ENV == "development"
+                ? API_ROUTES.SHOPIFY_ADMIN_URL_DEV
+                : API_ROUTES.SHOPIFY_ADMIN_URL_PROD,
           };
         })
         .filter(
@@ -332,6 +351,8 @@ export default function Index() {
         matchingElement,
         itemStatus,
         deliveryTime,
+        searchUrl,
+        adminUrl,
       },
       index,
     ) => (
@@ -349,7 +370,24 @@ export default function Index() {
             {title}
           </Text>
         </IndexTable.Cell>
-        <IndexTable.Cell>{sku}</IndexTable.Cell>
+        <IndexTable.Cell>
+          <Link onClick={() => window.open(searchUrl)}>{sku}</Link>
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+          {variants.some((variant) => variant.sku == sku) ? (
+            <Link
+              onClick={() =>
+                window.open(
+                  `${adminUrl}products/${variants.find((variant) => variant.sku == sku)?.productId}`,
+                )
+              }
+            >
+              <Icon source={ExternalIcon} />
+            </Link>
+          ) : (
+            ""
+          )}
+        </IndexTable.Cell>
         <IndexTable.Cell>{brand}</IndexTable.Cell>
         <IndexTable.Cell>{collection}</IndexTable.Cell>
         <IndexTable.Cell>{matchingElement}</IndexTable.Cell>
@@ -412,6 +450,25 @@ export default function Index() {
     { label: "Product", value: "product asc", directionLabel: "A-Z" },
     { label: "Product", value: "product desc", directionLabel: "Z-A" },
   ];
+
+  useEffect(() => {
+    const fetchVariants = async () => {
+      let data = await getAllVariants(appUrl);
+      let variants = data?.data.variants;
+      let variantsObj = variants.map((variant: any) => {
+        return {
+          productId: variant.node.product.id.replace(
+            "gid://shopify/Product/",
+            "",
+          ),
+          sku: variant.node.sku,
+        };
+      });
+      setVariants(variantsObj);
+    };
+
+    fetchVariants();
+  }, [appUrl]);
 
   return (
     <Page>
@@ -534,6 +591,7 @@ export default function Index() {
                 { title: "Image" },
                 { title: "Product" },
                 { title: "Sku" },
+                { title: "Imported" },
                 { title: "Brand" },
                 { title: "Collection" },
                 { title: "Variety" },
@@ -568,19 +626,6 @@ export default function Index() {
       {/* )} */}
     </Page>
   );
-
-  function disambiguateLabel(key: string, value: string | any[]): string {
-    switch (key) {
-      case "moneySpent":
-        return `Money spent is between $${value[0]} and $${value[1]}`;
-      case "taggedWith":
-        return `Tagged with ${value}`;
-      case "accountStatus":
-        return (value as string[]).map((val) => `Customer ${val}`).join(", ");
-      default:
-        return value as string;
-    }
-  }
 
   function isEmpty(value: string | string[]): boolean {
     if (Array.isArray(value)) {
