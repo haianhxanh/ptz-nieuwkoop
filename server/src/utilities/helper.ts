@@ -285,6 +285,10 @@ export async function syncVariantStock(
   }
   `;
   let metafields = [];
+  let deliveryTimeInDays =
+    matchingStockVariant.StockAvailable > 0
+      ? 7
+      : matchingApiVariant.DeliveryTimeInDays;
   for (const metafield of variant.node.metafields.edges) {
     if (metafield.node.key == "available_date") {
       metafields.push({
@@ -300,7 +304,7 @@ export async function syncVariantStock(
         namespace: metafield.node.namespace,
         type: metafield.node.type,
         key: metafield.node.key,
-        value: matchingApiVariant.DeliveryTimeInDays.toString(),
+        value: deliveryTimeInDays.toString(),
         ownerId: variant.node.id,
       });
     }
@@ -455,6 +459,11 @@ export const createOptionTitle = (optionSize: any, matchingVariant: any) => {
   ) {
     optionTitle = matchingVariant.ItemVariety_EN;
   }
+  optionTitle = optionTitle
+    .trim()
+    .replace(" Ø", " / Ø")
+    .replace(" V", " / V")
+    .replace(" D", " / D");
 
   return optionTitle;
 };

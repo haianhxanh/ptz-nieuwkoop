@@ -17,6 +17,7 @@ var corsOptions = {
     "https://ptz-nieuwkoop.onrender.com",
     "https://admin.shopify.com/store/potzillas",
     "https://potzillas.myshopify.com",
+    "https://nights-largest-birth-resorts.trycloudflare.com",
   ],
   optionsSuccessStatus: 200,
   methods: "GET, PUT, POST",

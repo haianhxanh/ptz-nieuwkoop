@@ -28,7 +28,13 @@ export const get_products = async (req: Request, res: Response) => {
     });
 
     let products = api_products.data.filter(
-      (product: any) => product.ProductGroupDescription_EN == "Planters"
+      (product: any) =>
+        product.ProductGroupDescription_EN == "Planters" &&
+        product.IsStockItem == true &&
+        product.MainGroupCode == "200" &&
+        product.ItemStatus != "E" &&
+        product.DeliveryTimeInDays != 999 &&
+        product.ShowOnWebsite == true
     );
 
     return res.status(200).json({ products });

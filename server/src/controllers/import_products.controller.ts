@@ -90,7 +90,6 @@ export const import_products = async (req: Request, res: Response) => {
       }
 
       if (matchingProduct && matchingProduct.length > 0) {
-        let firstVariantDeliveryTime = matchingProduct[0].DeliveryTimeInDays;
         let firstVariantInventoryPolicy = "deny";
         let firstVariantStock = await getVariantStock(
           matchingProduct[0].Itemcode
@@ -104,6 +103,11 @@ export const import_products = async (req: Request, res: Response) => {
         ) {
           firstVariantInventoryPolicy = "continue";
         }
+
+        let firstVariantDeliveryTime =
+          firstVariantStock.StockAvailable > 0
+            ? 7
+            : matchingProduct[0].DeliveryTimeInDays;
 
         let firstOptionSize = extractSizeInTitles(
           matchingProduct[0].ItemDescription_EN
@@ -165,7 +169,6 @@ export const import_products = async (req: Request, res: Response) => {
         if (product.length > 1) {
           for (const [index, variant] of product.entries()) {
             let matchingVariant = await getApiVariant(variant);
-            let variantDeliveryTime = matchingVariant[0].DeliveryTimeInDays;
             let variantInventoryPolicy = "deny";
             let variantStock = await getVariantStock(
               matchingVariant[0].Itemcode
@@ -183,6 +186,11 @@ export const import_products = async (req: Request, res: Response) => {
             ) {
               variantInventoryPolicy = "continue";
             }
+
+            let variantDeliveryTime =
+              variantStock.StockAvailable > 0
+                ? 7
+                : matchingVariant[0].DeliveryTimeInDays;
 
             let optionSize = extractSizeInTitles(
               matchingVariant[0].ItemDescription_EN

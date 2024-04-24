@@ -293,13 +293,6 @@ export default function Index() {
                 : API_ROUTES.SHOPIFY_ADMIN_URL_PROD,
           };
         })
-        .filter(
-          (product: any) =>
-            product.isStockItem == true &&
-            product.mainGroupCode == "200" &&
-            product.itemStatus != "E" &&
-            product.deliveryTime != 999,
-        )
         .sort((a: any, b: any) =>
           a.matchingElement.localeCompare(b.matchingElement),
         );
