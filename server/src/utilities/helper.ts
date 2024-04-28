@@ -107,7 +107,12 @@ export async function createProduct(product: any) {
   return newProductRes.data.product;
 }
 
-export const createImages = async (productId: any, sku: any, variant: any) => {
+export const createImages = async (
+  productId: any,
+  sku: any,
+  variant: any,
+  productHandle: any
+) => {
   const auth = Buffer.from(
     `${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`
   ).toString("base64");
@@ -127,12 +132,14 @@ export const createImages = async (productId: any, sku: any, variant: any) => {
       image = {
         product_id: productId,
         attachment: api_image.data.Image,
+        finename: productHandle + ".png",
         variant_ids: [variant.id],
       };
     } else {
       image = {
         product_id: productId,
         attachment: api_image.data.Image,
+        filename: productHandle + ".png",
       };
     }
     const res_image = await axios.post(

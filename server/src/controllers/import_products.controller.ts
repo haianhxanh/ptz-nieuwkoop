@@ -261,12 +261,15 @@ export const import_products = async (req: Request, res: Response) => {
         }
 
         if (newProductRes) {
+          console.log(newProductRes);
+
           let newProductId = newProductRes.id;
           try {
             let newImage = await createImages(
               newProductId,
               matchingProduct[0].Itemcode,
-              undefined
+              undefined,
+              newProductRes.handle
             );
             await sleep(500);
           } catch (error) {

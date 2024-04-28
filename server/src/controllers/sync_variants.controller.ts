@@ -22,6 +22,7 @@ export const sync_variants = async (req: Request, res: Response) => {
   }
   try {
     let variants = await allVariants();
+    let resVariants = [];
     for (const [index, variant] of variants.entries()) {
       if (variant.node.sku && variant.node.sku != "") {
         let matchingStockVariant = await getVariantStock(variant.node.sku);
@@ -29,6 +30,12 @@ export const sync_variants = async (req: Request, res: Response) => {
         if (!matchingStockVariant || !matchingStockVariant) {
           continue;
         }
+
+        resVariants.push({
+          sku: matchingStockVariant.Itemcode,
+          qty: matchingStockVariant.StockAvailable,
+        });
+
         let syncVariantStockRes = await syncVariantStock(
           variant,
           matchingStockVariant,
@@ -41,6 +48,7 @@ export const sync_variants = async (req: Request, res: Response) => {
     res.status(200).json({
       message: "Inventory synced successfully",
       time: new Date().toLocaleString(),
+      variants: resVariants,
     });
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
