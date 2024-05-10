@@ -215,7 +215,7 @@ export async function allVariants() {
                 inventoryItem {
                   id
                 }
-                metafields(first: 10) {
+                metafields(first: 100) {
                   edges {
                     node {
                       id
@@ -257,26 +257,6 @@ export async function syncVariantStock(
     return;
   }
 
-  let inventory_level = {
-    inventory_item_id: variant.node.inventoryItem.id.replace(
-      "gid://shopify/InventoryItem/",
-      ""
-    ),
-    available: matchingStockVariant.StockAvailable,
-    location_id: STORE_LOCATION_ID,
-  };
-
-  let inventory_item = await axios.post(
-    `https://${STORE}/admin/api/${API_VERSION}/inventory_levels/set.json`,
-    inventory_level,
-    {
-      headers: {
-        "X-Shopify-Access-Token": ACCESS_TOKEN!,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
   // Update variant metafields for available date and delivery time
   const metafields_query = `
     mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
@@ -315,6 +295,15 @@ export async function syncVariantStock(
         ownerId: variant.node.id,
       });
     }
+    if (metafield.node.key == "inventory_qty") {
+      metafields.push({
+        namespace: metafield.node.namespace,
+        type: metafield.node.type,
+        key: metafield.node.key,
+        value: matchingStockVariant.StockAvailable.toString(),
+        ownerId: variant.node.id,
+      });
+    }
   }
 
   let metafields_variables = {
@@ -342,7 +331,7 @@ export async function syncVariantStock(
       console.error(error);
     });
 
-  return inventory_item.data;
+  return variant_metafields;
 }
 
 export async function getTag(Tags: any, tagCode: string) {

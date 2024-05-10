@@ -90,7 +90,7 @@ export const import_products = async (req: Request, res: Response) => {
       }
 
       if (matchingProduct && matchingProduct.length > 0) {
-        let firstVariantInventoryPolicy = "deny";
+        let firstVariantInventoryPolicy = "continue";
         let firstVariantStock = await getVariantStock(
           matchingProduct[0].Itemcode
         );
@@ -160,6 +160,12 @@ export const import_products = async (req: Request, res: Response) => {
                     value_type: "number_integer",
                     namespace: "custom",
                   },
+                  {
+                    key: "inventory_qty",
+                    value: firstVariantStock.StockAvailable,
+                    value_type: "number_integer",
+                    namespace: "custom",
+                  },
                 ],
               },
             ],
@@ -169,7 +175,7 @@ export const import_products = async (req: Request, res: Response) => {
         if (product.length > 1) {
           for (const [index, variant] of product.entries()) {
             let matchingVariant = await getApiVariant(variant);
-            let variantInventoryPolicy = "deny";
+            let variantInventoryPolicy = "continue";
             let variantStock = await getVariantStock(
               matchingVariant[0].Itemcode
             );
@@ -231,6 +237,12 @@ export const import_products = async (req: Request, res: Response) => {
                     value_type: "number_integer",
                     namespace: "custom",
                   },
+                  {
+                    key: "inventory_qty",
+                    value: variantStock.StockAvailable,
+                    value_type: "number_integer",
+                    namespace: "custom",
+                  },
                 ],
               });
             }
@@ -261,8 +273,6 @@ export const import_products = async (req: Request, res: Response) => {
         }
 
         if (newProductRes) {
-          console.log(newProductRes);
-
           let newProductId = newProductRes.id;
           try {
             let newImage = await createImages(
