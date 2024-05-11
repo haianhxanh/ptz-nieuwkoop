@@ -65,6 +65,7 @@ export const importProducts = async (data: any, appUrl: string) => {
 };
 
 export const removeSizeInTitles = (title: string) => {
+  if (!title) return;
   const sizes = [
     " XXXS ",
     " XXS ",

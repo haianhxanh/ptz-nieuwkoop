@@ -212,12 +212,14 @@ export default function Index() {
   };
 
   useEffect(() => {
-    setDisplayedProducts(
-      items.slice(
-        (currentPage - 1) * itemsPerPage,
-        itemsPerPage + (currentPage - 1) * itemsPerPage,
-      ),
-    );
+    if (items.length > 0) {
+      setDisplayedProducts(
+        items.slice(
+          (currentPage - 1) * itemsPerPage,
+          itemsPerPage + (currentPage - 1) * itemsPerPage,
+        ),
+      );
+    }
   }, [currentPage, items]);
 
   useEffect(() => {
@@ -231,12 +233,20 @@ export default function Index() {
       items = products;
     }
 
-    if (sortSelected[0] == "product asc") {
-      items = items.sort((a, b) => a.title.localeCompare(b.title));
-      setItems(items);
-    } else if (sortSelected[0] == "product desc") {
-      items = items.sort((a, b) => b.title.localeCompare(a.title));
-      setItems(items);
+    if (items.length > 0) {
+      if (sortSelected[0] == "product asc") {
+        items = items.sort((a, b) => {
+          if (!a.title || !b.title) return false;
+          return a.title.localeCompare(b.title);
+        });
+        setItems(items);
+      } else if (sortSelected[0] == "product desc") {
+        items = items.sort((a, b) => {
+          if (!a.title || !b.title) return false;
+          return b.title.localeCompare(a.title);
+        });
+        setItems(items);
+      }
     }
 
     if (queryValue != "") {
@@ -293,9 +303,10 @@ export default function Index() {
                 : API_ROUTES.SHOPIFY_ADMIN_URL_PROD,
           };
         })
-        .sort((a: any, b: any) =>
-          a.matchingElement.localeCompare(b.matchingElement),
-        );
+        .sort((a: any, b: any) => {
+          if (!a.matchingElement || !b.matchingElement) return false;
+          return a.matchingElement.localeCompare(b.matchingElement);
+        });
 
       // get all unique brands and collections
       const brands = [...new Set(flatData.map((product: any) => product.brand))]

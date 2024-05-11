@@ -25,7 +25,6 @@ export default function SettingsPage() {
     setAutoImport(value);
     // create shop metafields
     if (value) {
-      console.log("create metafield");
       let appMetaobject = await getAppMetaobject();
       let updateMetaobject = await updateAppMetaobject({
         id: appMetaobject?.data.id,
