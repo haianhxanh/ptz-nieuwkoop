@@ -55,6 +55,7 @@ export const import_products = async (req: Request, res: Response) => {
         matchingProduct[0]
       );
       tags += firstVariantHeightAndDiameterTag + ",";
+      tags += "Nieuwkoop ,";
 
       if (collection) {
         tags += collection + ",";
@@ -94,14 +95,18 @@ export const import_products = async (req: Request, res: Response) => {
         let firstVariantStock = await getVariantStock(
           matchingProduct[0].Itemcode
         );
-
         let firstVariantAvailable = firstVariantStock.FirstAvailable;
-
         if (
           firstVariantStock.StockAvailable <= 0 &&
           isFutureDate(firstVariantAvailable)
         ) {
           firstVariantInventoryPolicy = "continue";
+        }
+        if (
+          firstVariantStock.StockAvailable <= 0 &&
+          matchingProduct.DeliveryTimeInDays == 999
+        ) {
+          firstVariantInventoryPolicy = "deny";
         }
 
         let firstVariantDeliveryTime =
@@ -191,6 +196,12 @@ export const import_products = async (req: Request, res: Response) => {
               isFutureDate(variantAvailable)
             ) {
               variantInventoryPolicy = "continue";
+            }
+            if (
+              variantStock.StockAvailable <= 0 &&
+              matchingProduct.DeliveryTimeInDays == 999
+            ) {
+              firstVariantInventoryPolicy = "deny";
             }
 
             let variantDeliveryTime =

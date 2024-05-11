@@ -22,8 +22,6 @@ export const delete_products_from_stores = async (
 
     const store_products = data.products;
 
-    console.log(store_products);
-
     await Promise.all(
       store_products.map(async (del: any) => {
         await axios.delete(

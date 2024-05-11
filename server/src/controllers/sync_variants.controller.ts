@@ -27,14 +27,17 @@ export const sync_variants = async (req: Request, res: Response) => {
       if (variant.node.sku && variant.node.sku != "") {
         let matchingStockVariant = await getVariantStock(variant.node.sku);
         let matchingApiVariant = await getApiVariant(variant.node.sku);
-        if (!matchingStockVariant || !matchingStockVariant) {
-          continue;
+        if (matchingStockVariant && matchingStockVariant) {
+          resVariants.push({
+            sku: matchingStockVariant.Itemcode,
+            qty: matchingStockVariant.StockAvailable,
+          });
+        } else {
+          resVariants.push({
+            sku: variant.node.sku,
+            qty: 0,
+          });
         }
-
-        resVariants.push({
-          sku: matchingStockVariant.Itemcode,
-          qty: matchingStockVariant.StockAvailable,
-        });
 
         let syncVariantStockRes = await syncVariantStock(
           variant,

@@ -253,9 +253,22 @@ export async function syncVariantStock(
   matchingStockVariant: any,
   matchingApiVariant: any
 ) {
-  if (!matchingStockVariant || !matchingApiVariant) {
-    return;
+  if (
+    !matchingStockVariant ||
+    !matchingApiVariant ||
+    (matchingStockVariant.StockAvailable == 0 &&
+      matchingApiVariant.DeliveryTimeInDays == 999)
+  ) {
+    await setContinueSelling(variant.node.id, false);
   }
+  if (
+    matchingStockVariant &&
+    matchingApiVariant &&
+    matchingApiVariant.DeliveryTimeInDays != 999
+  ) {
+    await setContinueSelling(variant.node.id, true);
+  }
+  await sleep(500);
 
   // Update variant metafields for available date and delivery time
   const metafields_query = `
@@ -272,17 +285,22 @@ export async function syncVariantStock(
   }
   `;
   let metafields = [];
-  let deliveryTimeInDays =
-    matchingStockVariant.StockAvailable > 0
-      ? 7
-      : matchingApiVariant.DeliveryTimeInDays;
+  let deliveryTimeInDays;
+  if (matchingApiVariant && matchingStockVariant) {
+    deliveryTimeInDays =
+      matchingStockVariant.StockAvailable > 0
+        ? 7
+        : matchingApiVariant.DeliveryTimeInDays;
+  } else {
+    deliveryTimeInDays = 999;
+  }
   for (const metafield of variant.node.metafields.edges) {
     if (metafield.node.key == "available_date") {
       metafields.push({
         namespace: metafield.node.namespace,
         type: metafield.node.type,
         key: metafield.node.key,
-        value: matchingStockVariant.FirstAvailable,
+        value: matchingStockVariant ? matchingStockVariant.FirstAvailable : 0,
         ownerId: variant.node.id,
       });
     }
@@ -300,7 +318,9 @@ export async function syncVariantStock(
         namespace: metafield.node.namespace,
         type: metafield.node.type,
         key: metafield.node.key,
-        value: matchingStockVariant.StockAvailable.toString(),
+        value: matchingStockVariant
+          ? matchingStockVariant.StockAvailable.toString()
+          : 0,
         ownerId: variant.node.id,
       });
     }
@@ -332,6 +352,33 @@ export async function syncVariantStock(
     });
 
   return variant_metafields;
+}
+
+export async function setContinueSelling(
+  variantId: any,
+  continueSelling: boolean
+) {
+  let cleanedVariantId = variantId.replace("gid://shopify/ProductVariant/", "");
+  let variant = {
+    id: cleanedVariantId,
+    inventory_policy: continueSelling ? "continue" : "deny",
+  };
+
+  console.log(variant);
+
+  let updateVariants = await axios.put(
+    `https://${STORE}/admin/api/${API_VERSION}/variants/${cleanedVariantId}.json`,
+    { variant },
+    {
+      headers: {
+        "X-Shopify-Access-Token": ACCESS_TOKEN!,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  console.log(updateVariants.data);
+
+  return updateVariants.data;
 }
 
 export async function getTag(Tags: any, tagCode: string) {
@@ -375,6 +422,9 @@ export async function getTag(Tags: any, tagCode: string) {
 }
 
 export const removeSizeInTitles = (title: string) => {
+  if (!title) {
+    return "";
+  }
   const sizes = [
     " XXXS ",
     " XXS ",
