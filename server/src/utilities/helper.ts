@@ -326,7 +326,7 @@ export async function syncVariantStock(
         key: metafield.node.key,
         value: matchingStockVariant
           ? matchingStockVariant.StockAvailable.toString()
-          : 0,
+          : "0",
         ownerId: variant.node.id,
       });
     }
