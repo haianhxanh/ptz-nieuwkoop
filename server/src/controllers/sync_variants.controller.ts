@@ -45,7 +45,7 @@ export const sync_variants = async (req: Request, res: Response) => {
           matchingApiVariant[0]
         );
 
-        await sleep(1000);
+        await sleep(500);
       }
     }
     res.status(200).json({

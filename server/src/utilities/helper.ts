@@ -199,7 +199,7 @@ export async function allVariants() {
       `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
       {
         query: `query {
-          productVariants(first: 100${cursor ? `, after: "${cursor}"` : ""}) {
+          productVariants(first: 250${cursor ? `, after: "${cursor}"` : ""}) {
             pageInfo {
               hasNextPage
               endCursor
@@ -211,6 +211,7 @@ export async function allVariants() {
                 title
                 product {
                   id
+                  tags
                 }
                 inventoryItem {
                   id
@@ -243,8 +244,13 @@ export async function allVariants() {
     hasNextPage = data.pageInfo.hasNextPage;
     cursor = data.pageInfo.endCursor;
     variants = variants.concat(data.edges);
-    await sleep(250);
+    await sleep(500);
   }
+
+  variants = variants.filter((variant) =>
+    variant.node.product.tags.includes("Nieuwkoop")
+  );
+
   return variants;
 }
 
