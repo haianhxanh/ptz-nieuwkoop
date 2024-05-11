@@ -364,8 +364,6 @@ export async function setContinueSelling(
     inventory_policy: continueSelling ? "continue" : "deny",
   };
 
-  console.log(variant);
-
   let updateVariants = await axios.put(
     `https://${STORE}/admin/api/${API_VERSION}/variants/${cleanedVariantId}.json`,
     { variant },
@@ -376,7 +374,6 @@ export async function setContinueSelling(
       },
     }
   );
-  console.log(updateVariants.data);
 
   return updateVariants.data;
 }
