@@ -293,10 +293,24 @@ export async function syncVariantStock(
   let metafields = [];
   let deliveryTimeInDays;
   if (matchingApiVariant && matchingStockVariant) {
-    deliveryTimeInDays =
-      matchingStockVariant.StockAvailable > 0
-        ? 7
-        : matchingApiVariant.DeliveryTimeInDays;
+    if (matchingStockVariant.StockAvailable > 0) {
+      deliveryTimeInDays = 7;
+    } else {
+      if (
+        matchingStockVariant.FirstAvailable &&
+        isFutureDate(matchingStockVariant.FirstAvailable)
+      ) {
+        let today = new Date();
+        let futureDate = new Date(matchingStockVariant.FirstAvailable);
+        // @ts-ignore
+        const diffTime = Math.abs(futureDate - today);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        deliveryTimeInDays =
+          diffDays + 7 + matchingApiVariant.DeliveryTimeInDays;
+      } else {
+        deliveryTimeInDays = 7;
+      }
+    }
   } else {
     deliveryTimeInDays = 999;
   }

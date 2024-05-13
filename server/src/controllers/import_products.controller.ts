@@ -33,6 +33,7 @@ export const import_products = async (req: Request, res: Response) => {
   try {
     let products = req.body;
     let variants = [];
+    let today = new Date();
 
     for (const [index, product] of products.entries()) {
       let newProduct;
@@ -109,10 +110,22 @@ export const import_products = async (req: Request, res: Response) => {
           firstVariantInventoryPolicy = "deny";
         }
 
-        let firstVariantDeliveryTime =
-          firstVariantStock.StockAvailable > 0
-            ? 7
-            : matchingProduct[0].DeliveryTimeInDays;
+        let firstVariantDeliveryTime;
+        if (firstVariantStock.StockAvailable > 0) {
+          firstVariantDeliveryTime = 7;
+        } else {
+          if (isFutureDate(firstVariantAvailable)) {
+            let futureDate = new Date(firstVariantAvailable);
+            // @ts-ignore
+            const diffTime = Math.abs(futureDate - today);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            firstVariantDeliveryTime =
+              diffDays + 7 + matchingProduct[0].DeliveryTimeInDays;
+          } else {
+            firstVariantDeliveryTime =
+              matchingProduct[0].DeliveryTimeInDays + 7;
+          }
+        }
 
         let firstOptionSize = extractSizeInTitles(
           matchingProduct[0].ItemDescription_EN
@@ -204,10 +217,22 @@ export const import_products = async (req: Request, res: Response) => {
               firstVariantInventoryPolicy = "deny";
             }
 
-            let variantDeliveryTime =
-              variantStock.StockAvailable > 0
-                ? 7
-                : matchingVariant[0].DeliveryTimeInDays;
+            let variantDeliveryTime;
+
+            if (variantStock.StockAvailable > 0) {
+              variantDeliveryTime = 7;
+            } else {
+              if (isFutureDate(variantAvailable)) {
+                let futureDate = new Date(variantAvailable);
+                // @ts-ignore
+                const diffTime = Math.abs(futureDate - today);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                variantDeliveryTime =
+                  diffDays + 7 + matchingVariant[0].DeliveryTimeInDays;
+              } else {
+                variantDeliveryTime = matchingVariant[0].DeliveryTimeInDays + 7;
+              }
+            }
 
             let optionSize = extractSizeInTitles(
               matchingVariant[0].ItemDescription_EN
