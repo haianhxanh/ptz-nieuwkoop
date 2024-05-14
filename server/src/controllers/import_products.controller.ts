@@ -146,6 +146,12 @@ export const import_products = async (req: Request, res: Response) => {
             giftCard: false,
             tags: tags,
             body_html: "",
+            product_type: "Květináč",
+            options: [
+              {
+                name: "Velikost",
+              },
+            ],
             variants: [
               {
                 option1: firstOptionTitle,
@@ -153,7 +159,7 @@ export const import_products = async (req: Request, res: Response) => {
                 price: Math.ceil(
                   matchingProduct[0].Salesprice * 26 * 2 * 1.21
                 ).toFixed(0),
-                inventory_quantity: firstVariantStock.StockAvailable,
+                inventory_quantity: 0,
                 grams: matchingProduct[0].Weight.toFixed(2) * 1000,
                 barcode: matchingProduct[0].GTINCode,
                 inventory_management: "shopify",
@@ -248,7 +254,7 @@ export const import_products = async (req: Request, res: Response) => {
                 price: Math.ceil(
                   matchingVariant[0].Salesprice * 26 * 2 * 1.21
                 ).toFixed(0),
-                inventory_quantity: variantStock.StockAvailable,
+                inventory_quantity: 0,
                 grams: matchingVariant[0].Weight.toFixed(2) * 1000,
                 barcode: matchingVariant[0].GTINCode,
                 inventory_management: "shopify",
