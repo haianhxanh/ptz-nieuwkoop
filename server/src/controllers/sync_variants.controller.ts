@@ -13,13 +13,8 @@ import {
 } from "../utilities/helper";
 
 dotenv.config();
-const { VARIANTS_STOCK_SYNC_INTERVAL_MINUTES } = process.env;
 
 export const sync_variants = async (req: Request, res: Response) => {
-  let interval;
-  if (VARIANTS_STOCK_SYNC_INTERVAL_MINUTES) {
-    interval = parseInt(VARIANTS_STOCK_SYNC_INTERVAL_MINUTES) * 60 * 1000;
-  }
   try {
     let variants = await allVariants();
     let resVariants = [];

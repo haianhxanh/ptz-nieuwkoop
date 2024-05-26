@@ -199,7 +199,9 @@ export async function allVariants() {
       `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
       {
         query: `query {
-          productVariants(first: 250${cursor ? `, after: "${cursor}"` : ""}) {
+          productVariants(query:"tag:'Nieuwkoop'", first: 250${
+            cursor ? `, after: "${cursor}"` : ""
+          }) {
             pageInfo {
               hasNextPage
               endCursor
@@ -246,10 +248,6 @@ export async function allVariants() {
     variants = variants.concat(data.edges);
     await sleep(500);
   }
-
-  variants = variants.filter((variant) =>
-    variant.node.product.tags.includes("Nieuwkoop")
-  );
 
   return variants;
 }
@@ -314,37 +312,32 @@ export async function syncVariantStock(
   } else {
     deliveryTimeInDays = 999;
   }
-  for (const metafield of variant.node.metafields.edges) {
-    if (metafield.node.key == "available_date") {
-      metafields.push({
-        namespace: metafield.node.namespace,
-        type: metafield.node.type,
-        key: metafield.node.key,
-        value: matchingStockVariant ? matchingStockVariant.FirstAvailable : 0,
-        ownerId: variant.node.id,
-      });
-    }
-    if (metafield.node.key == "delivery_time") {
-      metafields.push({
-        namespace: metafield.node.namespace,
-        type: metafield.node.type,
-        key: metafield.node.key,
-        value: deliveryTimeInDays.toString(),
-        ownerId: variant.node.id,
-      });
-    }
-    if (metafield.node.key == "inventory_qty") {
-      metafields.push({
-        namespace: metafield.node.namespace,
-        type: metafield.node.type,
-        key: metafield.node.key,
-        value: matchingStockVariant
-          ? matchingStockVariant.StockAvailable.toString()
-          : "0",
-        ownerId: variant.node.id,
-      });
-    }
-  }
+
+  metafields.push({
+    namespace: "custom",
+    type: "date_time",
+    key: "available_date",
+    value: matchingStockVariant ? matchingStockVariant.FirstAvailable : 0,
+    ownerId: variant.node.id,
+  });
+
+  metafields.push({
+    namespace: "custom",
+    type: "number_integer",
+    key: "delivery_time",
+    value: deliveryTimeInDays.toString(),
+    ownerId: variant.node.id,
+  });
+
+  metafields.push({
+    namespace: "custom",
+    type: "number_integer",
+    key: "inventory_qty",
+    value: matchingStockVariant
+      ? matchingStockVariant.StockAvailable.toString()
+      : "0",
+    ownerId: variant.node.id,
+  });
 
   let metafields_variables = {
     metafields,
@@ -663,4 +656,74 @@ export const createRangeTags = async (matchingVariant: any) => {
     }
   }
   return tag;
+};
+
+export const get_orders = async () => {
+  const query = `
+    query GetOrders {
+      orders(
+        query: "tag_not:'NP_EXPORTED' AND fulfillment_status:'unfulfilled' AND NOT financial_status:'voided' AND created_at:>'2024-03-23T22:00:00Z' AND (financial_status:'paid' OR tag:'dobirka')", 
+        first: 10
+      ) {
+        edges {
+          node {
+            id
+            tags
+            lineItems(first: 100) {
+              edges {
+                node {
+                  id
+                  title
+                  quantity
+                  sku
+                  product {
+                    tags
+                  }
+                  variant {
+                    metafields(first: 100) {
+                      edges {
+                        node {
+                          key
+                          value
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const { data } = await axios.post(
+    `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+    {
+      query,
+    },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": ACCESS_TOKEN!,
+      },
+    }
+  );
+
+  if (!data.data.orders.edges.length) return [];
+
+  return data.data.orders.edges;
+};
+
+export const getNextMonday = (date: Date): Date => {
+  const day = date.getDay();
+  let diff = 7 - ((day - 1) % 7);
+  let nextMonday = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate() + diff
+  );
+  let gmtNextMonday = new Date(nextMonday.getTime() + 1000 * 60 * 60 * 2);
+  return new Date(gmtNextMonday);
 };
