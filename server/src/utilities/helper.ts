@@ -12,6 +12,7 @@ const {
   NIEUWKOOP_PASSWORD,
   NIEUWKOOP_API_STOCK_ENDPOINT,
   NIEUWKOOP_API_IMAGE_ENDPOINT,
+  NIEUWKOOP_API_SALESORDER,
   OPEN_AI_KEY,
   OPEN_AI_MODEL,
   OPEN_AI_ORG_ID,
@@ -257,21 +258,30 @@ export async function syncVariantStock(
   matchingStockVariant: any,
   matchingApiVariant: any
 ) {
+  let continueSelling = false;
+
   if (
     !matchingStockVariant ||
     !matchingApiVariant ||
     (matchingStockVariant.StockAvailable == 0 &&
-      matchingApiVariant.DeliveryTimeInDays == 999)
+      matchingApiVariant.DeliveryTimeInDays == 999) ||
+    matchingApiVariant.ShowOnWebsite == false ||
+    matchingApiVariant.ItemStatus != "A"
   ) {
-    await setContinueSelling(variant.node.id, false);
+    continueSelling = false;
   }
+
   if (
     matchingStockVariant &&
     matchingApiVariant &&
-    matchingApiVariant.DeliveryTimeInDays != 999
+    (matchingApiVariant.ItemStatus == "A" ||
+      (matchingApiVariant.ItemStatus == "D" &&
+        matchingStockVariant.StockAvailable > 0))
   ) {
-    await setContinueSelling(variant.node.id, true);
+    continueSelling = true;
   }
+
+  await setContinueSelling(variant.node.id, continueSelling);
   await sleep(500);
 
   // Update variant metafields for available date and delivery time
@@ -726,4 +736,54 @@ export const getNextMonday = (date: Date): Date => {
   );
   let gmtNextMonday = new Date(nextMonday.getTime() + 1000 * 60 * 60 * 2);
   return new Date(gmtNextMonday);
+};
+
+type SalesOrder = {
+  DeliveryDate: string;
+  SalesOrderLines: SalesOrderLine[];
+};
+
+type SalesOrderLine = {
+  Itemcode: string;
+  Quantity: number;
+};
+
+export const createApiSalesOrder = async (order: SalesOrder) => {
+  const auth = Buffer.from(
+    `${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`
+  ).toString("base64");
+  const api_order = await axios.post(`${NIEUWKOOP_API_SALESORDER}`, order, {
+    headers: {
+      Authorization: `Basic ${auth}`,
+    },
+  });
+  console.log("api order", api_order);
+  return api_order.data;
+};
+
+export const tagOrder = async (
+  shopifyOrderId: any,
+  tags: string,
+  tag: string
+) => {
+  let newTags = tags + ", " + tag;
+  let order = {
+    order: {
+      id: shopifyOrderId,
+      tags: newTags,
+    },
+  };
+
+  let tagOrder = await axios.put(
+    `https://${STORE}/admin/api/${API_VERSION}/orders/${shopifyOrderId}.json`,
+    order,
+    {
+      headers: {
+        "X-Shopify-Access-Token": ACCESS_TOKEN!,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  return tagOrder.data;
 };
