@@ -34,7 +34,7 @@ export const sync_variants = async (req: Request, res: Response) => {
         let currentDate = new Date();
         let diff = currentDate.getTime() - lastSyncDate.getTime();
         let diffHours = diff / (1000 * 3600);
-        if (diffHours > 4) {
+        if (diffHours > 6) {
           return true;
         } else {
           return false;
