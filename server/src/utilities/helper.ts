@@ -247,7 +247,7 @@ export async function allVariants() {
     hasNextPage = data.pageInfo.hasNextPage;
     cursor = data.pageInfo.endCursor;
     variants = variants.concat(data.edges);
-    await sleep(500);
+    await sleep(750);
   }
 
   return variants;
@@ -282,7 +282,7 @@ export async function syncVariantStock(
   }
 
   await setContinueSelling(variant.node.id, continueSelling);
-  await sleep(500);
+  await sleep(750);
 
   // Update variant metafields for available date and delivery time
   const metafields_query = `
@@ -672,13 +672,18 @@ export const get_orders = async () => {
   const query = `
     query GetOrders {
       orders(
-        query: "tag_not:'NP_EXPORTED' AND fulfillment_status:'unfulfilled' AND NOT financial_status:'voided' AND created_at:>'2024-03-23T22:00:00Z' AND (financial_status:'paid' OR tag:'dobirka')", 
-        first: 10
+        query: "tag_not:'NP_EXPORTED' AND tag:'NP' AND fulfillment_status:'unfulfilled' AND NOT financial_status:'voided' AND created_at:>'2024-06-05T22:00:00Z' AND (financial_status:'paid' OR tag:'dobirka')", 
+        first: 3
       ) {
         edges {
           node {
             id
+            name
             tags
+            customAttributes {
+              key
+              value
+            }
             lineItems(first: 100) {
               edges {
                 node {
