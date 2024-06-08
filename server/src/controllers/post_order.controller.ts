@@ -137,8 +137,7 @@ const createSalesOrder = async (
   } else {
     let salesOrder = {
       DeliveryDate: calculateDeliveryDate,
-      ExternalReference: "TEST",
-      Notes: `TEST ORDER PLEASE DO NOT FULFILL, ${orderName}`,
+      Notes: `DMP Internal orders: ${orderName}`,
       SalesOrderLines: [
         {
           Itemcode: line.Itemcode,
