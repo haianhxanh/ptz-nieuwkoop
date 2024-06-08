@@ -762,7 +762,7 @@ export const createApiSalesOrder = async (order: SalesOrder) => {
       Authorization: `Basic ${auth}`,
     },
   });
-  console.log("api order", api_order);
+  console.log("api order", api_order.data);
   return api_order.data;
 };
 

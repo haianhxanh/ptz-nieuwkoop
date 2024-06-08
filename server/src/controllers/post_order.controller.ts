@@ -98,7 +98,7 @@ export const post_order = async (req: Request, res: Response) => {
         await sleep(1000);
       }
     }
-
+    console.log("Sales Orders: ", salesOrders);
     res.status(200).json({ salesOrders });
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
