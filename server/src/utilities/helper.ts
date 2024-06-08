@@ -219,7 +219,7 @@ export async function allVariants() {
                 inventoryItem {
                   id
                 }
-                metafields(first: 100) {
+                metafields(first: 20) {
                   edges {
                     node {
                       id
@@ -259,7 +259,6 @@ export async function syncVariantStock(
   matchingApiVariant: any
 ) {
   let continueSelling = false;
-  // console.log(variant.node.product.tags);
 
   if (
     !matchingStockVariant ||
@@ -328,7 +327,9 @@ export async function syncVariantStock(
     namespace: "custom",
     type: "date_time",
     key: "available_date",
-    value: matchingStockVariant ? matchingStockVariant.FirstAvailable : 0,
+    value: matchingStockVariant
+      ? matchingStockVariant.FirstAvailable
+      : "9999-12-31T23:59:59Z",
     ownerId: variant.node.id,
   });
 
@@ -347,6 +348,14 @@ export async function syncVariantStock(
     value: matchingStockVariant
       ? matchingStockVariant.StockAvailable.toString()
       : "0",
+    ownerId: variant.node.id,
+  });
+
+  metafields.push({
+    namespace: "custom",
+    type: "date_time",
+    key: "nieuwkoop_last_inventory_sync",
+    value: new Date().toISOString(),
     ownerId: variant.node.id,
   });
 

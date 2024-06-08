@@ -17,6 +17,50 @@ dotenv.config();
 export const sync_variants = async (req: Request, res: Response) => {
   try {
     let variants = await allVariants();
+
+    // check for variants without metafields of namespace custom and key nieuwkoop_last_inventory_sync or variants with metafields of namespace custom and key nieuwkoop_last_inventory_sync with value less than 12 hours ago
+
+    variants = variants.filter((variant) => {
+      let metafields = variant.node.metafields.edges;
+      let lastSyncMeta = metafields.find(
+        (metafield: any) =>
+          metafield.node.namespace == "custom" &&
+          metafield.node.key == "nieuwkoop_last_inventory_sync"
+      );
+      if (!lastSyncMeta) {
+        return true;
+      } else {
+        let lastSyncDate = new Date(lastSyncMeta.node.value);
+        let currentDate = new Date();
+        let diff = currentDate.getTime() - lastSyncDate.getTime();
+        let diffHours = diff / (1000 * 3600);
+        if (diffHours > 4) {
+          return true;
+        } else {
+          return false;
+        }
+      }
+    });
+
+    variants = variants.filter((variant) => {
+      let metafields = variant.node.metafields.edges;
+      let deliveryTimeMeta = metafields.find(
+        (metafield: any) =>
+          metafield.node.namespace == "custom" &&
+          metafield.node.key == "delivery_time"
+      );
+      if (deliveryTimeMeta)
+        if (deliveryTimeMeta.node.value == "999") {
+          return false;
+        } else {
+          return true;
+        }
+    });
+
+    if (variants.length > 150) {
+      variants = variants.slice(0, 150);
+    }
+
     let resVariants = [];
     for (const [index, variant] of variants.entries()) {
       if (variant.node.sku && variant.node.sku != "") {
