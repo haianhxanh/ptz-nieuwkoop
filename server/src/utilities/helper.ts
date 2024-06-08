@@ -259,6 +259,7 @@ export async function syncVariantStock(
   matchingApiVariant: any
 ) {
   let continueSelling = false;
+  // console.log(variant.node.product.tags);
 
   if (
     !matchingStockVariant ||

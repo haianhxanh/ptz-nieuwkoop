@@ -3,6 +3,7 @@ import logger from "morgan";
 import dotenv from "dotenv";
 import cors from "cors";
 import all_routes from "./routes/all.route";
+import bodyParser from "body-parser";
 
 dotenv.config();
 
@@ -11,7 +12,10 @@ const { PORT } = process.env;
 
 app.use(express.json());
 app.use(logger("dev"));
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: "100mb" }));
+app.use(express.urlencoded({ limit: "100mb", extended: false }));
+app.use(bodyParser.json({ limit: "100mb" }));
+app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
 var corsOptions = {
   origin: [
     "https://ptz-nieuwkoop.onrender.com",
