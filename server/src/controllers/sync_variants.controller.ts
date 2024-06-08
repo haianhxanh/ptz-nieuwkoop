@@ -42,21 +42,6 @@ export const sync_variants = async (req: Request, res: Response) => {
       }
     });
 
-    variants = variants.filter((variant) => {
-      let metafields = variant.node.metafields.edges;
-      let deliveryTimeMeta = metafields.find(
-        (metafield: any) =>
-          metafield.node.namespace == "custom" &&
-          metafield.node.key == "delivery_time"
-      );
-      if (deliveryTimeMeta)
-        if (deliveryTimeMeta.node.value == "999") {
-          return false;
-        } else {
-          return true;
-        }
-    });
-
     if (variants.length > 150) {
       variants = variants.slice(0, 150);
     }
