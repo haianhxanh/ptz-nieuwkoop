@@ -79,17 +79,24 @@ export const post_order = async (req: Request, res: Response) => {
       }
     }
 
-    for (let salesOrder of salesOrders) {
-      const api_order = await createApiSalesOrder(salesOrder);
-      await sleep(1000);
+    if (!req.query.test) {
+      if (salesOrders.length > 0)
+        for (let salesOrder of salesOrders) {
+          const api_order = await createApiSalesOrder(salesOrder);
+          await sleep(1000);
+        }
     }
 
-    for (let order of orders) {
-      // tag the order as NP_EXPORTED
-      const order_id = order.node.id.replace("gid://shopify/Order/", "");
-      const tags = order.node.tags;
-      const tagShopifyOrder = await tagOrder(order_id, tags, "NP_EXPORTED");
-      await sleep(1000);
+    if (salesOrders.length > 0) {
+      for (let order of orders) {
+        // tag the order as NP_EXPORTED
+        const order_id = order.node.id.replace("gid://shopify/Order/", "");
+        const tags = order.node.tags;
+        let tag = "NP_EXPORTED";
+        if (req.query.test) tag = tag + ", NP_TEST";
+        const tagShopifyOrder = await tagOrder(order_id, tags, tag);
+        await sleep(1000);
+      }
     }
 
     res.status(200).json({ salesOrders });
