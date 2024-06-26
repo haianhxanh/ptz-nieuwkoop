@@ -259,6 +259,7 @@ export async function syncVariantStock(
   matchingApiVariant: any
 ) {
   let continueSelling = false;
+  let itemDiscontinued = false;
 
   if (
     matchingStockVariant &&
@@ -280,6 +281,7 @@ export async function syncVariantStock(
     matchingApiVariant.ItemStatus != "A"
   ) {
     continueSelling = false;
+    itemDiscontinued = true;
   }
 
   await setContinueSelling(variant.node.id, continueSelling);
@@ -359,6 +361,16 @@ export async function syncVariantStock(
     value: new Date().toISOString(),
     ownerId: variant.node.id,
   });
+
+  if (itemDiscontinued) {
+    metafields.push({
+      namespace: "custom",
+      type: "boolean",
+      key: "item_discontinued",
+      value: "true",
+      ownerId: variant.node.id,
+    });
+  }
 
   let metafields_variables = {
     metafields,
