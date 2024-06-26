@@ -261,6 +261,17 @@ export async function syncVariantStock(
   let continueSelling = false;
 
   if (
+    matchingStockVariant &&
+    matchingApiVariant &&
+    (matchingApiVariant.ItemStatus == "A" ||
+      (matchingApiVariant.ItemStatus == "D" &&
+        matchingStockVariant.StockAvailable > 0)) &&
+    matchingApiVariant.ShowOnWebsite == true
+  ) {
+    continueSelling = true;
+  }
+
+  if (
     !matchingStockVariant ||
     !matchingApiVariant ||
     (matchingStockVariant.StockAvailable == 0 &&
@@ -269,16 +280,6 @@ export async function syncVariantStock(
     matchingApiVariant.ItemStatus != "A"
   ) {
     continueSelling = false;
-  }
-
-  if (
-    matchingStockVariant &&
-    matchingApiVariant &&
-    (matchingApiVariant.ItemStatus == "A" ||
-      (matchingApiVariant.ItemStatus == "D" &&
-        matchingStockVariant.StockAvailable > 0))
-  ) {
-    continueSelling = true;
   }
 
   await setContinueSelling(variant.node.id, continueSelling);
