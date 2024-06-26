@@ -281,6 +281,9 @@ export async function syncVariantStock(
     matchingApiVariant.ItemStatus != "A"
   ) {
     continueSelling = false;
+  }
+
+  if (matchingApiVariant.ShowOnWebsite == false) {
     itemDiscontinued = true;
   }
 
