@@ -37,12 +37,6 @@ export const get_products = async (req: Request, res: Response) => {
         product.ShowOnWebsite == true
     );
 
-    // let products = api_products.data.filter(
-    //   (product: any) =>
-    //     product.ProductGroupDescription_EN == "Planters" &&
-    //     product.ItemStatus == "E"
-    // );
-
     return res.status(200).json({ products });
   } catch (error) {
     console.error("Error downloading products:", error);

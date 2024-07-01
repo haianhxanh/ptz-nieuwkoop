@@ -219,7 +219,7 @@ export async function allVariants() {
                 inventoryItem {
                   id
                 }
-                metafields(first: 20) {
+                metafields(first: 100) {
                   edges {
                     node {
                       id
@@ -260,17 +260,11 @@ export async function syncVariantStock(
 ) {
   let continueSelling = false;
   let itemDiscontinued = false;
-
-  if (
-    matchingStockVariant &&
-    matchingApiVariant &&
-    (matchingApiVariant.ItemStatus == "A" ||
-      (matchingApiVariant.ItemStatus == "D" &&
-        matchingStockVariant.StockAvailable > 0)) &&
-    matchingApiVariant.ShowOnWebsite == true
-  ) {
-    continueSelling = true;
-  }
+  let itemDiscontinuedMeta = variant.node.metafields.edges.find(
+    (meta: any) =>
+      meta.node.namespace == "custom" && meta.node.key == "item_discontinued"
+  );
+  let discontinuedItems = [];
 
   if (
     !matchingStockVariant ||
@@ -278,12 +272,29 @@ export async function syncVariantStock(
     (matchingStockVariant.StockAvailable == 0 &&
       matchingApiVariant.DeliveryTimeInDays == 999) ||
     matchingApiVariant.ShowOnWebsite == false ||
+    matchingApiVariant.ShowOnWebsite == undefined ||
     matchingApiVariant.ItemStatus != "A"
   ) {
     continueSelling = false;
   }
 
-  if (matchingApiVariant.ShowOnWebsite == false) {
+  if (
+    matchingStockVariant &&
+    matchingApiVariant &&
+    (matchingApiVariant?.ItemStatus == "A" ||
+      (matchingApiVariant?.ItemStatus == "D" &&
+        matchingStockVariant?.StockAvailable > 0)) &&
+    matchingApiVariant?.ShowOnWebsite &&
+    matchingApiVariant?.ShowOnWebsite == true
+  ) {
+    continueSelling = true;
+    itemDiscontinued = false;
+  }
+
+  if (
+    matchingApiVariant?.ShowOnWebsite == undefined ||
+    matchingApiVariant?.ShowOnWebsite == false
+  ) {
     itemDiscontinued = true;
   }
 
@@ -365,15 +376,13 @@ export async function syncVariantStock(
     ownerId: variant.node.id,
   });
 
-  if (itemDiscontinued) {
-    metafields.push({
-      namespace: "custom",
-      type: "boolean",
-      key: "item_discontinued",
-      value: "true",
-      ownerId: variant.node.id,
-    });
-  }
+  metafields.push({
+    namespace: "custom",
+    type: "boolean",
+    key: "item_discontinued",
+    value: itemDiscontinued ? "true" : "false",
+    ownerId: variant.node.id,
+  });
 
   let metafields_variables = {
     metafields,

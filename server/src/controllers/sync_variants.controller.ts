@@ -1,6 +1,4 @@
 import { Request, Response } from "express";
-import { products } from "../data_storage/sample_data";
-import axios from "axios";
 import { promisify } from "util";
 const sleep = promisify(setTimeout);
 import dotenv from "dotenv";
@@ -11,8 +9,11 @@ import {
   getVariantStock,
   syncVariantStock,
 } from "../utilities/helper";
+import { send_slack_notification } from "../utilities/notifications";
 
 dotenv.config();
+
+const { STORE_ADMIN_PRODUCT_URL } = process.env;
 
 export const sync_variants = async (req: Request, res: Response) => {
   try {
@@ -47,11 +48,12 @@ export const sync_variants = async (req: Request, res: Response) => {
     }
 
     let resVariants = [];
+    let discontinuedItems = [];
     for (const [index, variant] of variants.entries()) {
       if (variant.node.sku && variant.node.sku != "") {
         let matchingStockVariant = await getVariantStock(variant.node.sku);
         let matchingApiVariant = await getApiVariant(variant.node.sku);
-        if (matchingStockVariant && matchingStockVariant) {
+        if (matchingApiVariant && matchingStockVariant) {
           resVariants.push({
             sku: matchingStockVariant.Itemcode,
             qty: matchingStockVariant.StockAvailable,
@@ -63,6 +65,32 @@ export const sync_variants = async (req: Request, res: Response) => {
           });
         }
 
+        if (
+          !matchingApiVariant ||
+          !matchingStockVariant ||
+          matchingApiVariant?.ShowOnWebsite == false
+        ) {
+          const discontinuedItemMeta = variant.node.metafields.edges.find(
+            (metafield: any) =>
+              metafield.node.namespace == "custom" &&
+              metafield.node.key == "item_discontinued"
+          );
+          if (
+            discontinuedItemMeta == undefined ||
+            discontinuedItemMeta.node.value == "false"
+          ) {
+            let storeAdminProductUrl =
+              STORE_ADMIN_PRODUCT_URL +
+              variant.node.product.id.replace("gid://shopify/Product/", "") +
+              "/variants/" +
+              variant.node.id.replace("gid://shopify/ProductVariant/", "");
+            discontinuedItems.push({
+              sku: variant.node.sku,
+              product: storeAdminProductUrl,
+            });
+          }
+        }
+
         let syncVariantStockRes = await syncVariantStock(
           variant,
           matchingStockVariant,
@@ -71,6 +99,9 @@ export const sync_variants = async (req: Request, res: Response) => {
 
         await sleep(750);
       }
+    }
+    if (discontinuedItems.length > 0) {
+      let slackNotification = send_slack_notification(discontinuedItems);
     }
     res.status(200).json({
       message: "Inventory synced successfully",
