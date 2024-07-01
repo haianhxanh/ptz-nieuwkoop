@@ -5,7 +5,7 @@ export const send_slack_notification = async (items: any) => {
     "Inventory sync completed, there are discontinued items as follows:";
   let bulletPoints: any = [];
   items.forEach((item: any) => {
-    bulletPoints.push(`${item.sku} - ${item.product}`);
+    bulletPoints.push(`<${item.product}|${item.sku}>`);
   });
 
   let formattedBulletPoints;
