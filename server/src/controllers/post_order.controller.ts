@@ -32,7 +32,10 @@ type Item = {
 
 export const post_order = async (req: Request, res: Response) => {
   try {
-    let order_id = req.query.order_id as string;
+    let order_id = (req.query.order_id as string).replace(
+      "gid://shopify/Order/",
+      ""
+    );
     let order = await get_order_by_id(order_id);
     if (order == null) {
       res
