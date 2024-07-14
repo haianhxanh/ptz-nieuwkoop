@@ -703,11 +703,79 @@ export const createRangeTags = async (matchingVariant: any) => {
   return tag;
 };
 
+export const get_order_by_id = async (order_id: string) => {
+  const query = `
+    query {
+      node(id: "gid://shopify/Order/${order_id}") {
+        id
+        ... on Order {
+          name
+          tags
+          customAttributes {
+            key
+            value
+          }
+          displayFinancialStatus
+          paymentGatewayNames
+          lineItems(first: 100) {
+            edges {
+              node {
+                id
+                title
+                quantity
+                sku
+                product {
+                  id
+                  tags
+                }
+                variant {
+                  inventoryQuantity
+                  metafields(first: 100) {
+                    edges {
+                      node {
+                        key
+                        value
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const { data } = await axios.post(
+    `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+    {
+      query,
+    },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": ACCESS_TOKEN!,
+      },
+    }
+  );
+
+  if (!data.data.node) return [];
+
+  const is_np_order = data?.data?.node?.lineItems?.edges?.some((item: any) =>
+    item?.node?.product?.tags.includes("Nieuwkoop")
+  );
+
+  if (!is_np_order) return [];
+
+  return data.data.node;
+};
+
 export const get_orders = async () => {
   const query = `
     query GetOrders {
       orders(
-        query: "tag_not:'NP_EXPORTED' AND tag:'NP' AND fulfillment_status:'unfulfilled' AND NOT financial_status:'voided' AND created_at:>'2024-06-05T22:00:00Z' AND (financial_status:'paid' OR tag:'dobirka')", 
+        query: "tag_not:'NP_EXPORTED' AND fulfillment_status:'unfulfilled' AND NOT financial_status:'voided' AND created_at:>'2024-06-05T22:00:00Z' AND (financial_status:'paid' OR tag:'dobirka')", 
         first: 3
       ) {
         edges {
@@ -727,9 +795,11 @@ export const get_orders = async () => {
                   quantity
                   sku
                   product {
+                    id
                     tags
                   }
                   variant {
+                    inventoryQuantity
                     metafields(first: 100) {
                       edges {
                         node {
@@ -827,3 +897,94 @@ export const tagOrder = async (
 
   return tagOrder.data;
 };
+
+export const updateOrderAttributesAndTags = async (
+  shopifyOrderId: any,
+  attributes: any,
+  tags: any
+) => {
+  let query = `
+    mutation updateOrderAttributesAndTags($input: OrderInput!) {
+      orderUpdate(input: $input) {
+        order {
+          id
+          customAttributes {
+            key
+            value
+          }
+          tags
+        }
+        userErrors {
+          message
+          field
+        }
+      }
+    }
+  `;
+
+  let variables = {
+    input: {
+      tags: tags,
+      customAttributes: attributes,
+      id: `gid://shopify/Order/${shopifyOrderId}`,
+    },
+  };
+
+  const response = await axios({
+    url: `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+    method: "POST",
+    headers: {
+      "X-Shopify-Access-Token": ACCESS_TOKEN,
+    },
+    data: {
+      query,
+      variables,
+    },
+  });
+
+  return response.data;
+};
+
+export async function getInventory(sku: any) {
+  /*===================================== Get inventory =====================================*/
+  const variantSku = sku;
+  const query = `
+        query {
+          productVariants(first: 1, query: "sku:${variantSku}") {
+            edges {
+              node {
+                id
+                inventoryItem {
+                  id
+                  inventoryHistoryUrl
+                  inventoryLevel(locationId: "gid://shopify/Location/${STORE_LOCATION_ID}") {
+                    id
+                    quantities(names: [ "committed", "available", "on_hand" ]) {
+                      name
+                      quantity
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      `;
+
+  const response = await axios({
+    url: `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+    method: "POST",
+    headers: {
+      "X-Shopify-Access-Token": ACCESS_TOKEN,
+    },
+    data: {
+      query: query,
+    },
+  });
+
+  if (response.data.data.productVariants.edges.length > 0) {
+    return response.data.data.productVariants.edges[0].node.inventoryItem;
+  } else {
+    return null;
+  }
+}
