@@ -21,6 +21,7 @@ var corsOptions = {
     "https://ptz-nieuwkoop.onrender.com",
     "https://admin.shopify.com/store/potzillas",
     "https://potzillas.myshopify.com",
+    "potzillas.myshopify.com",
     "https://les-defines-states-canada.trycloudflare.com",
   ],
   optionsSuccessStatus: 200,

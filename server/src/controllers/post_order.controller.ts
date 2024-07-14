@@ -37,11 +37,11 @@ export const post_order = async (req: Request, res: Response) => {
       ""
     );
     let order = await get_order_by_id(order_id);
-    if (order == null) {
-      res
-        .status(404)
-        .json({ message: `Order ${order?.name} is not a Nieuwkoop order` });
-      return;
+
+    if (order == null || order.length == 0) {
+      return res.status(404).json({
+        message: `Order ${order?.name || order_id} is not a Nieuwkoop order`,
+      });
     }
 
     let nieuwkoop = [] as Item[];
