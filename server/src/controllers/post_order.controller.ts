@@ -47,7 +47,7 @@ export const post_order = async (req: Request, res: Response) => {
     let nieuwkoop = [] as Item[];
     let ORDER_IS_PAID_OR_COD =
       order?.displayFinancialStatus === "PAID" ||
-      order?.paymentGatewayNames?.includes("COD");
+      order?.paymentGatewayNames?.includes("Cash on Delivery (COD)");
     let ORDER_EXPORTED =
       order?.tags?.includes("NP_EXPORTED") ||
       order?.tags?.includes("NP_MANUAL");
