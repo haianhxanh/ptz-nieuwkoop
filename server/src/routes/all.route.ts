@@ -8,6 +8,7 @@ import { import_products } from "../controllers/import_products.controller";
 import { sync_variants } from "../controllers/sync_variants.controller";
 import { all_variants } from "../controllers/all_variants.controller";
 import { post_order } from "../controllers/post_order.controller";
+import { tags } from "../controllers/tags.controller";
 const router = express.Router();
 
 router.delete("/delete-products", auth, delete_products_from_stores);
@@ -18,5 +19,6 @@ router.post("/import-products", import_products);
 router.get("/sync-variants", auth, sync_variants);
 router.get("/all-variants", all_variants);
 router.post("/post-order", auth, post_order);
+router.post("/tags", tags);
 
 export default router;

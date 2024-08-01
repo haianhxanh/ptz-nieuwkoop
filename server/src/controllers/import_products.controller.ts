@@ -146,7 +146,7 @@ export const import_products = async (req: Request, res: Response) => {
             giftCard: false,
             tags: tags,
             body_html: "",
-            product_type: "Květináč",
+            product_type: "",
             options: [
               {
                 name: "Velikost",

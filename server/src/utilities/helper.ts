@@ -473,7 +473,7 @@ export async function getTag(Tags: any, tagCode: string) {
       undefined;
   }
 
-  return capitalizeFirstLetter(tag);
+  return capitalizeFirstLetter(tag) || "";
 }
 
 export const removeSizeInTitles = (title: string) => {
@@ -671,7 +671,7 @@ export const isFutureDate = (date: string) => {
 };
 
 export const capitalizeFirstLetter = (string: string) => {
-  return string.charAt(0).toUpperCase() + string.slice(1);
+  return string?.charAt(0)?.toUpperCase() + string?.slice(1) || undefined;
 };
 
 export const createRangeTags = async (matchingVariant: any) => {
@@ -700,7 +700,7 @@ export const createRangeTags = async (matchingVariant: any) => {
       tag += matchingDiameter.tag + ",";
     }
   }
-  return tag;
+  return tag || undefined;
 };
 
 export const get_order_by_id = async (order_id: string) => {

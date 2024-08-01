@@ -14,8 +14,6 @@ export const get_products = async (req: Request, res: Response) => {
     // Get products from Nieuwkoop API
     console.log(req.headers.origin);
 
-    // check origin
-
     const auth = Buffer.from(
       `${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`
     ).toString("base64");
@@ -29,9 +27,7 @@ export const get_products = async (req: Request, res: Response) => {
 
     let products = api_products.data.filter(
       (product: any) =>
-        product.ProductGroupDescription_EN == "Planters" &&
         product.IsStockItem == true &&
-        product.MainGroupCode == "200" &&
         product.ItemStatus != "E" &&
         product.DeliveryTimeInDays != 999 &&
         product.ShowOnWebsite == true

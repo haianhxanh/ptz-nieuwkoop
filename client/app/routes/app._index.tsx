@@ -30,7 +30,7 @@ import {
   importProducts,
   removeSizeInTitles,
 } from "./utils/reusables";
-import { IMPORT_STATUS, API_ROUTES } from "./utils/constants";
+import { IMPORT_STATUS, API_ROUTES, PRODUCT_TYPES } from "./utils/constants";
 
 type Variant = {
   productId: string;
@@ -80,11 +80,14 @@ export default function Index() {
 
   const [variants, setVariants] = useState<Variant[]>([]);
   const [products, setProducts] = useState([]);
+  const [flatData, setFlatData] = useState([]);
   const [items, setItems] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [displayedProducts, setDisplayedProducts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [productTypes, setProductTypes] = useState(PRODUCT_TYPES);
+  const [productType, setProductType] = useState("");
   const [brands, setBrands] = useState([]);
   const [filteredBrands, setFilteredBrands] = useState([]);
   const [collections, setCollections] = useState([]);
@@ -144,6 +147,7 @@ export default function Index() {
   const removeAllFilters = useCallback(() => {
     setFilteredBrands([]);
     setFilteredCollections([]);
+    setProductType("");
     togglePopoverActive();
   }, [togglePopoverActive]);
 
@@ -159,6 +163,8 @@ export default function Index() {
     } else {
       inputItems = items;
     }
+    console.log("inputItems", inputItems);
+
     for (const [index, variant] of inputItems.entries()) {
       let singleProduct = {};
       let variants = items.filter(
@@ -260,77 +266,93 @@ export default function Index() {
   }, [filteredProducts, products, sortSelected, queryValue]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const data = await getProducts(appUrl);
-      const flatData = data?.data.products
-        .map((product: any) => {
-          return {
-            id: product.Itemcode,
-            title: product.Description,
-            sku: product.Itemcode,
-            brand:
-              product.Tags.find((tag: any) => tag.Code == "Brand")?.Values[0]
-                .Description_EN || "",
-            price: (product.Salesprice * 26).toFixed(2),
-            collection:
-              product.Tags.find((tag: any) => tag.Code == "Collection")
-                ?.Values[0].Description_EN || "",
-            color:
-              product.Tags.find((tag: any) => tag.Code == "ColourPlanter")
-                ?.Values[0].Description_EN || undefined,
-            material:
-              product.Tags.find((tag: any) => tag.Code == "Material")?.Values[0]
-                .Description_EN || "",
-            weight: product.Weight.toFixed(2) || null,
-            length: product.Length || null,
-            width: product.Width || null,
-            height: product.Height || null,
-            depth: product.Depth || null,
-            diameter: product.Diameter || null,
-            opening: product.Opening || null,
-            image:
-              "https://images.nieuwkoop-europe.com/images/" +
-              product.ItemPictureName,
-            matchingElement: removeSizeInTitles(product.ItemVariety_EN) || null,
-            itemStatus: product.ItemStatus,
-            isStockItem: product.IsStockItem,
-            mainGroupCode: product.MainGroupCode,
-            deliveryTime: product.DeliveryTimeInDays,
-            searchUrl: `https://www.nieuwkoop-europe.com/en/search-results?q=${product.Itemcode}`,
-            adminUrl:
-              process.env.NODE_ENV == "development"
-                ? API_ROUTES.SHOPIFY_ADMIN_URL_DEV
-                : API_ROUTES.SHOPIFY_ADMIN_URL_PROD,
-          };
-        })
-        .sort((a: any, b: any) => {
-          if (!a.matchingElement || !b.matchingElement) return false;
-          return a.matchingElement.localeCompare(b.matchingElement);
-        });
-
-      // get all unique brands and collections
-      const brands = [...new Set(flatData.map((product: any) => product.brand))]
-        .filter((brand) => brand != "")
-        .map((brand) => ({ label: brand, value: brand }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-
-      const collections = [
-        ...new Set(flatData.map((product: any) => product.collection)),
-      ]
-        .filter((collection) => collection != "")
-        .map((collection) => ({ label: collection, value: collection }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-
-      setBrands(brands);
-      setCollections(collections);
-
-      setProducts(flatData);
-      setDisplayedProducts(flatData.slice(0, itemsPerPage));
-      setInit(false);
-    };
-
     fetchData();
   }, []);
+
+  const fetchData = async () => {
+    setInit(true);
+    const data = await getProducts(appUrl);
+    const fetchedData = data?.data.products
+      .map((product: any) => {
+        return {
+          id: product.Itemcode,
+          title: product.Description,
+          sku: product.Itemcode,
+          brand:
+            product.Tags.find((tag: any) => tag.Code == "Brand")?.Values[0]
+              .Description_EN || "",
+          price: (product.Salesprice * 26).toFixed(2),
+          collection:
+            product.Tags.find((tag: any) => tag.Code == "Collection")?.Values[0]
+              .Description_EN || "",
+          color:
+            product.Tags.find((tag: any) => tag.Code == "ColourPlanter")
+              ?.Values[0].Description_EN || undefined,
+          material:
+            product.Tags.find((tag: any) => tag.Code == "Material")?.Values[0]
+              .Description_EN || "",
+          weight: product.Weight.toFixed(2) || null,
+          length: product.Length || null,
+          width: product.Width || null,
+          height: product.Height || null,
+          depth: product.Depth || null,
+          diameter: product.Diameter || null,
+          opening: product.Opening || null,
+          image:
+            "https://images.nieuwkoop-europe.com/images/" +
+            product.ItemPictureName,
+          matchingElement: removeSizeInTitles(product.ItemVariety_EN) || null,
+          itemStatus: product.ItemStatus,
+          isStockItem: product.IsStockItem,
+          mainGroupCode: product.MainGroupCode,
+          deliveryTime: product.DeliveryTimeInDays,
+          searchUrl: `https://www.nieuwkoop-europe.com/en/search-results?q=${product.Itemcode}`,
+          adminUrl:
+            process.env.NODE_ENV == "development"
+              ? API_ROUTES.SHOPIFY_ADMIN_URL_DEV
+              : API_ROUTES.SHOPIFY_ADMIN_URL_PROD,
+          type: product.ProductGroupDescription_EN,
+        };
+      })
+      .sort((a: any, b: any) => {
+        if (!a.matchingElement || !b.matchingElement) return false;
+        return a.matchingElement.localeCompare(b.matchingElement);
+      });
+
+    setProducts(fetchedData);
+  };
+
+  useEffect(() => {
+    filterProducts(productType);
+  }, [products, productType]);
+
+  const filterProducts = (type: string) => {
+    let filteredItems =
+      type != ""
+        ? products.filter((product: any) => product.type == type)
+        : products;
+
+    // get all unique brands and collections
+    const brands = [
+      ...new Set(filteredItems.map((product: any) => product.brand)),
+    ]
+      .filter((brand) => brand != "")
+      .map((brand) => ({ label: brand, value: brand }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    const collections = [
+      ...new Set(filteredItems.map((product: any) => product.collection)),
+    ]
+      .filter((collection) => collection != "")
+      .map((collection) => ({ label: collection, value: collection }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    setBrands(brands);
+    setCollections(collections);
+    setSelectedProducts([]);
+    setDisplayedProducts(filteredItems.slice(0, itemsPerPage));
+    setInit(false);
+  };
 
   const resourceName = {
     singular: "product",
@@ -410,6 +432,10 @@ export default function Index() {
     setFilteredBrands([]);
   }, []);
 
+  const handleSelectProductType = useCallback((value) => {
+    setProductType(value);
+  }, []);
+
   useEffect(() => {
     if (filteredBrands.length > 0) {
       const filteredItems = products.filter((product) =>
@@ -442,7 +468,11 @@ export default function Index() {
           selectedResources.includes(product.id),
         );
       }
-      setSelectedProducts(selectedFilteredProducts);
+      if (selectedFilteredProducts.length == products.length) {
+        setSelectedProducts([]);
+      } else {
+        setSelectedProducts(selectedFilteredProducts);
+      }
     } else {
       setSelectedProducts([]);
     }
@@ -482,8 +512,20 @@ export default function Index() {
         )}
         <Page fullWidth>
           <Grid>
-            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 6, xl: 6 }}>
-              <Card title="Sales" sectioned>
+            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 4, xl: 4 }}>
+              <Card title="Types" sectioned>
+                <Scrollable style={{ height: "200px" }}>
+                  <OptionList
+                    title="Types"
+                    onChange={handleSelectProductType}
+                    options={productTypes}
+                    selected={productType}
+                  />
+                </Scrollable>
+              </Card>
+            </Grid.Cell>
+            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 4, xl: 4 }}>
+              <Card title="Brands" sectioned>
                 <Scrollable style={{ height: "200px" }}>
                   <OptionList
                     title="Brands"
@@ -495,8 +537,8 @@ export default function Index() {
                 </Scrollable>
               </Card>
             </Grid.Cell>
-            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 6, xl: 6 }}>
-              <Card title="Orders" sectioned>
+            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 4, xl: 4 }}>
+              <Card title="Collections" sectioned>
                 <Scrollable style={{ height: "200px" }}>
                   <OptionList
                     title="Collections"

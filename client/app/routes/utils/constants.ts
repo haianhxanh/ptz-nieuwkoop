@@ -33,3 +33,58 @@ export const ITEM_STATUS = [
     status: "Blocked",
   },
 ];
+
+export const PRODUCT_TYPES = [
+  {
+    label: "Hydroculture",
+    value: "Hydroculture",
+  },
+  {
+    label: "Soilculture",
+    value: "Soilculture",
+  },
+  {
+    label: "Planters",
+    value: "Planters",
+  },
+  {
+    label: "Nutrients and pesticide",
+    value: "Nutrients and pesticide",
+  },
+  {
+    label: "Decoration",
+    value: "Decoration",
+  },
+  {
+    label: "Equipments and accessories",
+    value: "Equipments and accessories",
+  },
+  {
+    label: "Substrates and systems",
+    value: "Substrates and systems",
+  },
+  {
+    label: "Green walls",
+    value: "Green walls",
+  },
+  {
+    label: "Moss and Mummy plants",
+    value: "Moss and Mummy plants",
+  },
+  {
+    label: "Artificial",
+    value: "Artificial",
+  },
+  {
+    label: "Documentation",
+    value: "Documentation",
+  },
+  {
+    label: "Overige",
+    value: "Overige",
+  },
+  {
+    label: "Transport",
+    value: "Transport ",
+  },
+];

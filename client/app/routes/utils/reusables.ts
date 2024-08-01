@@ -2,6 +2,7 @@ import axios from "axios";
 import { API_ROUTES, ITEM_STATUS } from "../utils/constants";
 
 export const getProducts = async (appUrl: string) => {
+  // const encodedProductType = encodeURIComponent(productType);
   try {
     const api_response = await axios.get(appUrl + API_ROUTES.GET_PRODUCTS, {
       headers: {
