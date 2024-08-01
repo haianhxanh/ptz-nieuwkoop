@@ -19,6 +19,6 @@ router.post("/import-products", import_products);
 router.get("/sync-variants", auth, sync_variants);
 router.get("/all-variants", all_variants);
 router.post("/post-order", auth, post_order);
-router.post("/tags", tags);
+router.get("/tags", tags);
 
 export default router;
