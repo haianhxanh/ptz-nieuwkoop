@@ -955,6 +955,9 @@ export async function getInventory(sku: any) {
               node {
                 id
                 inventoryItem {
+                  variant {
+                    id
+                  }
                   id
                   inventoryHistoryUrl
                   inventoryLevel(locationId: "gid://shopify/Location/${STORE_LOCATION_ID}") {
@@ -987,4 +990,50 @@ export async function getInventory(sku: any) {
   } else {
     return null;
   }
+}
+
+export async function updateVariantMetafield(metafields: any) {
+  const metafields_query = `
+    mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
+    metafieldsSet(metafields: $metafields) {
+      metafields {
+        id
+        namespace
+        key
+        value
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+  `;
+
+  let metafields_variables = {
+    metafields,
+  };
+
+  const variant_metafields = await axios
+    .post(
+      `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+      {
+        query: metafields_query,
+        variables: metafields_variables,
+      },
+      {
+        headers: {
+          "X-Shopify-Access-Token": ACCESS_TOKEN!,
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((response) => {
+      return response.data;
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+
+  return variant_metafields;
 }
