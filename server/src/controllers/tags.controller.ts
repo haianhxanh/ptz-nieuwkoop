@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import { products } from "../data_storage/sample_data";
 import axios from "axios";
 import dotenv from "dotenv";
+import ExcelJS from "exceljs";
 
 dotenv.config();
 const { NIEUWKOOP_USERNAME, NIEUWKOOP_PASSWORD, NIEUWKOOP_API_TAGS } =
@@ -10,6 +10,19 @@ const { NIEUWKOOP_USERNAME, NIEUWKOOP_PASSWORD, NIEUWKOOP_API_TAGS } =
 export const tags = async (req: Request, res: Response) => {
   try {
     const tags = await getNieukoopTags(req.params.sku);
+
+    const workbook = new ExcelJS.Workbook();
+
+    const worksheet = workbook.addWorksheet("Tags");
+    tags.forEach((tag: any, index: any) => {
+      worksheet.getCell(1, index + 1).value = tag.TagCode;
+    });
+    tags.forEach((tag: any, index: any) => {
+      tag.Values.forEach((value: any, rowIndex: any) => {
+        worksheet.getCell(rowIndex + 2, index + 1).value = value;
+      });
+    });
+    await workbook.xlsx.writeFile("nieuwkoop-tags.xlsx");
     return res.status(200).json(tags);
   } catch (error) {
     return res.status(500).json({ error });

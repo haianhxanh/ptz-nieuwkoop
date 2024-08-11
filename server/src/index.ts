@@ -22,7 +22,7 @@ var corsOptions = {
     "https://admin.shopify.com/store/potzillas",
     "https://potzillas.myshopify.com",
     "potzillas.myshopify.com",
-    "https://jenny-bottle-literature-cave.trycloudflare.com",
+    "https://steam-mounting-dictionary-what.trycloudflare.com",
   ],
   optionsSuccessStatus: 200,
   methods: "GET, PUT, POST",
