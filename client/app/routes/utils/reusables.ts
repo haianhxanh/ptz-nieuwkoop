@@ -122,3 +122,55 @@ export const getAllVariants = async (appUrl: string) => {
     console.log(error);
   }
 };
+
+export const apiFetchData = async (appUrl: string) => {
+  const data = await getProducts(appUrl);
+  const fetchedData = data?.data.products
+    .map((product: any) => {
+      return {
+        id: product.Itemcode,
+        title: product.Description,
+        sku: product.Itemcode,
+        brand:
+          product.Tags.find((tag: any) => tag.Code == "Brand")?.Values[0]
+            .Description_EN || "",
+        price: (product.Salesprice * 26).toFixed(2),
+        collection:
+          product.Tags.find((tag: any) => tag.Code == "Collection")?.Values[0]
+            .Description_EN || "",
+        color:
+          product.Tags.find((tag: any) => tag.Code == "ColourPlanter")
+            ?.Values[0].Description_EN || undefined,
+        material:
+          product.Tags.find((tag: any) => tag.Code == "Material")?.Values[0]
+            .Description_EN || "",
+        weight: product.Weight.toFixed(2) || null,
+        length: product.Length || null,
+        width: product.Width || null,
+        height: product.Height || null,
+        depth: product.Depth || null,
+        diameter: product.Diameter || null,
+        opening: product.Opening || null,
+        image:
+          "https://images.nieuwkoop-europe.com/images/" +
+          product.ItemPictureName,
+        matchingElement: removeSizeInTitles(product?.ItemVariety_EN) || null,
+        itemStatus: product.ItemStatus,
+        isStockItem: product.IsStockItem,
+        mainGroupCode: product.MainGroupCode,
+        deliveryTime: product.DeliveryTimeInDays,
+        searchUrl: `https://www.nieuwkoop-europe.com/en/search-results?q=${product.Itemcode}`,
+        adminUrl:
+          process.env.NODE_ENV == "development"
+            ? API_ROUTES.SHOPIFY_ADMIN_URL_DEV
+            : API_ROUTES.SHOPIFY_ADMIN_URL_PROD,
+        type: product.ProductGroupDescription_EN,
+      };
+    })
+    .sort((a: any, b: any) => {
+      if (!a.matchingElement || !b.matchingElement) return false;
+      return a.matchingElement.localeCompare(b.matchingElement);
+    });
+
+  return fetchedData;
+};

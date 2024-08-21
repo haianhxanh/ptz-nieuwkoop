@@ -1,26 +1,27 @@
-import {
-  createOptionTitle,
-  createRangeTags,
-  createVariantSpecs,
-  extractSizeInTitles,
-  isFutureDate,
-  updateVariantCost,
-} from "./../utilities/helper";
 import { Request, Response } from "express";
 import { promisify } from "util";
 const sleep = promisify(setTimeout);
 import dotenv from "dotenv";
 
 import {
+  createVariantSpecs,
+  getTag,
+  removeSizeInTitles,
+  extractSizeInTitles,
+} from "../utilities/specs";
+
+import {
+  createOptionTitle,
+  createRangeTags,
+  isFutureDate,
+  updateVariantCost,
   createAiDescription,
   createImages,
   createProduct,
   getApiVariant,
-  getTag,
   getVariantStock,
-  removeSizeInTitles,
   variantExists,
-} from "../utilities/helper";
+} from "./../utilities/helper";
 
 dotenv.config();
 
@@ -39,46 +40,21 @@ export const import_products = async (req: Request, res: Response) => {
       let newProduct;
       let productMetafields: any = [];
       let matchingProduct = await getApiVariant(product[0]);
-      let tags = (await getTag(matchingProduct[0].Tags, "Brand")) + ",";
-      let collection = await getTag(matchingProduct[0].Tags, "Collection");
-      let shape = await getTag(matchingProduct[0].Tags, "Shape");
-      let material = await getTag(matchingProduct[0].Tags, "Material");
-      let materialProperties = await getTag(
-        matchingProduct[0].Tags,
-        "MaterialProperties"
-      );
-      let itemVariety = matchingProduct[0].ItemVariety_EN;
-      let color = await getTag(matchingProduct[0].Tags, "ColourPlanter");
-      let location = await getTag(matchingProduct[0].Tags, "Location");
-      let finish = await getTag(matchingProduct[0].Tags, "Finish");
+      let itemVariety = matchingProduct[0]?.ItemVariety_EN;
+      let tags = "";
+
+      for (const tagObj of matchingProduct[0].Tags) {
+        const tagValue = await getTag(tagObj);
+        if (tagValue) {
+          tags += tagValue + ",";
+        }
+      }
 
       let firstVariantHeightAndDiameterTag = await createRangeTags(
         matchingProduct[0]
       );
       tags += firstVariantHeightAndDiameterTag + ",";
       tags += "Nieuwkoop ,";
-
-      if (collection) {
-        tags += collection + ",";
-      }
-      if (shape) {
-        tags += shape + ",";
-      }
-      if (material) {
-        tags += material + ",";
-      }
-      if (color) {
-        tags += color + ",";
-      }
-      if (materialProperties) {
-        tags += materialProperties + ",";
-      }
-      if (location) {
-        tags += location + ",";
-      }
-      if (finish) {
-        tags += finish + ",";
-      }
       tags += "Pending approval" + ",";
 
       let productTitle = matchingProduct[0].ItemDescription_EN;

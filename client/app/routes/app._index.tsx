@@ -96,6 +96,7 @@ export default function Index() {
   const [popoverActive, setPopoverActive] = useState(false);
   const [importStatus, setImportStatus] = useState("");
   const [init, setInit] = useState(true);
+  const [announcement, setAnnouncement] = useState("");
 
   const [sortSelected, setSortSelected] = useState(["product asc"]);
   const { mode, setMode } = useSetIndexFiltersMode();
@@ -149,23 +150,24 @@ export default function Index() {
     setFilteredCollections([]);
     setProductType("");
     togglePopoverActive();
+    setSelectedProducts([]);
   }, [togglePopoverActive]);
 
   const handleImportAction = useCallback(async () => {
     togglePopoverActive();
-    setImportStatus(IMPORT_STATUS.IN_PROGRESS);
-
     let productsToImport: any = [];
 
     let inputItems;
-    if (selectedProducts.length > 0) {
+    if (selectedProducts?.length > 0) {
       inputItems = selectedProducts;
-    } else {
-      inputItems = items;
     }
-    console.log("inputItems", inputItems);
 
-    for (const [index, variant] of inputItems.entries()) {
+    if (!inputItems) {
+      setAnnouncement("No products selected");
+      return;
+    }
+    setImportStatus(IMPORT_STATUS.IN_PROGRESS);
+    for (const variant of inputItems.entries()) {
       let singleProduct = {};
       let variants = items.filter(
         (item) =>
@@ -227,6 +229,14 @@ export default function Index() {
       );
     }
   }, [currentPage, items]);
+
+  useEffect(() => {
+    if (selectedProducts.length > 0) {
+      setAnnouncement(`${selectedProducts.length} products selected`);
+    } else {
+      setAnnouncement("");
+    }
+  }, [selectedProducts]);
 
   useEffect(() => {
     let items;
@@ -301,7 +311,7 @@ export default function Index() {
           image:
             "https://images.nieuwkoop-europe.com/images/" +
             product.ItemPictureName,
-          matchingElement: removeSizeInTitles(product.ItemVariety_EN) || null,
+          matchingElement: removeSizeInTitles(product?.ItemVariety_EN) || null,
           itemStatus: product.ItemStatus,
           isStockItem: product.IsStockItem,
           mainGroupCode: product.MainGroupCode,
@@ -319,6 +329,7 @@ export default function Index() {
         return a.matchingElement.localeCompare(b.matchingElement);
       });
 
+    setInit(false);
     setProducts(fetchedData);
   };
 
@@ -351,7 +362,6 @@ export default function Index() {
     setCollections(collections);
     setSelectedProducts([]);
     setDisplayedProducts(filteredItems.slice(0, itemsPerPage));
-    setInit(false);
   };
 
   const resourceName = {
@@ -510,6 +520,11 @@ export default function Index() {
             <p>Products are loading</p>
           </Banner>
         )}
+        {announcement != "" && (
+          <Banner>
+            <p>{announcement}</p>
+          </Banner>
+        )}
         <Page fullWidth>
           <Grid>
             <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 4, xl: 4 }}>
@@ -568,7 +583,7 @@ export default function Index() {
                   actionRole="menuitem"
                   items={[
                     {
-                      content: `Import filtered products - in total ${selectedProducts.length > 0 ? selectedProducts.length : items.length} items`,
+                      content: `Import filtered products - in total ${selectedProducts.length} items`,
                       onAction: handleImportAction,
                     },
                     {

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { promisify } from "util";
 import { ITEM_DIAMETERS, ITEM_HEIGHTS, TAG_CODES } from "./constants";
+import { getTag } from "./specs";
 const sleep = promisify(setTimeout);
 const {
   ACCESS_TOKEN,
@@ -436,106 +437,6 @@ export async function setContinueSelling(
   return updateVariants.data;
 }
 
-export async function getTag(Tags: any, tagCode: string) {
-  let tag;
-
-  if (
-    tagCode == "MaterialProperties" ||
-    tagCode == "Material" ||
-    tagCode == "Location" ||
-    tagCode == "Finish" ||
-    tagCode == "Shape" ||
-    tagCode == "ColourPlanter"
-  ) {
-    let tagProperties = Tags.filter((tag: any) => tag.Code == tagCode);
-    if (tagProperties.length == 0) {
-      return undefined;
-    }
-    let properties =
-      tagProperties.map((tag: any) =>
-        tag.Values.map((value: any) => value.Description_EN)
-      ) || undefined;
-
-    if (properties) {
-      tag =
-        properties[0].map((t: string) => TAG_CODES[tagCode][t] || undefined) ||
-        undefined;
-    } else {
-      tag = undefined;
-    }
-
-    if (tag) {
-      tag = tag.filter((t: any) => t != undefined).join(", ");
-    }
-  } else {
-    tag =
-      Tags.find((tag: any) => tag.Code == tagCode)?.Values[0].Description_EN ||
-      undefined;
-  }
-
-  return capitalizeFirstLetter(tag) || "";
-}
-
-export const removeSizeInTitles = (title: string) => {
-  if (!title) {
-    return "";
-  }
-  const sizes = [
-    " XXXS ",
-    " XXS ",
-    " XS ",
-    " S ",
-    " M ",
-    " L ",
-    " XL ",
-    " XXL ",
-    " XXXL ",
-    " XXXS, ",
-    " XXS, ",
-    " XS, ",
-    " S, ",
-    " M, ",
-    " L, ",
-    " XL, ",
-    " XXL, ",
-    " XXXL, ",
-  ];
-  sizes.forEach((size) => {
-    title = title.replace(size, " ");
-  });
-  return title;
-};
-
-export const extractSizeInTitles = (title: string) => {
-  const sizes = [
-    " XXXS ",
-    " XXS ",
-    " XS ",
-    " S ",
-    " M ",
-    " L ",
-    " XL ",
-    " XXL ",
-    " XXXL ",
-    " XXXS, ",
-    " XXS, ",
-    " XS, ",
-    " S, ",
-    " M, ",
-    " L, ",
-    " XL, ",
-    " XXL, ",
-    " XXXL, ",
-  ];
-  let size = "";
-  sizes.forEach((s) => {
-    if (title.includes(s)) {
-      size = s.replace(",", "").replace(" ", "");
-    }
-  });
-  return size;
-};
-
 export const createOptionTitle = (optionSize: any, matchingVariant: any) => {
   let optionTitle = "";
   if (optionSize != "" && optionSize != undefined) {
@@ -558,7 +459,7 @@ export const createOptionTitle = (optionSize: any, matchingVariant: any) => {
     !matchingVariant.Height &&
     !matchingVariant.Length
   ) {
-    optionTitle = matchingVariant.ItemVariety_EN;
+    optionTitle = matchingVariant?.ItemVariety_EN;
   }
   optionTitle = optionTitle
     .trim()
@@ -567,54 +468,6 @@ export const createOptionTitle = (optionSize: any, matchingVariant: any) => {
     .replace(" D", " / D");
 
   return optionTitle;
-};
-
-export const createVariantSpecs = async (matchingVariant: any) => {
-  let variantSpecs = "";
-  if (matchingVariant.Diameter) {
-    variantSpecs += `<p>Průměr vnější: ${matchingVariant.Diameter} cm</p>`;
-  }
-  if (matchingVariant.Opening) {
-    variantSpecs += `<p>Průměr vnitřní: ${matchingVariant.Opening} cm</p>`;
-  }
-  if (matchingVariant.Height) {
-    variantSpecs += `<p>Výška: ${matchingVariant.Height} cm</p>`;
-  }
-  if (matchingVariant.Weight) {
-    variantSpecs += `<p>Hmotnost: ${matchingVariant.Weight.toFixed(2)} kg</p>`;
-  }
-  if (matchingVariant.Depth) {
-    variantSpecs += `<p>Hloubka: ${matchingVariant.Depth} cm</p>`;
-  }
-  if (matchingVariant.Volume) {
-    variantSpecs += `<p>Objem: ${matchingVariant.Volume} l</p>`;
-  }
-
-  let brand = await getTag(matchingVariant.Tags, "Brand");
-  let material = await getTag(matchingVariant.Tags, "Material");
-  let location = await getTag(matchingVariant.Tags, "Location");
-  let finish = await getTag(matchingVariant.Tags, "Finish");
-
-  let properties = await getTag(matchingVariant.Tags, "MaterialProperties");
-  let shape = await getTag(matchingVariant.Tags, "Shape");
-  if (material) {
-    variantSpecs += `<p>Materiál: ${material}</p>`;
-  }
-  if (finish) {
-    variantSpecs += `<p>Povrch: ${finish}</p>`;
-  }
-  if (shape) {
-    variantSpecs += `<p>Tvar: ${shape}</p>`;
-  }
-  if (location) {
-    variantSpecs += `<p>Použití: ${location}</p>`;
-  }
-  if (properties) {
-    variantSpecs += `<p>Extra Vlastnosti: ${properties}</p>`;
-  }
-  variantSpecs += `<p>Značka: ${brand}</p>`;
-
-  return variantSpecs;
 };
 
 export const updateProductDescription = async (
@@ -1037,3 +890,9 @@ export async function updateVariantMetafield(metafields: any) {
 
   return variant_metafields;
 }
+
+// export const getTagValue = async (tags: any, tagName: string) => {
+//   const tag = await getTag(tags, tagName);
+//   if (tag) return tag;
+//   return "";
+// };

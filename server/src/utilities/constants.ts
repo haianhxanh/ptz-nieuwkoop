@@ -4,10 +4,66 @@ type TagCodesType = {
   };
 };
 
+export const EN_TAG_CODES = ["Brand", "Collection"];
+
 export const TAG_CODES: TagCodesType = {
-  Location: {
-    Indoor: "Vnitřní",
-    Outdoor: "Venkovní",
+  Accessories: {
+    Saucers: "Podmisky",
+    Watering: "Zavlažování",
+    Wheels: "Kolečka",
+    Liners: "Vložky",
+    "Water level indicators": "Ukazatel hladiny vody",
+    Base: "Základ",
+    Systems: "Systémy",
+    "Other accessories": "Další příslušenství",
+    Hydroculture: "Hydrokultura",
+    "Soil culture": "Půdní kultura",
+    Nutrients: "Živiny",
+    Pesticide: "Pesticid",
+    Leafshine: "Lesk na listy",
+    Other: "Ostatní",
+    Transport: "Transport",
+    Equipments: "Vybavení",
+    Feet: "Nohy",
+  },
+  ArtificialGroup: {
+    Alocasia: "Alokázie",
+    Bamboo: "Bambus",
+    Buxus: "Buxus",
+    Calathea: "Kalátea",
+    "Cissus (ivy)": "Cissus (břečťan)",
+    Ficus: "Fikus",
+    Olea: "Olea",
+    Orchids: "Orchideje",
+    Philodendron: "Filodendron",
+    Dracaena: "Dračinec",
+    Grasses: "Trávy",
+    Palms: "Palmy",
+    Sansevieria: "Sansevieria",
+    Ferns: "Kapradiny",
+    Zamioculcas: "Zamioculcas",
+    Other: "Ostatní",
+    Agapanthus: "Agapant",
+    Strelitzia: "Strelície",
+  },
+  ArtificialShape: {
+    Bush: "Keř",
+    Tuft: "Trs",
+    Hanging: "Závěsný",
+    Ball: "Koule",
+    Other: "Ostatní",
+    Branched: "Rozvětvený",
+    Stem: "Stonek",
+  },
+  ColourArtificial: {
+    White: "Bílá",
+    Yellow: "Žlutá",
+    Orange: "Oranžová",
+    Other: "Ostatní",
+    Pink: "Růžová",
+    Violet: "Fialová",
+    "Multi-colored": "Vícebarevná",
+    Red: "Červená",
   },
   Finish: {
     Natural: "Přírodní povrchová úprava",
@@ -19,6 +75,17 @@ export const TAG_CODES: TagCodesType = {
     Lacquered: "Lakovaný",
     Structure: "Strukturovaný",
     Glazed: "Glazovaný",
+  },
+  Location: {
+    Indoor: "Vnitřní",
+    Outdoor: "Venkovní",
+  },
+  MaterialArtificial: {
+    "Fire retardant": "Požáruvzdorný",
+    "UV resistant": "Odolný proti UV záření",
+    "Water resistant": "Voděodolný",
+    "Including decorative pot": "Včetně dekorativního květináče",
+    "Recycled material": "Recyklovatelný materiál",
   },
   Material: {
     "Terra Cotta": "Terra Cotta",
@@ -86,6 +153,11 @@ export const TAG_CODES: TagCodesType = {
     Gold: "Zlatá",
     Silver: "Stříbrná",
     Copper: "Měděná",
+  },
+  ProductFeatures: {
+    "Raised bottom": "Falešné dno",
+    "Including wheels": "S kolečky",
+    "Including liner": "S vložkou",
   },
 };
 
@@ -173,4 +245,74 @@ export const ITEM_DIAMETERS = [
     max: 120,
     tag: "111 - 120 cm",
   },
+];
+
+export const SIZES = [
+  " XXXS ",
+  " XXS ",
+  " XS ",
+  " S ",
+  " M ",
+  " L ",
+  " XL ",
+  " XXL ",
+  " XXXL ",
+  " XXXS, ",
+  " XXS, ",
+  " XS, ",
+  " S, ",
+  " M, ",
+  " L, ",
+  " XL, ",
+  " XXL, ",
+  " XXXL, ",
+];
+
+export const MAIN_SPECS = [
+  {
+    label: "Ø Průměr vnější",
+    value: "Diameter",
+    unit: "cm",
+  },
+  {
+    label: "Ø Průměr vnitřní",
+    value: "Opening",
+    unit: "cm",
+  },
+  {
+    label: "Výška",
+    value: "Height",
+    unit: "cm",
+  },
+  {
+    label: "Hloubka",
+    value: "Depth",
+    unit: "cm",
+  },
+  {
+    label: "Hmotnost",
+    value: "Weight",
+    unit: "kg",
+  },
+  {
+    label: "Objem",
+    value: "Volume",
+    unit: "l",
+  },
+];
+
+export const TAGS = [
+  { tagCode: "Shape", label: "Tvar" },
+  { tagCode: "ArtificialShape", label: "Tvar" },
+  { tagCode: "ColourArtificial", label: "Barva" },
+  { tagCode: "ColourPlanter", value: "Barva" },
+  { tagCode: "Finish", label: "Povrch" },
+  { tagCode: "Location", label: "Použití" },
+  { tagCode: "Material", label: "Materiál" },
+  { tagCode: "MaterialArtificial", label: "Materiál" },
+  { tagCode: "MaterialProperties", label: "Extra Vlastnosti" },
+  { tagCode: "ProductFeatures", label: "Jiné Vlastnosti" },
+  { tagCode: "Accessories", label: "Příslušenství" },
+  { tagCode: "ArtificialGroup", label: "Skupina" },
+  { tagCode: "Brand", label: "Značka" },
 ];
