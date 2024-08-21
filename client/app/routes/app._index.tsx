@@ -80,7 +80,6 @@ export default function Index() {
 
   const [variants, setVariants] = useState<Variant[]>([]);
   const [products, setProducts] = useState([]);
-  const [flatData, setFlatData] = useState([]);
   const [items, setItems] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
@@ -334,7 +333,7 @@ export default function Index() {
   };
 
   useEffect(() => {
-    filterProducts(productType);
+    filterProducts(productType[0]);
   }, [products, productType]);
 
   const filterProducts = (type: string) => {
@@ -361,6 +360,8 @@ export default function Index() {
     setBrands(brands);
     setCollections(collections);
     setSelectedProducts([]);
+    setItems(filteredItems);
+    setCurrentPage(1);
     setDisplayedProducts(filteredItems.slice(0, itemsPerPage));
   };
 
