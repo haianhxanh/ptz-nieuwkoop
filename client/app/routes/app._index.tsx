@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import {
@@ -166,7 +166,7 @@ export default function Index() {
       return;
     }
     setImportStatus(IMPORT_STATUS.IN_PROGRESS);
-    for (const variant of inputItems.entries()) {
+    for (const variant of inputItems) {
       let singleProduct = {};
       let variants = items.filter(
         (item) =>
