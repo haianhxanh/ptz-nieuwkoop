@@ -43,10 +43,12 @@ export const import_products = async (req: Request, res: Response) => {
       let itemVariety = matchingProduct[0]?.ItemVariety_EN;
       let tags = "";
 
-      for (const tagObj of matchingProduct[0].Tags) {
-        const tagValue = await getTag(tagObj);
-        if (tagValue) {
-          tags += tagValue + ",";
+      if (matchingProduct[0]?.Tags) {
+        for (const tagObj of matchingProduct[0].Tags) {
+          const tagValue = await getTag(tagObj);
+          if (tagValue) {
+            tags += tagValue + ",";
+          }
         }
       }
 
