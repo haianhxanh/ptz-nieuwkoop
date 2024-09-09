@@ -43,8 +43,8 @@ export const sync_variants = async (req: Request, res: Response) => {
       }
     });
 
-    if (variants.length > 150) {
-      variants = variants.slice(0, 150);
+    if (variants.length > 100) {
+      variants = variants.slice(0, 100);
     }
 
     let resVariants = [];
@@ -97,7 +97,7 @@ export const sync_variants = async (req: Request, res: Response) => {
           matchingApiVariant[0]
         );
 
-        await sleep(750);
+        await sleep(500);
       }
     }
     if (discontinuedItems.length > 0) {

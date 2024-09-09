@@ -1,5 +1,5 @@
 import axios from "axios";
-const { SLACK_WEBHOOK_URL } = process.env;
+const { SLACK_WEBHOOK_URL, SLACK_DEVELOPER_WEBHOOK_URL } = process.env;
 export const send_slack_notification = async (items: any) => {
   const textMessage =
     "Inventory sync completed, there are discontinued items as follows:";
@@ -20,6 +20,10 @@ export const send_slack_notification = async (items: any) => {
       text: `${textMessage}\n\n${formattedBulletPoints}`,
     };
     const slackMessage = await axios.post(SLACK_WEBHOOK_URL || "", message);
+    const dev_slackMessage = await axios.post(
+      SLACK_DEVELOPER_WEBHOOK_URL || "",
+      message
+    );
   } catch (error) {
     console.error("Error sending notification:", error);
   }
