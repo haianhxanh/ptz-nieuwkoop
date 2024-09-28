@@ -42,8 +42,6 @@ export const createVariantSpecs = async (matchingVariant: any) => {
   let variantSpecs = "";
 
   for (const spec of MAIN_SPECS) {
-    console.log("main spec", spec);
-
     if (matchingVariant[spec.value] && matchingVariant[spec.value] > 0) {
       variantSpecs = appendSpec(
         variantSpecs,
@@ -55,7 +53,6 @@ export const createVariantSpecs = async (matchingVariant: any) => {
   }
 
   for (const spec of TAGS) {
-    console.log("tag spec", spec);
     if (
       matchingVariant.Tags &&
       matchingVariant.Tags.find((tag: any) => tag.Code == spec.tagCode)
@@ -71,6 +68,9 @@ export const createVariantSpecs = async (matchingVariant: any) => {
     }
   }
 
+  if (variantSpecs.includes(",  </p>")) {
+    variantSpecs = variantSpecs.replace(",  </p>", "</p>");
+  }
   return variantSpecs;
 };
 

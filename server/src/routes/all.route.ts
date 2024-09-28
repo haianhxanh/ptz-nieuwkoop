@@ -11,6 +11,7 @@ import { post_order } from "../controllers/post_order.controller";
 import { tags } from "../controllers/tags.controller";
 import { variant_store_inventory } from "../controllers/variant_store_inventory.controller";
 import { update_cost_eur } from "../one_off_functions/update_cost_eur";
+import { update_specs } from "../one_off_functions/update_specs";
 const router = express.Router();
 
 router.delete("/delete-products", auth, delete_products_from_stores);
@@ -24,5 +25,6 @@ router.post("/post-order", auth, post_order);
 router.get("/tags", tags);
 router.get("/variant-store-inventory", variant_store_inventory);
 router.get("/variants/update/cost/eur", update_cost_eur);
+router.get("/variants/update/specs", update_specs);
 
 export default router;
