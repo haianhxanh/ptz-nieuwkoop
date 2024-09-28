@@ -168,6 +168,12 @@ export const import_products = async (req: Request, res: Response) => {
                     value_type: "number_integer",
                     namespace: "custom",
                   },
+                  {
+                    key: "cost_eur",
+                    value: matchingProduct[0].Salesprice,
+                    value_type: "number_decimal",
+                    namespace: "custom",
+                  },
                 ],
               },
             ],

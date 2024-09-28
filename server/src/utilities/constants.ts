@@ -307,7 +307,7 @@ export const TAGS = [
   { tagCode: "Shape", label: "Tvar" },
   { tagCode: "ArtificialShape", label: "Tvar" },
   { tagCode: "ColourArtificial", label: "Barva" },
-  { tagCode: "ColourPlanter", value: "Barva" },
+  { tagCode: "ColourPlanter", label: "Barva" },
   { tagCode: "Finish", label: "Povrch" },
   { tagCode: "Location", label: "Použití" },
   { tagCode: "Material", label: "Materiál" },

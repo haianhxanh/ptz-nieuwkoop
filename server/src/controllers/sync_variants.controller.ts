@@ -47,12 +47,22 @@ export const sync_variants = async (req: Request, res: Response) => {
       variants = variants.slice(0, 100);
     }
 
+    let variant = variants.pop();
+    variants = [];
+    variants.push(variant);
+
     let resVariants = [];
     let discontinuedItems = [];
+    let costUpdatedItems = [];
     for (const [index, variant] of variants.entries()) {
       if (variant.node.sku && variant.node.sku != "") {
         let matchingStockVariant = await getVariantStock(variant.node.sku);
         let matchingApiVariant = await getApiVariant(variant.node.sku);
+        let storeAdminProductUrl =
+          STORE_ADMIN_PRODUCT_URL +
+          variant.node.product.id.replace("gid://shopify/Product/", "") +
+          "/variants/" +
+          variant.node.id.replace("gid://shopify/ProductVariant/", "");
         if (matchingApiVariant && matchingStockVariant) {
           resVariants.push({
             sku: matchingStockVariant.Itemcode,
@@ -70,6 +80,7 @@ export const sync_variants = async (req: Request, res: Response) => {
           !matchingStockVariant ||
           matchingApiVariant?.ShowOnWebsite == false
         ) {
+          // discontinuedItems
           const discontinuedItemMeta = variant.node.metafields.edges.find(
             (metafield: any) =>
               metafield.node.namespace == "custom" &&
@@ -79,15 +90,28 @@ export const sync_variants = async (req: Request, res: Response) => {
             discontinuedItemMeta == undefined ||
             discontinuedItemMeta.node.value == "false"
           ) {
-            let storeAdminProductUrl =
-              STORE_ADMIN_PRODUCT_URL +
-              variant.node.product.id.replace("gid://shopify/Product/", "") +
-              "/variants/" +
-              variant.node.id.replace("gid://shopify/ProductVariant/", "");
             discontinuedItems.push({
               sku: variant.node.sku,
               product: storeAdminProductUrl,
             });
+          }
+        } else {
+          // if not discontinued, check price difference
+          let costEurMeta = variant.node.metafields.edges.find(
+            (meta: any) => meta.node.key == "cost_eur"
+          );
+          let costEur = costEurMeta ? parseFloat(costEurMeta.node.value) : 0;
+          if (
+            costEurMeta &&
+            matchingApiVariant[0].Salesprice.toFixed(2) != costEur.toFixed(2)
+          ) {
+            let costUpdatedItem = {
+              sku: variant.node.sku,
+              product: storeAdminProductUrl,
+              oldCost: costEur.toFixed(2),
+              newCost: matchingApiVariant[0].Salesprice.toFixed(2),
+            };
+            costUpdatedItems.push(costUpdatedItem);
           }
         }
 
@@ -100,8 +124,11 @@ export const sync_variants = async (req: Request, res: Response) => {
         await sleep(500);
       }
     }
-    if (discontinuedItems.length > 0) {
-      let slackNotification = send_slack_notification(discontinuedItems);
+    if (discontinuedItems.length > 0 || costUpdatedItems.length > 0) {
+      let slackNotification = send_slack_notification(
+        discontinuedItems,
+        costUpdatedItems
+      );
     }
     res.status(200).json({
       message: "Inventory synced successfully",

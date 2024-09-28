@@ -2,6 +2,7 @@ import axios from "axios";
 import { promisify } from "util";
 import { ITEM_DIAMETERS, ITEM_HEIGHTS, TAG_CODES } from "./constants";
 import { getTag } from "./specs";
+import { productVariantsBulkUpdateQuery } from "./../queries/productVariantsBulkUpdate";
 const sleep = promisify(setTimeout);
 const {
   ACCESS_TOKEN,
@@ -18,6 +19,24 @@ const {
   OPEN_AI_MODEL,
   OPEN_AI_ORG_ID,
 } = process.env;
+
+interface VariantUpdateInput {
+  id: string;
+  metafields: Metafield[];
+  inventoryPolicy: string;
+  price: string | undefined;
+  inventoryItem: {
+    cost: string;
+  };
+}
+
+interface Metafield {
+  id: string;
+  namespace: string;
+  key: string;
+  value: string;
+  type: string;
+}
 
 export async function variantExists(sku: any) {
   /*===================================== Check variant existence =====================================*/
@@ -259,6 +278,7 @@ export async function syncVariantStock(
   matchingStockVariant: any,
   matchingApiVariant: any
 ) {
+  let productId = variant.node.product.id;
   let continueSelling = false;
   let itemDiscontinued = false;
   let itemDiscontinuedMeta = variant.node.metafields.edges.find(
@@ -299,23 +319,6 @@ export async function syncVariantStock(
     itemDiscontinued = true;
   }
 
-  await setContinueSelling(variant.node.id, continueSelling);
-  await sleep(750);
-
-  // Update variant metafields for available date and delivery time
-  const metafields_query = `
-    mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
-    metafieldsSet(metafields: $metafields) {
-      metafields {
-        id
-      }
-      userErrors {
-        field
-        message
-      }
-    }
-  }
-  `;
   let metafields = [];
   let deliveryTimeInDays;
   if (matchingApiVariant && matchingStockVariant) {
@@ -342,59 +345,93 @@ export async function syncVariantStock(
   }
 
   metafields.push({
+    id: variant.node.metafields.edges.find(
+      (meta: any) => meta.node.key == "available_date"
+    )?.node.id,
     namespace: "custom",
     type: "date_time",
     key: "available_date",
     value: matchingStockVariant
       ? matchingStockVariant.FirstAvailable
       : "9999-12-31T23:59:59Z",
-    ownerId: variant.node.id,
   });
 
   metafields.push({
+    id: variant.node.metafields.edges.find(
+      (meta: any) => meta.node.key == "delivery_time"
+    )?.node.id,
     namespace: "custom",
     type: "number_integer",
     key: "delivery_time",
     value: deliveryTimeInDays.toString(),
-    ownerId: variant.node.id,
   });
 
   metafields.push({
+    id: variant.node.metafields.edges.find(
+      (meta: any) => meta.node.key == "inventory_qty"
+    )?.node.id,
     namespace: "custom",
     type: "number_integer",
     key: "inventory_qty",
     value: matchingStockVariant
       ? matchingStockVariant.StockAvailable.toString()
       : "0",
-    ownerId: variant.node.id,
   });
 
   metafields.push({
+    id: variant.node.metafields.edges.find(
+      (meta: any) => meta.node.key == "nieuwkoop_last_inventory_sync"
+    )?.node.id,
     namespace: "custom",
     type: "date_time",
     key: "nieuwkoop_last_inventory_sync",
     value: new Date().toISOString(),
-    ownerId: variant.node.id,
   });
 
   metafields.push({
+    id: variant.node.metafields.edges.find(
+      (meta: any) => meta.node.key == "item_discontinued"
+    )?.node.id,
     namespace: "custom",
     type: "boolean",
     key: "item_discontinued",
     value: itemDiscontinued ? "true" : "false",
-    ownerId: variant.node.id,
   });
 
-  let metafields_variables = {
-    metafields,
-  };
+  metafields.push({
+    id: variant.node.metafields.edges.find(
+      (meta: any) => meta.node.key == "cost_eur"
+    )?.node.id,
+    namespace: "custom",
+    type: "number_decimal",
+    key: "cost_eur",
+    value: matchingApiVariant?.Salesprice.toString(),
+  });
 
-  const variant_metafields = await axios
+  let input = {
+    id: variant.node.id,
+    metafields,
+    inventoryPolicy: continueSelling ? "CONTINUE" : "DENY",
+  } as VariantUpdateInput;
+
+  if (!itemDiscontinued) {
+    input.price = (matchingApiVariant?.Salesprice * 26 * 2 * 1.21)
+      .toFixed(0)
+      .toString();
+    input.inventoryItem = {
+      cost: (matchingApiVariant?.Salesprice * 26).toString(),
+    };
+  }
+
+  const updated_variant = await axios
     .post(
       `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
       {
-        query: metafields_query,
-        variables: metafields_variables,
+        query: productVariantsBulkUpdateQuery,
+        variables: {
+          productId,
+          variants: [input],
+        },
       },
       {
         headers: {
@@ -410,31 +447,7 @@ export async function syncVariantStock(
       console.error(error);
     });
 
-  return variant_metafields;
-}
-
-export async function setContinueSelling(
-  variantId: any,
-  continueSelling: boolean
-) {
-  let cleanedVariantId = variantId.replace("gid://shopify/ProductVariant/", "");
-  let variant = {
-    id: cleanedVariantId,
-    inventory_policy: continueSelling ? "continue" : "deny",
-  };
-
-  let updateVariants = await axios.put(
-    `https://${STORE}/admin/api/${API_VERSION}/variants/${cleanedVariantId}.json`,
-    { variant },
-    {
-      headers: {
-        "X-Shopify-Access-Token": ACCESS_TOKEN!,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  return updateVariants.data;
+  return updated_variant;
 }
 
 export const createOptionTitle = (optionSize: any, matchingVariant: any) => {
