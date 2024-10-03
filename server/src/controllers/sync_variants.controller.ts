@@ -47,13 +47,14 @@ export const sync_variants = async (req: Request, res: Response) => {
       variants = variants.slice(0, 100);
     }
 
-    let variant = variants.pop();
-    variants = [];
-    variants.push(variant);
+    // let variant = variants.pop();
+    // variants = [];
+    // variants.push(variant);
 
     let resVariants = [];
     let discontinuedItems = [];
     let costUpdatedItems = [];
+    // return res.status(200).json(variants);
     for (const [index, variant] of variants.entries()) {
       if (variant.node.sku && variant.node.sku != "") {
         let matchingStockVariant = await getVariantStock(variant.node.sku);
@@ -130,7 +131,7 @@ export const sync_variants = async (req: Request, res: Response) => {
         costUpdatedItems
       );
     }
-    res.status(200).json({
+    return res.status(200).json({
       message: "Inventory synced successfully",
       time: new Date().toLocaleString(),
       variants: resVariants,
