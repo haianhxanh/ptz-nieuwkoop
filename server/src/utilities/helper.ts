@@ -415,9 +415,9 @@ export async function syncVariantStock(
   } as VariantUpdateInput;
 
   if (!itemDiscontinued) {
-    input.price = (matchingApiVariant?.Salesprice * 26 * 2 * 1.21)
-      .toFixed(0)
-      .toString();
+    // input.price = (matchingApiVariant?.Salesprice * 26 * 2 * 1.21)
+    //   .toFixed(0)
+    //   .toString();
     input.inventoryItem = {
       cost: (matchingApiVariant?.Salesprice * 26).toString(),
     };
