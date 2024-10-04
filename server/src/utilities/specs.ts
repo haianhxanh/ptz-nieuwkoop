@@ -39,12 +39,13 @@ const appendSpec = (
 // };
 
 export const createVariantSpecs = async (matchingVariant: any) => {
-  let variantSpecs = "";
+  let mainSpecs = "";
+  let tagSpecs = "";
 
   for (const spec of MAIN_SPECS) {
     if (matchingVariant[spec.value] && matchingVariant[spec.value] > 0) {
-      variantSpecs = appendSpec(
-        variantSpecs,
+      mainSpecs = appendSpec(
+        mainSpecs,
         spec.label,
         matchingVariant[spec.value],
         spec.unit
@@ -64,9 +65,11 @@ export const createVariantSpecs = async (matchingVariant: any) => {
       let tag = await getTag(tagsObj);
       tag.replace(/,\s*$/, "");
 
-      variantSpecs = appendSpec(variantSpecs, spec.label as string, tag);
+      tagSpecs = appendSpec(tagSpecs, spec.label as string, tag, "");
     }
   }
+
+  let variantSpecs = mainSpecs + tagSpecs;
 
   if (variantSpecs.includes(",  </p>")) {
     variantSpecs = variantSpecs.replace(",  </p>", "</p>");
