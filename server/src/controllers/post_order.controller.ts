@@ -38,9 +38,13 @@ export const post_order = async (req: Request, res: Response) => {
     );
     let order = await get_order_by_id(order_id);
 
+    return res.status(200).json({ order });
+
     if (order == null || order.length == 0) {
       return res.status(200).json({
-        message: `Order ${order?.name || order_id} is not a Nieuwkoop order`,
+        message: `Order ${
+          order?.name || order_id
+        } is not a Nieuwkoop order or is POS order`,
       });
     }
 

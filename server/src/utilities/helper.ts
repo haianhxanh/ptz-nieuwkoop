@@ -576,6 +576,7 @@ export const get_order_by_id = async (order_id: string) => {
         id
         ... on Order {
           name
+          sourceIdentifier
           tags
           customAttributes {
             key
@@ -583,6 +584,9 @@ export const get_order_by_id = async (order_id: string) => {
           }
           displayFinancialStatus
           paymentGatewayNames
+          customer {
+            email
+          }
           lineItems(first: 100) {
             edges {
               node {
@@ -626,7 +630,12 @@ export const get_order_by_id = async (order_id: string) => {
     }
   );
 
-  if (!data.data.node) return [];
+  let is_POS_order =
+    data?.data?.node?.sourceIdentifier?.includes("-") &&
+    data?.data?.node?.customer === null;
+
+  // return empty array if order is POS order or it's not an order
+  if (!data.data.node || is_POS_order) return [];
 
   const is_np_order = data?.data?.node?.lineItems?.edges?.some((item: any) =>
     item?.node?.product?.tags.includes("Nieuwkoop")
