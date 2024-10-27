@@ -23,8 +23,6 @@ export const get_products = async (req: Request, res: Response) => {
         Authorization: `Basic ${auth}`,
       },
       timeout: 15000,
-      maxContentLength: 1000 * 1024 * 1024,
-      maxBodyLength: 1000 * 1024 * 1024,
     });
 
     let products = api_products.data.filter(
@@ -34,6 +32,8 @@ export const get_products = async (req: Request, res: Response) => {
         product.DeliveryTimeInDays != 999 &&
         product.ShowOnWebsite == true
     );
+
+    console.log(products.length);
 
     return res.status(200).json({ products });
   } catch (error) {
