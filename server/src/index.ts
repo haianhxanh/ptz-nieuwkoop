@@ -22,7 +22,7 @@ var corsOptions = {
     "https://admin.shopify.com/store/potzillas",
     "https://potzillas.myshopify.com",
     "potzillas.myshopify.com",
-    "https://independent-cv-receiving-sandwich.trycloudflare.com",
+    "https://networking-mean-stocks-ny.trycloudflare.com",
   ],
   optionsSuccessStatus: 200,
   methods: "GET, PUT, POST",
