@@ -22,7 +22,7 @@ export const get_products = async (req: Request, res: Response) => {
       headers: {
         Authorization: `Basic ${auth}`,
       },
-      timeout: 15000,
+      timeout: 60000,
     });
 
     let products = api_products.data.filter(
