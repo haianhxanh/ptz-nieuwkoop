@@ -74,7 +74,7 @@ export default function Index() {
     appUrl =
       data?.NODE_ENV == "development"
         ? "http://localhost:4000"
-        : "https://nieuwkoop-be-dev.onrender.com";
+        : data.SHOPIFY_APP_URL;
   }
   const itemsPerPage = 25;
 
