@@ -59,6 +59,13 @@ export const sync_variants = async (req: Request, res: Response) => {
       if (variant.node.sku && variant.node.sku != "") {
         let matchingStockVariant = await getVariantStock(variant.node.sku);
         let matchingApiVariant = await getApiVariant(variant.node.sku);
+        if (!matchingApiVariant || !matchingStockVariant) {
+          if (!matchingApiVariant)
+            console.log(variant.node.sku + " not found in API");
+          if (!matchingStockVariant)
+            console.log(variant.node.sku + " not found in Stock");
+          continue;
+        }
         let storeAdminProductUrl =
           STORE_ADMIN_PRODUCT_URL +
           variant.node.product.id.replace("gid://shopify/Product/", "") +

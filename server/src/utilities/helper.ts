@@ -86,8 +86,9 @@ export async function getApiVariant(sku: any) {
     timeout: 15000,
   });
 
-  if (variant.data) {
-    return variant.data;
+  if (variant?.data) {
+    if (variant?.data?.length > 0) return variant.data;
+    return null;
   } else {
     return null;
   }
