@@ -28,6 +28,16 @@ export const sync_variants = async (req: Request, res: Response) => {
           metafield.node.namespace == "custom" &&
           metafield.node.key == "nieuwkoop_last_inventory_sync"
       );
+      let discontinuedItemMeta = metafields.find(
+        (metafield: any) =>
+          metafield.node.namespace == "custom" &&
+          metafield.node.key == "item_discontinued"
+      );
+      if (discontinuedItemMeta) {
+        if (discontinuedItemMeta.node.value == "true") {
+          return false;
+        }
+      }
       if (!lastSyncMeta) {
         return true;
       } else {
