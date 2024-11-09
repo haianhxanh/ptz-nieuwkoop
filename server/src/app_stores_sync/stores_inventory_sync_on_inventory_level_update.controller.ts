@@ -60,8 +60,12 @@ export const stores_inventory_sync_on_inventory_level_update = async (
     let sku = originInventoryItem?.inventoryItem?.variant?.sku;
 
     if (!sku) {
-      console.log("Invalid SKU");
-      return res.status(400).json({ message: "Invalid SKU" });
+      console.log(
+        `Invalid SKU of variant ${originInventoryItem?.inventoryItem?.variant?.id} from ${stores.origin.storeUrl}`
+      );
+      return res.status(400).json({
+        message: `Invalid SKU of variant ${originInventoryItem?.inventoryItem?.variant?.id} from ${stores.origin.storeUrl}`,
+      });
     }
 
     const STORE_DESTINATION = new GraphQLClient(
