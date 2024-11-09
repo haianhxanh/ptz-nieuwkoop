@@ -59,9 +59,9 @@ export const stores_inventory_sync_on_inventory_level_update = async (
     let originQuantity = req.body.available;
     let sku = originInventoryItem?.inventoryItem?.variant?.sku;
 
-    if (!sku || !originQuantity) {
-      console.log("Invalid SKU or quantity");
-      return res.status(400).json({ message: "Invalid SKU or quantity" });
+    if (!sku) {
+      console.log("Invalid SKU");
+      return res.status(400).json({ message: "Invalid SKU" });
     }
 
     const STORE_DESTINATION = new GraphQLClient(
