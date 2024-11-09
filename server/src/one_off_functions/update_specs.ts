@@ -6,14 +6,12 @@ import dotenv from "dotenv";
 
 import { allVariants, getApiVariant } from "../utilities/helper";
 
-const { ACCESS_TOKEN, STORE, API_VERSION } = process.env;
+const { PTZ_ACCESS_TOKEN, PTZ_STORE_URL, API_VERSION } = process.env;
 
 import { productVariantsBulkUpdateQuery } from "../queries/productVariantsBulkUpdate";
 import { createVariantSpecs } from "../utilities/specs";
 
 dotenv.config();
-
-const { STORE_ADMIN_PRODUCT_URL } = process.env;
 
 export const update_specs = async (req: Request, res: Response) => {
   try {
@@ -39,7 +37,7 @@ export const update_specs = async (req: Request, res: Response) => {
 
         let updatedVariant = await axios
           .post(
-            `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+            `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
             {
               query: productVariantsBulkUpdateQuery,
               variables: {
@@ -60,7 +58,7 @@ export const update_specs = async (req: Request, res: Response) => {
             },
             {
               headers: {
-                "X-Shopify-Access-Token": ACCESS_TOKEN!,
+                "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
                 "Content-Type": "application/json",
               },
             }

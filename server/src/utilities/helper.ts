@@ -5,9 +5,9 @@ import { getTag } from "./specs";
 import { productVariantsBulkUpdateQuery } from "./../queries/productVariantsBulkUpdate";
 const sleep = promisify(setTimeout);
 const {
-  ACCESS_TOKEN,
-  STORE,
-  STORE_LOCATION_ID,
+  PTZ_ACCESS_TOKEN,
+  PTZ_STORE_URL,
+  PTZ_STORE_URL_LOCATION_ID,
   API_VERSION,
   NIEUWKOOP_API_ENDPOINT,
   NIEUWKOOP_USERNAME,
@@ -55,10 +55,10 @@ export async function variantExists(sku: any) {
       `;
 
   const response = await axios({
-    url: `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+    url: `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
     method: "POST",
     headers: {
-      "X-Shopify-Access-Token": ACCESS_TOKEN,
+      "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN,
     },
     data: {
       query: query,
@@ -117,11 +117,11 @@ export async function getVariantStock(sku: any) {
 
 export async function createProduct(product: any) {
   let newProductRes = await axios.post(
-    `https://${STORE}/admin/api/${API_VERSION}/products.json`,
+    `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/products.json`,
     product,
     {
       headers: {
-        "X-Shopify-Access-Token": ACCESS_TOKEN!,
+        "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
         "Content-Type": "application/json",
       },
     }
@@ -165,11 +165,11 @@ export const createImages = async (
       };
     }
     const res_image = await axios.post(
-      `https://${STORE}/admin/api/${API_VERSION}/products/${productId}/images.json`,
+      `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/products/${productId}/images.json`,
       { image },
       {
         headers: {
-          "X-Shopify-Access-Token": ACCESS_TOKEN,
+          "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN,
         },
       }
     );
@@ -218,7 +218,7 @@ export async function allVariants() {
   let variants: any[] = [];
   while (hasNextPage) {
     const response = await axios.post(
-      `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+      `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
       {
         query: `query {
           productVariants(query:"tag:'Nieuwkoop'", first: 250${
@@ -259,7 +259,7 @@ export async function allVariants() {
       {
         headers: {
           "Content-Type": "application/json",
-          "X-Shopify-Access-Token": ACCESS_TOKEN,
+          "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN,
         },
       }
     );
@@ -426,7 +426,7 @@ export async function syncVariantStock(
 
   const updated_variant = await axios
     .post(
-      `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+      `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
       {
         query: productVariantsBulkUpdateQuery,
         variables: {
@@ -436,7 +436,7 @@ export async function syncVariantStock(
       },
       {
         headers: {
-          "X-Shopify-Access-Token": ACCESS_TOKEN!,
+          "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
           "Content-Type": "application/json",
         },
       }
@@ -496,11 +496,11 @@ export const updateProductDescription = async (
   };
 
   let updateProduct = await axios.put(
-    `https://${STORE}/admin/api/${API_VERSION}/products/${productId}.json`,
+    `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/products/${productId}.json`,
     product,
     {
       headers: {
-        "X-Shopify-Access-Token": ACCESS_TOKEN!,
+        "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
         "Content-Type": "application/json",
       },
     }
@@ -518,11 +518,11 @@ export const updateVariantCost = async (inventoryItemId: any, cost: any) => {
   };
 
   let updateCost = await axios.put(
-    `https://${STORE}/admin/api/${API_VERSION}/inventory_items/${inventoryItemId}.json`,
+    `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/inventory_items/${inventoryItemId}.json`,
     inventory_item,
     {
       headers: {
-        "X-Shopify-Access-Token": ACCESS_TOKEN!,
+        "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
         "Content-Type": "application/json",
       },
     }
@@ -619,14 +619,14 @@ export const get_order_by_id = async (order_id: string) => {
   `;
 
   const { data } = await axios.post(
-    `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+    `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
     {
       query,
     },
     {
       headers: {
         "Content-Type": "application/json",
-        "X-Shopify-Access-Token": ACCESS_TOKEN!,
+        "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
       },
     }
   );
@@ -695,14 +695,14 @@ export const get_orders = async () => {
   `;
 
   const { data } = await axios.post(
-    `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+    `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
     {
       query,
     },
     {
       headers: {
         "Content-Type": "application/json",
-        "X-Shopify-Access-Token": ACCESS_TOKEN!,
+        "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
       },
     }
   );
@@ -761,11 +761,11 @@ export const tagOrder = async (
   };
 
   let tagOrder = await axios.put(
-    `https://${STORE}/admin/api/${API_VERSION}/orders/${shopifyOrderId}.json`,
+    `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/orders/${shopifyOrderId}.json`,
     order,
     {
       headers: {
-        "X-Shopify-Access-Token": ACCESS_TOKEN!,
+        "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
         "Content-Type": "application/json",
       },
     }
@@ -807,10 +807,10 @@ export const updateOrderAttributesAndTags = async (
   };
 
   const response = await axios({
-    url: `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+    url: `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
     method: "POST",
     headers: {
-      "X-Shopify-Access-Token": ACCESS_TOKEN,
+      "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN,
     },
     data: {
       query,
@@ -836,7 +836,7 @@ export async function getInventory(sku: any) {
                   }
                   id
                   inventoryHistoryUrl
-                  inventoryLevel(locationId: "gid://shopify/Location/${STORE_LOCATION_ID}") {
+                  inventoryLevel(locationId: "gid://shopify/Location/${PTZ_STORE_URL_LOCATION_ID}") {
                     id
                     quantities(names: [ "committed", "available", "on_hand" ]) {
                       name
@@ -851,10 +851,10 @@ export async function getInventory(sku: any) {
       `;
 
   const response = await axios({
-    url: `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+    url: `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
     method: "POST",
     headers: {
-      "X-Shopify-Access-Token": ACCESS_TOKEN,
+      "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN,
     },
     data: {
       query: query,
@@ -892,14 +892,14 @@ export async function updateVariantMetafield(metafields: any) {
 
   const variant_metafields = await axios
     .post(
-      `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+      `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
       {
         query: metafields_query,
         variables: metafields_variables,
       },
       {
         headers: {
-          "X-Shopify-Access-Token": ACCESS_TOKEN!,
+          "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
           "Content-Type": "application/json",
         },
       }

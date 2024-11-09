@@ -4,7 +4,7 @@ import axios from "axios";
 import dotenv from "dotenv";
 
 dotenv.config();
-const { ACCESS_TOKEN, STORE, API_VERSION } = process.env;
+const { PTZ_ACCESS_TOKEN, PTZ_STORE_URL, API_VERSION } = process.env;
 
 export const get_app_metaobject = async (req: Request, res: Response) => {
   try {
@@ -21,10 +21,10 @@ export const get_app_metaobject = async (req: Request, res: Response) => {
       `;
 
     const response = await axios({
-      url: `https://${STORE}/admin/api/${API_VERSION}/graphql.json`,
+      url: `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
       method: "POST",
       headers: {
-        "X-Shopify-Access-Token": ACCESS_TOKEN,
+        "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN,
       },
       data: {
         query: query,
