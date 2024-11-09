@@ -30,7 +30,7 @@ export const stores_inventory_sync_on_inventory_level_update = async (
     if (!stores) return res.status(400).json({ message: "Store not found" });
 
     const STORE_ORIGIN = new GraphQLClient(
-      `https://${stores.origin.storeUrl}/admin/api/2024-10/graphql.json`,
+      `https://${stores.origin.storeUrl}/admin/api/${API_VERSION}/graphql.json`,
       {
         // @ts-ignore
         headers: {
@@ -65,7 +65,7 @@ export const stores_inventory_sync_on_inventory_level_update = async (
     }
 
     const STORE_DESTINATION = new GraphQLClient(
-      `https://${stores.destination.storeUrl}/admin/api/2024-10/graphql.json`,
+      `https://${stores.destination.storeUrl}/admin/api/${API_VERSION}/graphql.json`,
       {
         // @ts-ignore
         headers: {
