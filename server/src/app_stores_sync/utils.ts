@@ -5,6 +5,7 @@ const {
   PTZ_STORE_URL,
   PTZ_ACCESS_TOKEN,
   PTZ_STORE_LOCATION_ID,
+  PTZ_STORE_LOCATION_ID_2,
   DMP_STORE_URL,
   DMP_ACCESS_TOKEN,
   DMP_STORE_LOCATION_ID,
@@ -45,70 +46,46 @@ export const get_stores = (orderStatusUrl: any) => {
   return null;
 };
 
+export const ALL_STORES = [
+  {
+    storeUrl: PTZ_STORE_URL,
+    accessToken: PTZ_ACCESS_TOKEN,
+    locationId: PTZ_STORE_LOCATION_ID,
+  },
+  {
+    storeUrl: PTZ_STORE_URL,
+    accessToken: PTZ_ACCESS_TOKEN,
+    locationId: PTZ_STORE_LOCATION_ID_2,
+  },
+  {
+    storeUrl: DMP_STORE_URL,
+    accessToken: DMP_ACCESS_TOKEN,
+    locationId: DMP_STORE_LOCATION_ID,
+  },
+  {
+    storeUrl: DMP_STORE_URL,
+    accessToken: DMP_ACCESS_TOKEN,
+    locationId: DMP_STORE_LOCATION_ID_2,
+  },
+];
+
 export const get_stores_by_location_id = (locationId: any) => {
-  if (locationId == PTZ_STORE_LOCATION_ID) {
-    return {
-      origin: {
-        storeUrl: PTZ_STORE_URL,
-        accessToken: PTZ_ACCESS_TOKEN,
-        locationId: "gid://shopify/Location/" + PTZ_STORE_LOCATION_ID,
-      },
-      destinations: [
-        {
-          storeUrl: DMP_STORE_URL,
-          accessToken: DMP_ACCESS_TOKEN,
-          locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID,
-        },
-        {
-          storeUrl: DMP_STORE_URL,
-          accessToken: DMP_ACCESS_TOKEN,
-          locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID_2,
-        },
-      ],
-    };
-  } else if (locationId == DMP_STORE_LOCATION_ID) {
-    return {
-      origin: {
-        storeUrl: DMP_STORE_URL,
-        accessToken: DMP_ACCESS_TOKEN,
-        locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID,
-      },
-      destinations: [
-        {
-          storeUrl: PTZ_STORE_URL,
-          accessToken: PTZ_ACCESS_TOKEN,
-          locationId: "gid://shopify/Location/" + PTZ_STORE_LOCATION_ID,
-        },
-        {
-          storeUrl: DMP_STORE_URL,
-          accessToken: DMP_ACCESS_TOKEN,
-          locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID_2,
-        },
-      ],
-    };
-  } else if (locationId == DMP_STORE_LOCATION_ID_2) {
-    return {
-      origin: {
-        storeUrl: DMP_STORE_URL,
-        accessToken: DMP_ACCESS_TOKEN,
-        locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID_2,
-      },
-      destinations: [
-        {
-          storeUrl: PTZ_STORE_URL,
-          accessToken: PTZ_ACCESS_TOKEN,
-          locationId: "gid://shopify/Location/" + PTZ_STORE_LOCATION_ID,
-        },
-        {
-          storeUrl: DMP_STORE_URL,
-          accessToken: DMP_ACCESS_TOKEN,
-          locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID,
-        },
-      ],
-    };
-  } else {
-    return null;
-  }
+  let STORE_ORIGIN = ALL_STORES.find(
+    (store) => store.locationId === locationId
+  );
+  let STORE_DESTINATIONS = ALL_STORES.filter(
+    (store) => store.locationId !== STORE_ORIGIN?.locationId
+  );
+
+  STORE_DESTINATIONS = STORE_DESTINATIONS.map((store) => ({
+    ...store,
+    locationId: "gid://shopify/Location/" + store.locationId,
+  }));
+
+  return {
+    origin: STORE_ORIGIN,
+    destinations: STORE_DESTINATIONS,
+  };
 };
 
 export const remove_duplicated_objects = (array: any) => {

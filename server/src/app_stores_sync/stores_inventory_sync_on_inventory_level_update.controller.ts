@@ -25,7 +25,10 @@ export const stores_inventory_sync_on_inventory_level_update = async (
     // receive webhook
     let stores = get_stores_by_location_id(req.body.location_id?.toString());
 
-    if (!stores) return res.status(400).json({ message: "Store not found" });
+    if (!stores || !stores.origin || !stores.origin.locationId) {
+      console.log("Store not found", req.body);
+      return res.status(400).json({ message: "Store not found" });
+    }
 
     const STORE_ORIGIN = new GraphQLClient(
       `https://${stores.origin.storeUrl}/admin/api/${API_VERSION}/graphql.json`,
@@ -128,14 +131,22 @@ export const stores_inventory_sync_on_inventory_level_update = async (
         "gid://shopify/Location/",
         ""
       )} to locations [${stores.destinations
-        .map((d) => d.locationId.replace("gid://shopify/Location/", ""))
+        .map((d) =>
+          d.locationId
+            ? d.locationId.replace("gid://shopify/Location/", "")
+            : ""
+        )
         .join(", ")}]`
     );
     return res.status(200).json({
       message: `Variant ${sku} synced from location ${
         stores.origin.locationId
       } to locations [${stores.destinations
-        .map((d) => d.locationId.replace("gid://shopify/Location/", ""))
+        .map((d) =>
+          d.locationId
+            ? d.locationId.replace("gid://shopify/Location/", "")
+            : ""
+        )
         .join(", ")}]`,
     });
   } catch (error) {
