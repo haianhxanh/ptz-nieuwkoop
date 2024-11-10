@@ -23,9 +23,7 @@ export const stores_inventory_sync_on_inventory_level_update = async (
       });
     }
     // receive webhook
-    // console.log("req.body", req.body.location_id);
-    // return res.status(200).json({ message: "Webhook received" });
-    let stores = get_stores_by_location_id(req.body.location_id.toString());
+    let stores = get_stores_by_location_id(req.body.location_id?.toString());
 
     if (!stores) return res.status(400).json({ message: "Store not found" });
 
@@ -40,7 +38,7 @@ export const stores_inventory_sync_on_inventory_level_update = async (
     );
 
     let originInventoryItemId =
-      "gid://shopify/InventoryItem/" + req.body.inventory_item_id.toString();
+      "gid://shopify/InventoryItem/" + req.body?.inventory_item_id?.toString();
 
     let originInventoryItem = await STORE_ORIGIN.request(inventoryItemQuery, {
       id: originInventoryItemId,
@@ -56,7 +54,7 @@ export const stores_inventory_sync_on_inventory_level_update = async (
       return res.status(200).json({ message: "Variant not to sync" });
     }
 
-    let originQuantity = req.body.available;
+    let originQuantity = req.body?.available;
     let sku = originInventoryItem?.inventoryItem?.variant?.sku;
 
     if (!sku) {
@@ -68,59 +66,77 @@ export const stores_inventory_sync_on_inventory_level_update = async (
       });
     }
 
-    const STORE_DESTINATION = new GraphQLClient(
-      `https://${stores.destination.storeUrl}/admin/api/${API_VERSION}/graphql.json`,
-      {
-        // @ts-ignore
-        headers: {
-          "X-Shopify-Access-Token": stores.destination.accessToken,
-        },
+    let alreadySynced = 0;
+
+    for (let destination of stores.destinations) {
+      const STORE_DESTINATION = new GraphQLClient(
+        `https://${destination.storeUrl}/admin/api/${API_VERSION}/graphql.json`,
+        {
+          // @ts-ignore
+          headers: {
+            "X-Shopify-Access-Token": destination.accessToken,
+          },
+        }
+      );
+
+      const destinationVariant = await STORE_DESTINATION.request(
+        productVariantsQuery,
+        {
+          query: `sku:${sku}`,
+          locationId: destination.locationId,
+        }
+      );
+
+      let destinationQuantity =
+        destinationVariant?.productVariants?.edges[0].node?.inventoryItem
+          ?.inventoryLevel?.quantities[0]?.quantity;
+
+      if (originQuantity === destinationQuantity) {
+        console.log(`Variant ${sku} already synced`);
+        alreadySynced++;
+        break;
       }
-    );
 
-    const destinationVariant = await STORE_DESTINATION.request(
-      productVariantsQuery,
-      {
-        query: `sku:${sku}`,
-        locationId: stores.destination.locationId,
-      }
-    );
+      let destinationVariantInventoryItemId =
+        destinationVariant?.productVariants?.edges[0]?.node?.inventoryItem?.id;
 
-    let destinationQuantity =
-      destinationVariant?.productVariants?.edges[0].node?.inventoryItem
-        ?.inventoryLevel?.quantities[0]?.quantity;
-
-    if (originQuantity === destinationQuantity) {
-      console.log(`Variant ${sku} already synced`);
-      return res.status(200).json({
-        message: `Variant ${sku} already synced`,
-      });
+      const syncedVariant = await STORE_DESTINATION.request(
+        inventorySetQuantitiesMutation,
+        {
+          input: {
+            ignoreCompareQuantity: true,
+            name: "available",
+            quantities: [
+              {
+                inventoryItemId: destinationVariantInventoryItemId,
+                locationId: destination.locationId,
+                quantity: originQuantity,
+              },
+            ],
+            reason: "other",
+          },
+        }
+      );
     }
 
-    let destinationVariantInventoryItemId =
-      destinationVariant?.productVariants?.edges[0]?.node?.inventoryItem?.id;
+    if (alreadySynced) {
+      return res.status(200).json({ message: `Variant ${sku} already synced` });
+    }
 
-    const syncedVariant = await STORE_DESTINATION.request(
-      inventorySetQuantitiesMutation,
-      {
-        input: {
-          ignoreCompareQuantity: true,
-          name: "available",
-          quantities: [
-            {
-              inventoryItemId: destinationVariantInventoryItemId,
-              locationId: stores.destination.locationId,
-              quantity: originQuantity,
-            },
-          ],
-          reason: "other",
-        },
-      }
+    console.log(
+      `Variant ${sku} synced from location ${stores.origin.locationId.replace(
+        "gid://shopify/Location/",
+        ""
+      )} to locations [${stores.destinations
+        .map((d) => d.locationId.replace("gid://shopify/Location/", ""))
+        .join(", ")}]`
     );
-
-    console.log(`Variant ${sku} synced to ${stores.destination.storeUrl}`);
     return res.status(200).json({
-      message: `Variant ${sku} synced to ${stores.destination.storeUrl}`,
+      message: `Variant ${sku} synced from location ${
+        stores.origin.locationId
+      } to locations [${stores.destinations
+        .map((d) => d.locationId.replace("gid://shopify/Location/", ""))
+        .join(", ")}]`,
     });
   } catch (error) {
     console.log("error", error);

@@ -8,6 +8,7 @@ const {
   DMP_STORE_URL,
   DMP_ACCESS_TOKEN,
   DMP_STORE_LOCATION_ID,
+  DMP_STORE_LOCATION_ID_2,
   API_VERSION,
 } = process.env;
 
@@ -52,11 +53,18 @@ export const get_stores_by_location_id = (locationId: any) => {
         accessToken: PTZ_ACCESS_TOKEN,
         locationId: "gid://shopify/Location/" + PTZ_STORE_LOCATION_ID,
       },
-      destination: {
-        storeUrl: DMP_STORE_URL,
-        accessToken: DMP_ACCESS_TOKEN,
-        locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID,
-      },
+      destinations: [
+        {
+          storeUrl: DMP_STORE_URL,
+          accessToken: DMP_ACCESS_TOKEN,
+          locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID,
+        },
+        {
+          storeUrl: DMP_STORE_URL,
+          accessToken: DMP_ACCESS_TOKEN,
+          locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID_2,
+        },
+      ],
     };
   } else if (locationId == DMP_STORE_LOCATION_ID) {
     return {
@@ -65,12 +73,41 @@ export const get_stores_by_location_id = (locationId: any) => {
         accessToken: DMP_ACCESS_TOKEN,
         locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID,
       },
-      destination: {
-        storeUrl: PTZ_STORE_URL,
-        accessToken: PTZ_ACCESS_TOKEN,
-        locationId: "gid://shopify/Location/" + PTZ_STORE_LOCATION_ID,
-      },
+      destinations: [
+        {
+          storeUrl: PTZ_STORE_URL,
+          accessToken: PTZ_ACCESS_TOKEN,
+          locationId: "gid://shopify/Location/" + PTZ_STORE_LOCATION_ID,
+        },
+        {
+          storeUrl: DMP_STORE_URL,
+          accessToken: DMP_ACCESS_TOKEN,
+          locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID_2,
+        },
+      ],
     };
+  } else if (locationId == DMP_STORE_LOCATION_ID_2) {
+    return {
+      origin: {
+        storeUrl: DMP_STORE_URL,
+        accessToken: DMP_ACCESS_TOKEN,
+        locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID_2,
+      },
+      destinations: [
+        {
+          storeUrl: PTZ_STORE_URL,
+          accessToken: PTZ_ACCESS_TOKEN,
+          locationId: "gid://shopify/Location/" + PTZ_STORE_LOCATION_ID,
+        },
+        {
+          storeUrl: DMP_STORE_URL,
+          accessToken: DMP_ACCESS_TOKEN,
+          locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID,
+        },
+      ],
+    };
+  } else {
+    return null;
   }
 };
 
