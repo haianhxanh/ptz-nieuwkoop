@@ -51,21 +51,25 @@ export const ALL_STORES = [
     storeUrl: PTZ_STORE_URL,
     accessToken: PTZ_ACCESS_TOKEN,
     locationId: PTZ_STORE_LOCATION_ID,
+    index: 1,
   },
   {
     storeUrl: PTZ_STORE_URL,
     accessToken: PTZ_ACCESS_TOKEN,
     locationId: PTZ_STORE_LOCATION_ID_2,
+    index: 2,
   },
   {
     storeUrl: DMP_STORE_URL,
     accessToken: DMP_ACCESS_TOKEN,
     locationId: DMP_STORE_LOCATION_ID,
+    index: 1,
   },
   {
     storeUrl: DMP_STORE_URL,
     accessToken: DMP_ACCESS_TOKEN,
     locationId: DMP_STORE_LOCATION_ID_2,
+    index: 2,
   },
 ];
 
@@ -74,7 +78,9 @@ export const get_stores_by_location_id = (locationId: any) => {
     (store) => store.locationId === locationId
   );
   let STORE_DESTINATIONS = ALL_STORES.filter(
-    (store) => store.locationId !== STORE_ORIGIN?.locationId
+    (store) =>
+      store.locationId !== STORE_ORIGIN?.locationId &&
+      store.index === STORE_ORIGIN?.index
   );
 
   STORE_DESTINATIONS = STORE_DESTINATIONS.map((store) => ({
