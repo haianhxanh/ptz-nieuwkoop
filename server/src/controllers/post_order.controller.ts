@@ -66,7 +66,8 @@ export const post_order = async (req: Request, res: Response) => {
     let npItems = order?.lineItems?.edges?.filter(
       (item: any) =>
         item?.node?.variant?.inventoryQuantity < 0 &&
-        item?.node?.product?.tags.includes("Nieuwkoop")
+        item?.node?.product?.tags.includes("Nieuwkoop") &&
+        !item?.node?.product?.tags.includes("Exclude API orders")
     );
 
     // Check how many items need to be purchased from NP and update order attributes
