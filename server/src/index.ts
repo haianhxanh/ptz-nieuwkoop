@@ -23,6 +23,7 @@ var corsOptions = {
     "https://potzillas.myshopify.com",
     "potzillas.myshopify.com",
     "https://assisted-vendors-eventually-cosmetic.trycloudflare.com",
+    "https://extensions.shopifycdn.com",
   ],
   optionsSuccessStatus: 200,
   methods: "GET, PUT, POST",

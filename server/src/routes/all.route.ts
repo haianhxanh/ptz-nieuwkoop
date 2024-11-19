@@ -14,7 +14,14 @@ import { update_cost_eur } from "../one_off_functions/update_cost_eur";
 import { update_specs } from "../one_off_functions/update_specs";
 import { stores_inventory_sync_on_inventory_level_update } from "../app_stores_sync/stores_inventory_sync_on_inventory_level_update.controller";
 import { stores_inventory_sync_on_order_update } from "../app_stores_sync/stores_inventory_sync_on_order_update.controller";
+import { order_pickup_notification_sms } from "../controllers/order_pickup_notification_sms";
 const router = express.Router();
+interface QueueItem {
+  req: Request;
+  res: Response;
+}
+const requestQueue: QueueItem[] = [];
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 router.delete("/delete-products", auth, delete_products_from_stores);
 router.get("/get-products", get_products);
@@ -28,17 +35,13 @@ router.get("/tags", tags);
 router.get("/variant-store-inventory", variant_store_inventory);
 router.get("/variants/update/cost/eur", update_cost_eur);
 router.get("/variants/update/specs", update_specs);
+router.post(
+  "/stores/order-pickup-notification-sms",
+  order_pickup_notification_sms
+);
 
-interface QueueItem {
-  req: Request;
-  res: Response;
-}
-
-const requestQueue: QueueItem[] = [];
+// ====================== INVENTORY SYNC ======================
 let isProcessing = false;
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const processQueue = async () => {
   if (isProcessing || requestQueue.length === 0) {
     return;
@@ -63,10 +66,6 @@ router.post("/stores/inventory-sync", (req: Request, res: Response) => {
   requestQueue.push({ req, res });
   processQueue();
 });
-
-// router.post(
-//   "/stores/order-create/inventory-sync",
-//   stores_inventory_sync_on_order_update
-// );
+// ====================== END INVENTORY SYNC ======================
 
 export default router;
