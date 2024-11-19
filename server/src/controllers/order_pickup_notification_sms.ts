@@ -10,6 +10,7 @@ export const order_pickup_notification_sms = async (
 ) => {
   try {
     let { phone, message } = req.body;
+    console.log(req.body);
     if (!phone || !message) {
       return res.status(400).json({
         error: `Missing required fields:${!phone && "Phone"} ${
