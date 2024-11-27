@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import all_routes from "./routes/all.route";
 import bodyParser from "body-parser";
+import { db } from "./database_connection/db_connect";
 
 dotenv.config();
 
@@ -31,6 +32,15 @@ var corsOptions = {
 app.use(cors(corsOptions));
 
 app.use("/", all_routes);
+
+/*----Checking Database Connection-------------*/
+db.sync({ alter: true })
+  .then(() => {
+    console.log("Database is connected SUCCESSFULLY");
+  })
+  .catch((error) => {
+    console.error("Unable to connect to the database:", error);
+  });
 
 app.listen(PORT, () => {
   console.log(`App is listening to PORT ${PORT}`);

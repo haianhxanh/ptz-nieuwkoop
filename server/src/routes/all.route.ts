@@ -15,6 +15,9 @@ import { update_specs } from "../one_off_functions/update_specs";
 import { stores_inventory_sync_on_inventory_level_update } from "../app_stores_sync/stores_inventory_sync_on_inventory_level_update.controller";
 import { stores_inventory_sync_on_order_update } from "../app_stores_sync/stores_inventory_sync_on_order_update.controller";
 import { order_pickup_notification_sms } from "../controllers/order_pickup_notification_sms";
+import { codes_prepopulate } from "../app_gift_cards/codes_prepopulate.controller";
+import { gift_card_create } from "../app_gift_cards/gift_card_create.controller";
+import { gift_card_update } from "../app_gift_cards/gift_card_update.controller";
 const router = express.Router();
 interface QueueItem {
   req: Request;
@@ -68,4 +71,8 @@ router.post("/stores/inventory-sync", (req: Request, res: Response) => {
 });
 // ====================== END INVENTORY SYNC ======================
 
+// ====================== GIFT CARDS ======================
+router.get("/giftcard/prepolulate-codes", codes_prepopulate);
+router.post("/giftcard/create", gift_card_create);
+router.post("/giftcard/update", gift_card_update);
 export default router;
