@@ -57,6 +57,11 @@ export const sync_variants = async (req: Request, res: Response) => {
       variants = variants.slice(0, 100);
     }
 
+    // variants = variants.filter(
+    //   (variant) =>
+    //     variant.node.product.id == "gid://shopify/Product/9377021559128"
+    // );
+
     // let variant = variants.pop();
     // variants = [];
     // variants.push(variant);
@@ -74,7 +79,6 @@ export const sync_variants = async (req: Request, res: Response) => {
             console.log(variant.node.sku + " not found in API");
           if (!matchingStockVariant)
             console.log(variant.node.sku + " not found in Stock");
-          continue;
         }
         let storeAdminProductUrl =
           STORE_ADMIN_PRODUCT_URL +
@@ -94,8 +98,7 @@ export const sync_variants = async (req: Request, res: Response) => {
         }
 
         if (
-          !matchingApiVariant ||
-          !matchingStockVariant ||
+          (!matchingApiVariant && !matchingStockVariant) ||
           matchingApiVariant?.ShowOnWebsite == false
         ) {
           // discontinuedItems
@@ -136,7 +139,7 @@ export const sync_variants = async (req: Request, res: Response) => {
         let syncVariantStockRes = await syncVariantStock(
           variant,
           matchingStockVariant,
-          matchingApiVariant[0]
+          matchingApiVariant ? matchingApiVariant[0] : null
         );
 
         await sleep(500);
