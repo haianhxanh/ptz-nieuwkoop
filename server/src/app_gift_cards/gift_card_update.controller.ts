@@ -4,7 +4,7 @@ import { promisify } from "util";
 import dotenv from "dotenv";
 import GiftCard from "../model/giftCard.model";
 import { GiftCardItemsData } from "../data_storage/sample_gift_card_items";
-import { get_stores } from "../app_stores_sync/utils";
+import { get_dev_stores } from "../app_stores_sync/utils";
 import {
   giftCardCreate,
   giftCardDebit,
@@ -27,7 +27,7 @@ export const gift_card_update = async (req: Request, res: Response) => {
         .json({ message: "GIFT CARD UPDATE: Not paid by gift card" });
     }
     let storeUrl = req.query?.store;
-    let stores = get_stores(storeUrl);
+    let stores = get_dev_stores(storeUrl);
     if (!stores) {
       console.log("GIFT CARD UPDATE: Store not found");
       return res

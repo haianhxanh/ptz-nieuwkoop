@@ -10,6 +10,12 @@ const {
   DMP_ACCESS_TOKEN,
   DMP_STORE_LOCATION_ID,
   DMP_STORE_LOCATION_ID_2,
+  DEV_PTZ_STORE_URL,
+  DEV_PTZ_ACCESS_TOKEN,
+  DEV_PTZ_STORE_LOCATION_ID,
+  DEV_DMP_STORE_URL,
+  DEV_DMP_ACCESS_TOKEN,
+  DEV_DMP_STORE_LOCATION_ID,
   API_VERSION,
 } = process.env;
 
@@ -43,6 +49,41 @@ export const get_stores = (orderStatusUrl: any) => {
         storeUrl: PTZ_STORE_URL,
         accessToken: PTZ_ACCESS_TOKEN,
         locationId: "gid://shopify/Location/" + PTZ_STORE_LOCATION_ID,
+        giftCardColumnName: "potzillas_id",
+      },
+    };
+  }
+  return null;
+};
+
+export const get_dev_stores = (orderStatusUrl: any) => {
+  if (orderStatusUrl.includes(DEV_PTZ_STORE_URL)) {
+    return {
+      origin: {
+        storeUrl: DEV_PTZ_STORE_URL,
+        accessToken: DEV_PTZ_ACCESS_TOKEN,
+        locationId: "gid://shopify/Location/" + DEV_PTZ_STORE_LOCATION_ID,
+        giftCardColumnName: "potzillas_id",
+      },
+      destination: {
+        storeUrl: DEV_DMP_STORE_URL,
+        accessToken: DEV_DMP_ACCESS_TOKEN,
+        locationId: "gid://shopify/Location/" + DEV_DMP_STORE_LOCATION_ID,
+        giftCardColumnName: "dmp_id",
+      },
+    };
+  } else if (orderStatusUrl.includes(DEV_DMP_STORE_URL)) {
+    return {
+      origin: {
+        storeUrl: DEV_DMP_STORE_URL,
+        accessToken: DEV_DMP_ACCESS_TOKEN,
+        locationId: "gid://shopify/Location/" + DEV_DMP_STORE_LOCATION_ID,
+        giftCardColumnName: "dmp_id",
+      },
+      destination: {
+        storeUrl: DEV_PTZ_STORE_URL,
+        accessToken: DEV_PTZ_ACCESS_TOKEN,
+        locationId: "gid://shopify/Location/" + DEV_PTZ_STORE_LOCATION_ID,
         giftCardColumnName: "potzillas_id",
       },
     };

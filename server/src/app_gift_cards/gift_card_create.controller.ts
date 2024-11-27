@@ -4,7 +4,7 @@ import { promisify } from "util";
 import dotenv from "dotenv";
 import GiftCard from "../model/giftCard.model";
 import { GiftCardItemsData } from "../data_storage/sample_gift_card_items";
-import { get_stores } from "../app_stores_sync/utils";
+import { get_dev_stores, get_stores } from "../app_stores_sync/utils";
 import { giftCardCreate } from "./gift_card_queries.controller";
 import { generateGiftCardCode } from "./gift_card_utils.controller";
 const sleep = promisify(setTimeout);
@@ -43,7 +43,7 @@ export const gift_card_create = async (req: Request, res: Response) => {
     // orderStatusUrl = "https://potzillas-dev.myshopify.com";
     // ======= END MOCK DATA =======
 
-    let stores = get_stores(orderStatusUrl);
+    let stores = get_dev_stores(orderStatusUrl);
     if (!stores) {
       console.log("GIFT CARD CREATE: Store not found");
       return res
