@@ -43,7 +43,10 @@ export const gift_card_create = async (req: Request, res: Response) => {
     // orderStatusUrl = "https://potzillas-dev.myshopify.com";
     // ======= END MOCK DATA =======
 
-    let stores = get_dev_stores(orderStatusUrl);
+    let stores;
+    if (req.query.test == "1") stores = get_dev_stores(orderStatusUrl);
+    else stores = get_stores(orderStatusUrl);
+
     if (!stores) {
       console.log("GIFT CARD CREATE: Store not found");
       return res
