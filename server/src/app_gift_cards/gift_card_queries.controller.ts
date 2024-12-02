@@ -83,6 +83,43 @@ export const orderQuery = gql`
       transactions(first: 250) {
         gateway
       }
+      fulfillmentOrders(first: 100) {
+        edges {
+          node {
+            id
+            lineItems(first: 250) {
+              edges {
+                node {
+                  id
+                  totalQuantity
+                  lineItem {
+                    variant {
+                      sku
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+export const fulfillGiftCardItems = gql`
+  mutation fulfillmentCreate(
+    $fulfillment: FulfillmentInput!
+    $message: String
+  ) {
+    fulfillmentCreate(fulfillment: $fulfillment, message: $message) {
+      fulfillment {
+        id
+      }
+      userErrors {
+        field
+        message
+      }
     }
   }
 `;

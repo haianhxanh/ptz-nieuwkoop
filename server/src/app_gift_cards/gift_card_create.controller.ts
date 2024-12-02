@@ -5,8 +5,15 @@ import dotenv from "dotenv";
 import GiftCard from "../model/giftCard.model";
 import { GiftCardItemsData } from "../data_storage/sample_gift_card_items";
 import { get_dev_stores, get_stores } from "../app_stores_sync/utils";
-import { giftCardCreate } from "./gift_card_queries.controller";
-import { generateGiftCardCode } from "./gift_card_utils.controller";
+import {
+  fulfillGiftCardItems,
+  giftCardCreate,
+  orderQuery,
+} from "./gift_card_queries.controller";
+import {
+  calculateOneYearFromNow,
+  generateGiftCardCode,
+} from "./gift_card_utils.controller";
 const sleep = promisify(setTimeout);
 dotenv.config();
 const { API_VERSION } = process.env;
@@ -56,8 +63,11 @@ export const gift_card_create = async (req: Request, res: Response) => {
 
     let customerId = "gid://shopify/Customer/" + req.body?.customer?.id;
     // customerId = "gid://shopify/Customer/" + "8359795032401";
-    let orderId = req.body.id;
+    let orderId = req.body.admin_graphql_api_id;
     let orderName = req.body.name;
+
+    // let stores = get_dev_stores("https://potzillas-dev.myshopify.com");
+    // let orderId = "gid://shopify/Order/6381468352849";
 
     const STORE_TO_SYNC_FROM = new GraphQLClient(
       `https://${stores.origin.storeUrl}/admin/api/${API_VERSION}/graphql.json`,
@@ -104,6 +114,7 @@ export const gift_card_create = async (req: Request, res: Response) => {
             code: generatedCode,
             initialValue: initialValue,
             customerId: customerId,
+            expiresOn: calculateOneYearFromNow(),
           },
         });
 
@@ -112,6 +123,7 @@ export const gift_card_create = async (req: Request, res: Response) => {
             input: {
               code: generatedCode,
               initialValue: initialValue,
+              expiresOn: calculateOneYearFromNow(),
             },
           });
 
@@ -130,6 +142,41 @@ export const gift_card_create = async (req: Request, res: Response) => {
               [stores.destination.giftCardColumnName]:
                 newGiftCardCopy?.giftCardCreate?.giftCard?.id,
             });
+
+            // if both gift cards are created and saved into DB, create fulfillment in Shopify
+            let order = await STORE_TO_SYNC_FROM.request(orderQuery, {
+              id: orderId,
+            });
+            let giftCardItems =
+              order?.order?.fulfillmentOrders?.edges[0].node.lineItems?.edges?.filter(
+                (item: any) =>
+                  item.node.lineItem.variant.sku.includes("GIFTCARD")
+              );
+
+            if (!giftCardItems || giftCardItems?.length == 0) return;
+
+            let fulfillGiftCards = STORE_TO_SYNC_FROM.request(
+              fulfillGiftCardItems,
+              {
+                fulfillment: {
+                  notifyCustomer: false,
+                  lineItemsByFulfillmentOrder: [
+                    {
+                      fulfillmentOrderId:
+                        order?.order?.fulfillmentOrders?.edges[0].node?.id,
+                      fulfillmentOrderLineItems: giftCardItems.map(
+                        (item: any) => {
+                          return {
+                            id: item.node.id,
+                            quantity: item.node.totalQuantity,
+                          };
+                        }
+                      ),
+                    },
+                  ],
+                },
+              }
+            );
           }
         }
 
