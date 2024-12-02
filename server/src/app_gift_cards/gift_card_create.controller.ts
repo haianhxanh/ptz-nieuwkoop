@@ -119,7 +119,12 @@ export const gift_card_create = async (req: Request, res: Response) => {
           },
         });
 
-        console.log("New gift card:", newGiftCard);
+        if (newGiftCard.giftCardCreate?.userErrors.length > 0) {
+          console.log(
+            "New gift card errors:",
+            newGiftCard.giftCardCreate?.userErrors
+          );
+        }
 
         if (newGiftCard.giftCardCreate?.giftCard) {
           let newGiftCardCopy = await STORE_TO_SYNC_TO.request(giftCardCreate, {
@@ -130,7 +135,12 @@ export const gift_card_create = async (req: Request, res: Response) => {
             },
           });
 
-          console.log("New gift card copy:", newGiftCardCopy);
+          if (newGiftCardCopy.giftCardCreate?.userErrors.length > 0) {
+            console.log(
+              "New gift card copy errors:",
+              newGiftCardCopy.giftCardCreate?.userErrors
+            );
+          }
 
           if (newGiftCardCopy.giftCardCreate?.giftCard) {
             let saveGiftCardIntoDB = await GiftCard.create({
