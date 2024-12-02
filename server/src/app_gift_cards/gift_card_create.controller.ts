@@ -119,6 +119,8 @@ export const gift_card_create = async (req: Request, res: Response) => {
           },
         });
 
+        console.log("New gift card:", newGiftCard);
+
         if (newGiftCard.giftCardCreate?.giftCard) {
           let newGiftCardCopy = await STORE_TO_SYNC_TO.request(giftCardCreate, {
             input: {
@@ -127,6 +129,8 @@ export const gift_card_create = async (req: Request, res: Response) => {
               expiresOn: calculateOneYearFromNow(),
             },
           });
+
+          console.log("New gift card copy:", newGiftCardCopy);
 
           if (newGiftCardCopy.giftCardCreate?.giftCard) {
             let saveGiftCardIntoDB = await GiftCard.create({
