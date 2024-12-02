@@ -46,6 +46,7 @@ export const gift_card_create = async (req: Request, res: Response) => {
     }
 
     let orderStatusUrl = req.query.store;
+    console.log("Order status URL:", orderStatusUrl);
     // ======= MOCK DATA =======
     // orderStatusUrl = "https://potzillas-dev.myshopify.com";
     // ======= END MOCK DATA =======
