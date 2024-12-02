@@ -45,7 +45,7 @@ export const gift_card_create = async (req: Request, res: Response) => {
       });
     }
 
-    let orderStatusUrl = req.body.order_status_url;
+    let orderStatusUrl = req.query.store;
     // ======= MOCK DATA =======
     // orderStatusUrl = "https://potzillas-dev.myshopify.com";
     // ======= END MOCK DATA =======
