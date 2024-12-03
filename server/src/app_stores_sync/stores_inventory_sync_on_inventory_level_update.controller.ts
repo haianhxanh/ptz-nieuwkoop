@@ -18,7 +18,7 @@ export const stores_inventory_sync_on_inventory_level_update = async (
   try {
     if (WEBHOOK_INVENTORY_LEVEL_UPDATE_ENABLED !== "true") {
       console.log("Webhook inventory level update is not enabled");
-      return res.status(400).json({
+      return res.status(200).json({
         message: "Webhook inventory level update is not enabled",
       });
     }
@@ -27,7 +27,7 @@ export const stores_inventory_sync_on_inventory_level_update = async (
 
     if (!stores || !stores.origin || !stores.origin.locationId) {
       console.log("Store not found", req.body);
-      return res.status(400).json({ message: "Store not found" });
+      return res.status(200).json({ message: "Store not found" });
     }
 
     const STORE_ORIGIN = new GraphQLClient(
@@ -64,7 +64,7 @@ export const stores_inventory_sync_on_inventory_level_update = async (
       console.log(
         `Invalid SKU of variant ${originInventoryItem?.inventoryItem?.variant?.id} from ${stores.origin.storeUrl}`
       );
-      return res.status(400).json({
+      return res.status(200).json({
         message: `Invalid SKU of variant ${originInventoryItem?.inventoryItem?.variant?.id} from ${stores.origin.storeUrl}`,
       });
     }
@@ -151,6 +151,6 @@ export const stores_inventory_sync_on_inventory_level_update = async (
     });
   } catch (error) {
     console.log("error", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(200).json({ message: "Internal server error" });
   }
 };

@@ -52,14 +52,24 @@ export const gift_card_create = async (req: Request, res: Response) => {
     // ======= END MOCK DATA =======
 
     let stores;
-    if (req.query.test == "1") stores = get_dev_stores(orderStatusUrl);
-    else stores = get_stores(orderStatusUrl);
+    if (req.query.test == "1") {
+      stores = get_dev_stores(orderStatusUrl);
+    } else {
+      stores = get_stores(orderStatusUrl);
+    }
 
     if (!stores) {
       console.log("GIFT CARD CREATE: Store not found");
       return res
-        .status(400)
+        .status(200)
         .json({ message: "GIFT CARD CREATE: Store not found" });
+    }
+
+    if (!req.body?.customer?.id) {
+      console.log(`GIFT CARD CREATE: Order ${req.body.id} has no customer`);
+      return res.status(200).json({
+        message: `GIFT CARD CREATE: Order ${req.body.id} has no customer`,
+      });
     }
 
     let customerId = "gid://shopify/Customer/" + req.body?.customer?.id;
@@ -89,6 +99,31 @@ export const gift_card_create = async (req: Request, res: Response) => {
         },
       }
     );
+
+    let totalGiftCardsToCreate = giftCardItems.reduce((acc: any, item: any) => {
+      return acc + item.quantity;
+    }, 0);
+
+    let giftCardsOfTheSameOrderInDB = await GiftCard.findAll({
+      where: {
+        order_name: orderName,
+      },
+    });
+    console.log(
+      "Gift cards of the same order in DB:",
+      giftCardsOfTheSameOrderInDB
+    );
+
+    if (giftCardsOfTheSameOrderInDB.length >= totalGiftCardsToCreate) {
+      console.log(
+        `GIFT CARD CREATE: Gift cards for order ${orderName} already exist`
+      );
+      return res
+        .status(200)
+        .json(
+          `GIFT CARD CREATE: Gift cards for order ${orderName} already exist`
+        );
+    }
 
     for (const [index, cardItem] of giftCardItems.entries()) {
       for (let qtyIndex = 0; qtyIndex < cardItem.quantity; qtyIndex++) {
@@ -162,33 +197,53 @@ export const gift_card_create = async (req: Request, res: Response) => {
             let order = await STORE_TO_SYNC_FROM.request(orderQuery, {
               id: orderId,
             });
-            let giftCardItems =
-              order?.order?.fulfillmentOrders?.edges[0].node.lineItems?.edges?.filter(
+            let giftCardItems = [];
+
+            for (const [
+              index,
+              fulfillmentOrder,
+            ] of order?.order?.fulfillmentOrders?.edges.entries()) {
+              let fulfillmentsOrderObj = {
+                id: fulfillmentOrder?.node?.id,
+                giftItems: [] as any[],
+              };
+              let items = fulfillmentOrder?.node?.lineItems?.edges?.filter(
                 (item: any) =>
-                  item.node.lineItem.variant.sku.includes("GIFTCARD")
+                  item?.node?.lineItem?.variant?.sku?.includes("GIFTCARD")
               );
+
+              if (!items || items?.length == 0) continue;
+              for (const [index, item] of items.entries()) {
+                fulfillmentsOrderObj.giftItems.push(item);
+              }
+              giftCardItems.push(fulfillmentsOrderObj);
+            }
+
+            giftCardItems = giftCardItems.filter(
+              (item: any) => item.giftItems.length > 0
+            );
 
             if (!giftCardItems || giftCardItems?.length == 0) return;
 
+            let lineItemsByFulfillmentOrderObj = giftCardItems.map(
+              (item: any) => {
+                return {
+                  fulfillmentOrderId: item.id,
+                  fulfillmentOrderLineItems: item.giftItems.map((item: any) => {
+                    return {
+                      id: item.node.id,
+                      quantity: item.node.totalQuantity,
+                    };
+                  }),
+                };
+              }
+            );
             let fulfillGiftCards = STORE_TO_SYNC_FROM.request(
               fulfillGiftCardItems,
               {
                 fulfillment: {
                   notifyCustomer: false,
-                  lineItemsByFulfillmentOrder: [
-                    {
-                      fulfillmentOrderId:
-                        order?.order?.fulfillmentOrders?.edges[0].node?.id,
-                      fulfillmentOrderLineItems: giftCardItems.map(
-                        (item: any) => {
-                          return {
-                            id: item.node.id,
-                            quantity: item.node.totalQuantity,
-                          };
-                        }
-                      ),
-                    },
-                  ],
+                  lineItemsByFulfillmentOrder: lineItemsByFulfillmentOrderObj,
                 },
               }
             );
@@ -206,6 +261,6 @@ export const gift_card_create = async (req: Request, res: Response) => {
       .json(`GIFT CARD CREATE: Created gift cards for order ${orderName}`);
   } catch (error) {
     console.error("GIFT CARD CREATE: Error adding new codes:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(200).json({ message: "Internal server error" });
   }
 };

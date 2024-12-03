@@ -35,7 +35,7 @@ export const gift_card_update = async (req: Request, res: Response) => {
     if (!stores) {
       console.log("GIFT CARD UPDATE: Store not found");
       return res
-        .status(400)
+        .status(200)
         .json({ message: "GIFT CARD UPDATE: Store not found" });
     }
 
@@ -83,7 +83,7 @@ export const gift_card_update = async (req: Request, res: Response) => {
     if (!giftCardToSyncDB) {
       console.log("GIFT CARD UPDATE: Gift card not found in DB");
       return res
-        .status(400)
+        .status(200)
         .json({ message: "GIFT CARD UPDATE: Gift card not found in DB" });
     }
 
@@ -122,6 +122,6 @@ export const gift_card_update = async (req: Request, res: Response) => {
       .json(`GIFT CARD UPDATE: Synced gift card ${lastCharacters}`);
   } catch (error) {
     console.error("GIFT CARD UPDATE: Error updating gift card balance:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(200).json({ message: "Internal server error" });
   }
 };
