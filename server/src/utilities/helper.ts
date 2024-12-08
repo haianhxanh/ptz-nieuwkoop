@@ -7,7 +7,7 @@ const sleep = promisify(setTimeout);
 const {
   PTZ_ACCESS_TOKEN,
   PTZ_STORE_URL,
-  PTZ_STORE_URL_LOCATION_ID,
+  PTZ_STORE_LOCATION_ID,
   API_VERSION,
   NIEUWKOOP_API_ENDPOINT,
   NIEUWKOOP_USERNAME,
@@ -836,7 +836,7 @@ export async function getInventory(sku: any) {
                   }
                   id
                   inventoryHistoryUrl
-                  inventoryLevel(locationId: "gid://shopify/Location/${PTZ_STORE_URL_LOCATION_ID}") {
+                  inventoryLevel(locationId: "gid://shopify/Location/${PTZ_STORE_LOCATION_ID}") {
                     id
                     quantities(names: [ "committed", "available", "on_hand" ]) {
                       name

@@ -12,16 +12,12 @@ export const variant_store_inventory = async (req: Request, res: Response) => {
     let variant_sku = req.query.sku as string;
     let api_variant = await getInventory(variant_sku);
     let variant_id = api_variant?.variant?.id;
-    let quantity = 0;
-    if (api_variant?.inventoryLevel != null) {
-      quantity = api_variant?.inventoryLevel?.quantities[1]?.quantity;
-    }
     let metafields = [];
     metafields.push({
       namespace: "custom",
       type: "number_integer",
       key: "store_availability",
-      value: quantity.toString(),
+      value: api_variant?.inventoryLevel?.quantities[1]?.quantity?.toString(),
       ownerId: variant_id,
     });
     sleep(500);
