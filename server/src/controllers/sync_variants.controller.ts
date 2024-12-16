@@ -54,8 +54,8 @@ export const sync_variants = async (req: Request, res: Response) => {
       }
     });
 
-    if (variants.length > 50) {
-      variants = variants.slice(0, 50);
+    if (variants.length > 100) {
+      variants = variants.slice(0, 100);
     }
 
     // variants = variants.filter(
