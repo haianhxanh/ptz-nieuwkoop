@@ -17,6 +17,7 @@ const { STORE_ADMIN_PRODUCT_URL } = process.env;
 
 export const sync_variants = async (req: Request, res: Response) => {
   try {
+    let syncStart = performance.now();
     let variants = await allVariants();
 
     // check for variants without metafields of namespace custom and key nieuwkoop_last_inventory_sync or variants with metafields of namespace custom and key nieuwkoop_last_inventory_sync with value less than 12 hours ago
@@ -53,8 +54,8 @@ export const sync_variants = async (req: Request, res: Response) => {
       }
     });
 
-    if (variants.length > 100) {
-      variants = variants.slice(0, 100);
+    if (variants.length > 50) {
+      variants = variants.slice(0, 50);
     }
 
     // variants = variants.filter(
@@ -69,7 +70,6 @@ export const sync_variants = async (req: Request, res: Response) => {
     let resVariants = [];
     let discontinuedItems = [];
     let costUpdatedItems = [];
-    // return res.status(200).json(variants);
     for (const [index, variant] of variants.entries()) {
       if (variant.node.sku && variant.node.sku != "") {
         let matchingStockVariant = await getVariantStock(variant.node.sku);
@@ -151,6 +151,9 @@ export const sync_variants = async (req: Request, res: Response) => {
         costUpdatedItems
       );
     }
+    let syncFinish = performance.now();
+    let syncTime = (syncFinish - syncStart) / 1000;
+    console.log("Sync time: " + syncTime + " seconds");
     return res.status(200).json({
       message: "Inventory synced successfully",
       time: new Date().toLocaleString(),
