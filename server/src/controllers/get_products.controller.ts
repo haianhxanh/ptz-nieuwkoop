@@ -35,6 +35,14 @@ export const get_products = async (req: Request, res: Response) => {
 
     console.log(products.length);
 
+    // map through all products and update all values of ProductGroupDescription_EN if contains "Artificial" to "Artificial"
+    products = products.map((product: any) => {
+      if (product.ProductGroupDescription_EN.includes("Artificial")) {
+        product.ProductGroupDescription_EN = "Artificial";
+      }
+      return product;
+    });
+
     return res.status(200).json({ products });
   } catch (error) {
     console.error("Error downloading products:", error);
