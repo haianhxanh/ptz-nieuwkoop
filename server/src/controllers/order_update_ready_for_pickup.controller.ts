@@ -6,7 +6,7 @@ import { get_dev_stores, get_stores } from "../app_stores_sync/utils";
 import dotenv from "dotenv";
 dotenv.config();
 
-const { API_VERSION, PTZ_STORE_URL, PTZ_ACCESS_TOKEN } = process.env;
+const { API_VERSION } = process.env;
 const { SMSZASILAM_HASH } = process.env;
 
 export const order_update_ready_for_pickup = async (
@@ -16,23 +16,6 @@ export const order_update_ready_for_pickup = async (
   try {
     console.log(req?.body);
     let fulfillmentOrderId = req?.body?.fulfillment_order?.id;
-    // id = "gid://shopify/FulfillmentOrder/7510965420369";
-
-    const shopifyClient = new GraphQLClient(
-      `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
-      {
-        // @ts-ignore
-        headers: {
-          "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN,
-        },
-      }
-    );
-
-    let fulfillmentOrder = await shopifyClient.request(fulfillmentOrderQuery, {
-      fulfillmentOrderId: "gid://shopify/FulfillmentOrder/7511112581457",
-    });
-
-    let order = fulfillmentOrder?.fulfillmentOrder?.order;
 
     let store = req.query.store;
     let stores;
@@ -41,6 +24,22 @@ export const order_update_ready_for_pickup = async (
     } else {
       stores = get_stores(store);
     }
+
+    const shopifyClient = new GraphQLClient(
+      `https://${stores?.origin.storeUrl}/admin/api/${API_VERSION}/graphql.json`,
+      {
+        // @ts-ignore
+        headers: {
+          "X-Shopify-Access-Token": stores?.origin.accessToken,
+        },
+      }
+    );
+
+    let fulfillmentOrder = await shopifyClient.request(fulfillmentOrderQuery, {
+      fulfillmentOrderId: fulfillmentOrderId,
+    });
+
+    let order = fulfillmentOrder?.fulfillmentOrder?.order;
 
     if (!order?.billingAddress?.phone)
       return res
