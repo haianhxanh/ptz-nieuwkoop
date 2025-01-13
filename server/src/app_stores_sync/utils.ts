@@ -29,12 +29,14 @@ export const get_stores = (orderStatusUrl: any) => {
         accessToken: PTZ_ACCESS_TOKEN,
         locationId: "gid://shopify/Location/" + PTZ_STORE_LOCATION_ID,
         giftCardColumnName: "potzillas_id",
+        storeName: "Potzillas",
       },
       destination: {
         storeUrl: DMP_STORE_URL,
         accessToken: DMP_ACCESS_TOKEN,
         locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID,
         giftCardColumnName: "dmp_id",
+        storeName: "DMP",
       },
     };
   } else if (orderStatusUrl.includes(DMP_STORE_URL)) {
@@ -44,12 +46,14 @@ export const get_stores = (orderStatusUrl: any) => {
         accessToken: DMP_ACCESS_TOKEN,
         locationId: "gid://shopify/Location/" + DMP_STORE_LOCATION_ID,
         giftCardColumnName: "dmp_id",
+        storeName: "DMP",
       },
       destination: {
         storeUrl: PTZ_STORE_URL,
         accessToken: PTZ_ACCESS_TOKEN,
         locationId: "gid://shopify/Location/" + PTZ_STORE_LOCATION_ID,
         giftCardColumnName: "potzillas_id",
+        storeName: "Potzillas",
       },
     };
   }
@@ -64,12 +68,14 @@ export const get_dev_stores = (orderStatusUrl: any) => {
         accessToken: DEV_PTZ_ACCESS_TOKEN,
         locationId: "gid://shopify/Location/" + DEV_PTZ_STORE_LOCATION_ID,
         giftCardColumnName: "potzillas_id",
+        storeName: "Potzillas",
       },
       destination: {
         storeUrl: DEV_DMP_STORE_URL,
         accessToken: DEV_DMP_ACCESS_TOKEN,
         locationId: "gid://shopify/Location/" + DEV_DMP_STORE_LOCATION_ID,
         giftCardColumnName: "dmp_id",
+        storeName: "DMP",
       },
     };
   } else if (orderStatusUrl.includes(DEV_DMP_STORE_URL)) {
@@ -79,12 +85,14 @@ export const get_dev_stores = (orderStatusUrl: any) => {
         accessToken: DEV_DMP_ACCESS_TOKEN,
         locationId: "gid://shopify/Location/" + DEV_DMP_STORE_LOCATION_ID,
         giftCardColumnName: "dmp_id",
+        storeName: "DMP",
       },
       destination: {
         storeUrl: DEV_PTZ_STORE_URL,
         accessToken: DEV_PTZ_ACCESS_TOKEN,
         locationId: "gid://shopify/Location/" + DEV_PTZ_STORE_LOCATION_ID,
         giftCardColumnName: "potzillas_id",
+        storeName: "Potzillas",
       },
     };
   }
