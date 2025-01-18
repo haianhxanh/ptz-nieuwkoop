@@ -5,7 +5,9 @@ export const productVariantQuery = gql`
     productVariant(id: $id) {
       product {
         tags
+        id
       }
+      price
       sku
       inventoryItem {
         id
@@ -26,10 +28,13 @@ export const productVariantsQuery = gql`
     productVariants(query: $query, first: 1) {
       edges {
         node {
+          id
           product {
+            id
             tags
           }
           sku
+          price
           inventoryItem {
             id
             inventoryLevel(locationId: $locationId) {

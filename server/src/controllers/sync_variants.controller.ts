@@ -13,12 +13,18 @@ import { send_slack_notification } from "../utilities/notifications";
 
 dotenv.config();
 
-const { STORE_ADMIN_PRODUCT_URL } = process.env;
+const { STORE_ADMIN_PRODUCT_URL, PTZ_STORE_URL, PTZ_ACCESS_TOKEN } =
+  process.env;
 
 export const sync_variants = async (req: Request, res: Response) => {
   try {
     let syncStart = performance.now();
-    let variants = await allVariants();
+    const query = "tag:'Nieuwkoop'";
+    let variants = await allVariants(
+      query,
+      PTZ_STORE_URL as string,
+      PTZ_ACCESS_TOKEN as string
+    );
 
     // check for variants without metafields of namespace custom and key nieuwkoop_last_inventory_sync or variants with metafields of namespace custom and key nieuwkoop_last_inventory_sync with value less than 12 hours ago
 

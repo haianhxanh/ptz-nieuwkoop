@@ -212,18 +212,22 @@ export async function createAiDescription(product: any, matchingProduct: any) {
   return ai_response.choices[0].message.content;
 }
 
-export async function allVariants() {
+export async function allVariants(
+  query: string,
+  storeUrl: string,
+  accessToken: string
+) {
   let cursor = "";
   let hasNextPage = true;
   let variants: any[] = [];
   while (hasNextPage) {
     const response = await axios.post(
-      `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
+      `https://${storeUrl}/admin/api/${API_VERSION}/graphql.json`,
       {
         query: `query {
-          productVariants(query:"tag:'Nieuwkoop'", first: 250${
-            cursor ? `, after: "${cursor}"` : ""
-          }) {
+          productVariants(query:"${query}", first: 250${
+          cursor ? `, after: "${cursor}"` : ""
+        }) {
             pageInfo {
               hasNextPage
               endCursor
@@ -232,6 +236,7 @@ export async function allVariants() {
               node {
                 id
                 sku
+                price
                 title
                 product {
                   id
@@ -259,14 +264,16 @@ export async function allVariants() {
       {
         headers: {
           "Content-Type": "application/json",
-          "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN,
+          "X-Shopify-Access-Token": accessToken,
         },
       }
     );
 
-    const data = response.data.data.productVariants;
-    hasNextPage = data.pageInfo.hasNextPage;
-    cursor = data.pageInfo.endCursor;
+    const data = response?.data?.data?.productVariants;
+
+    if (!data) return [];
+    hasNextPage = data?.pageInfo?.hasNextPage;
+    cursor = data?.pageInfo?.endCursor;
     variants = variants.concat(data.edges);
     await sleep(750);
   }
@@ -913,9 +920,3 @@ export async function updateVariantMetafield(metafields: any) {
 
   return variant_metafields;
 }
-
-// export const getTagValue = async (tags: any, tagName: string) => {
-//   const tag = await getTag(tags, tagName);
-//   if (tag) return tag;
-//   return "";
-// };

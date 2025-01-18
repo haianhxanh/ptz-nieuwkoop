@@ -16,7 +16,12 @@ const { STORE_ADMIN_PRODUCT_URL } = process.env;
 
 export const update_cost_eur = async (req: Request, res: Response) => {
   try {
-    let variants = await allVariants();
+    const query = "tag:'Nieuwkoop'";
+    const variants = await allVariants(
+      query,
+      PTZ_STORE_URL as string,
+      PTZ_ACCESS_TOKEN as string
+    );
     for (const [index, variant] of variants.entries()) {
       let metaCostEur = variant.node.metafields.edges.find(
         (meta: any) => meta.node.key == "cost_eur"

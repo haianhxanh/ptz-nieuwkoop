@@ -15,7 +15,12 @@ dotenv.config();
 
 export const update_specs = async (req: Request, res: Response) => {
   try {
-    let variants = await allVariants();
+    const query = "tag:'Nieuwkoop'";
+    let variants = await allVariants(
+      query,
+      PTZ_STORE_URL as string,
+      PTZ_ACCESS_TOKEN as string
+    );
     for (const [index, variant] of variants.entries()) {
       let specs = variant.node.metafields.edges.find(
         (meta: any) => meta.node.key == "specifikace"

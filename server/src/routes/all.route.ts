@@ -19,6 +19,7 @@ import { codes_prepopulate } from "../app_gift_cards/codes_prepopulate.controlle
 import { gift_card_create } from "../app_gift_cards/gift_card_create.controller";
 import { gift_card_update } from "../app_gift_cards/gift_card_update.controller";
 import { order_update_ready_for_pickup } from "../controllers/order_update_ready_for_pickup.controller";
+import { stores_price_sync } from "../app_stores_sync/stores_price_sync.controller";
 const router = express.Router();
 interface QueueItem {
   req: Request;
@@ -45,15 +46,13 @@ router.post(
 );
 
 // ====================== INVENTORY SYNC ======================
-let isProcessing = false;
-const processQueue = async () => {
-  if (isProcessing || requestQueue.length === 0) {
+let isProcessingInventorySync = false;
+const processQueueInventorySync = async () => {
+  if (isProcessingInventorySync || requestQueue.length === 0) {
     return;
   }
-
-  isProcessing = true;
+  isProcessingInventorySync = true;
   const { req, res } = requestQueue.shift()!;
-
   try {
     await stores_inventory_sync_on_inventory_level_update(req, res);
   } catch (error) {
@@ -61,14 +60,14 @@ const processQueue = async () => {
     res.status(500).json({ message: "Internal server error" });
   } finally {
     await delay(500);
-    isProcessing = false;
-    processQueue();
+    isProcessingInventorySync = false;
+    processQueueInventorySync();
   }
 };
 
 router.post("/stores/inventory-sync", (req: Request, res: Response) => {
   requestQueue.push({ req, res });
-  processQueue();
+  processQueueInventorySync();
 });
 // ====================== END INVENTORY SYNC ======================
 
@@ -80,5 +79,8 @@ router.post("/giftcard/update", gift_card_update);
 
 // ====================== ORDER UPATE ======================
 router.post("/order/update/ready-for-pickup", order_update_ready_for_pickup);
+
+// ====================== VARIANT PRICE SYNC ======================
+router.get("/stores/sync/price", stores_price_sync);
 
 export default router;
