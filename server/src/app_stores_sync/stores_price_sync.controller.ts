@@ -1,9 +1,11 @@
 import { Request, Response } from "express";
-import dotenv from "dotenv";
 import { allVariants } from "../utilities/helper";
 import { GraphQLClient } from "graphql-request";
 import { productVariantsQuery } from "./queries";
 import { productVariantsBulkUpdateQuery } from "../queries/productVariantsBulkUpdate";
+import { promisify } from "util";
+const sleep = promisify(setTimeout);
+import dotenv from "dotenv";
 
 dotenv.config();
 const {
@@ -31,14 +33,18 @@ const shopifyClient = new GraphQLClient(
 export const stores_price_sync = async (req: Request, res: Response) => {
   try {
     const query = "tag:'propojeni'";
-    const variants = await allVariants(
+    let variants = await allVariants(
       query,
       DMP_STORE_URL as string,
       DMP_ACCESS_TOKEN as string
     );
 
+    variants = variants.filter((variant) => {
+      return variant?.node?.sku && variant?.node?.product?.status != "ARCHIVED";
+    });
+
     for (const [index, variant] of variants.entries()) {
-      if (index > 0) break;
+      await sleep(300);
       const variantToUpdate = await shopifyClient.request(
         productVariantsQuery,
         {
@@ -71,10 +77,14 @@ export const stores_price_sync = async (req: Request, res: Response) => {
           ],
         }
       );
-
-      return res.status(200).json(variantUpdated);
+      await sleep(300);
+      console.log(
+        "Variant price updated:",
+        variant?.node?.sku,
+        `${variantToUpdate?.productVariants?.edges[0]?.node?.price} -> ${variant?.node?.price}`
+      );
     }
-    return res.status(200).json(variants[0]);
+    return res.status(200).json({ message: "Price sync completed" });
   } catch (error) {
     console.error("Error processing request:", error);
     return res.status(200).json({ message: "Internal server error" });

@@ -241,6 +241,7 @@ export async function allVariants(
                 product {
                   id
                   tags
+                  status
                 }
                 inventoryItem {
                   id
