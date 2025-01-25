@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { allVariants } from "../utilities/helper";
 import { GraphQLClient } from "graphql-request";
-import { productVariantsQuery } from "./queries";
+import { inventoryItemUpdate, productVariantsQuery } from "./queries";
 import { productVariantsBulkUpdateQuery } from "../queries/productVariantsBulkUpdate";
 import { promisify } from "util";
 const sleep = promisify(setTimeout);
@@ -62,7 +62,15 @@ export const stores_price_sync = async (req: Request, res: Response) => {
         variantToUpdate?.productVariants?.edges[0]?.node?.price ===
         variant?.node?.price;
 
-      if (equalPrice) continue;
+      const equalCost =
+        variantToUpdate?.productVariants?.edges[0]?.node?.inventoryItem.unitCost
+          .amount === variant?.node?.inventoryItem?.unitCost?.amount;
+
+      const equalCompareAtPrice =
+        variantToUpdate?.productVariants?.edges[0]?.node?.compareAtPrice ===
+        variant?.node?.compareAtPrice;
+
+      if (equalPrice && equalCost && equalCompareAtPrice) continue;
 
       const variantUpdated = await shopifyClient.request(
         productVariantsBulkUpdateQuery,
@@ -73,16 +81,47 @@ export const stores_price_sync = async (req: Request, res: Response) => {
             {
               id: variantToUpdate?.productVariants?.edges[0]?.node?.id,
               price: variant?.node?.price,
+              compareAtPrice: variant?.node?.compareAtPrice,
             },
           ],
         }
       );
-      await sleep(300);
-      console.log(
-        "Variant price updated:",
-        variant?.node?.sku,
-        `${variantToUpdate?.productVariants?.edges[0]?.node?.price} -> ${variant?.node?.price}`
-      );
+
+      if (!equalCost) {
+        const costUpdated = await shopifyClient.request(inventoryItemUpdate, {
+          id: variantToUpdate?.productVariants?.edges[0]?.node?.inventoryItem
+            ?.id,
+          input: {
+            cost: variant?.node?.inventoryItem?.unitCost?.amount,
+          },
+        });
+      }
+
+      if (!equalCompareAtPrice) {
+        console.log(
+          "Variant compareAtPrice updated:",
+          variant?.node?.sku,
+          `${variantToUpdate?.productVariants?.edges[0]?.node?.compareAtPrice} -> ${variant?.node?.compareAtPrice}`
+        );
+      }
+
+      if (!equalPrice) {
+        console.log(
+          "Variant price updated:",
+          variant?.node?.sku,
+          `${variantToUpdate?.productVariants?.edges[0]?.node?.price} -> ${variant?.node?.price}`
+        );
+      }
+
+      if (!equalCost) {
+        console.log(
+          "Variant cost updated:",
+          variant?.node?.sku,
+          `${variantToUpdate?.productVariants?.edges[0]?.node?.inventoryItem.unitCost.amount} -> ${variant?.node?.inventoryItem.unitCost.amount}`
+        );
+      }
+
+      await sleep(500);
     }
     return res.status(200).json({ message: "Price sync completed" });
   } catch (error) {

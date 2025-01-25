@@ -237,6 +237,7 @@ export async function allVariants(
                 id
                 sku
                 price
+                compareAtPrice
                 title
                 product {
                   id
@@ -245,6 +246,9 @@ export async function allVariants(
                 }
                 inventoryItem {
                   id
+                  unitCost {
+                    amount
+                  }
                 }
                 metafields(first: 100) {
                   edges {

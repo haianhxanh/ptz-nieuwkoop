@@ -35,8 +35,12 @@ export const productVariantsQuery = gql`
           }
           sku
           price
+          compareAtPrice
           inventoryItem {
             id
+            unitCost {
+              amount
+            }
             inventoryLevel(locationId: $locationId) {
               quantities(names: ["available"]) {
                 id
@@ -81,6 +85,22 @@ export const inventoryItemQuery = gql`
           tags
         }
         sku
+      }
+    }
+  }
+`;
+
+export const inventoryItemUpdate = gql`
+  mutation inventoryItemUpdate($id: ID!, $input: InventoryItemInput!) {
+    inventoryItemUpdate(id: $id, input: $input) {
+      inventoryItem {
+        id
+        unitCost {
+          amount
+        }
+      }
+      userErrors {
+        message
       }
     }
   }
