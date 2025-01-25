@@ -64,7 +64,7 @@ export const stores_price_sync = async (req: Request, res: Response) => {
 
       const equalCost =
         variantToUpdate?.productVariants?.edges[0]?.node?.inventoryItem.unitCost
-          .amount === variant?.node?.inventoryItem?.unitCost?.amount;
+          ?.amount === variant?.node?.inventoryItem?.unitCost?.amount;
 
       const equalCompareAtPrice =
         variantToUpdate?.productVariants?.edges[0]?.node?.compareAtPrice ===
@@ -117,7 +117,7 @@ export const stores_price_sync = async (req: Request, res: Response) => {
         console.log(
           "Variant cost updated:",
           variant?.node?.sku,
-          `${variantToUpdate?.productVariants?.edges[0]?.node?.inventoryItem.unitCost.amount} -> ${variant?.node?.inventoryItem.unitCost.amount}`
+          `${variantToUpdate?.productVariants?.edges[0]?.node?.inventoryItem?.unitCost?.amount} -> ${variant?.node?.inventoryItem?.unitCost?.amount}`
         );
       }
 
