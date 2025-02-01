@@ -64,15 +64,6 @@ export const sync_variants = async (req: Request, res: Response) => {
       variants = variants.slice(0, 100);
     }
 
-    // variants = variants.filter(
-    //   (variant) =>
-    //     variant.node.product.id == "gid://shopify/Product/9377021559128"
-    // );
-
-    // let variant = variants.pop();
-    // variants = [];
-    // variants.push(variant);
-
     let resVariants = [];
     let discontinuedItems = [];
     let costUpdatedItems = [];
@@ -129,6 +120,7 @@ export const sync_variants = async (req: Request, res: Response) => {
           );
           let costEur = costEurMeta ? parseFloat(costEurMeta.node.value) : 0;
           if (
+            matchingApiVariant &&
             costEurMeta &&
             matchingApiVariant[0].Salesprice.toFixed(2) != costEur.toFixed(2)
           ) {
@@ -152,10 +144,10 @@ export const sync_variants = async (req: Request, res: Response) => {
       }
     }
     if (discontinuedItems.length > 0 || costUpdatedItems.length > 0) {
-      let slackNotification = send_slack_notification(
-        discontinuedItems,
-        costUpdatedItems
-      );
+      // let slackNotification = send_slack_notification(
+      //   discontinuedItems,
+      //   costUpdatedItems
+      // );
     }
     let syncFinish = performance.now();
     let syncTime = (syncFinish - syncStart) / 1000;
