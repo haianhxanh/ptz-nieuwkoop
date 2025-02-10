@@ -105,3 +105,61 @@ export const inventoryItemUpdate = gql`
     }
   }
 `;
+
+export const variantsQuery = gql`
+  query ($query: String) {
+    productVariants(query: $query, first: 1) {
+      edges {
+        node {
+          id
+          product {
+            id
+            tags
+            options(first: 1) {
+              id
+              name
+            }
+          }
+          sku
+          price
+          compareAtPrice
+        }
+      }
+    }
+  }
+`;
+
+export const productVariantsBulkCreate = gql`
+  mutation ProductVariantsCreate(
+    $productId: ID!
+    $variants: [ProductVariantsBulkInput!]!
+  ) {
+    productVariantsBulkCreate(productId: $productId, variants: $variants) {
+      productVariants {
+        id
+        title
+        selectedOptions {
+          name
+          value
+        }
+      }
+      userErrors {
+        field
+        message
+      }
+    }
+  }
+`;
+
+export const tagsAdd = gql`
+  mutation addTags($id: ID!, $tags: [String!]!) {
+    tagsAdd(id: $id, tags: $tags) {
+      node {
+        id
+      }
+      userErrors {
+        message
+      }
+    }
+  }
+`;

@@ -73,7 +73,7 @@ export default function Index() {
   if (data?.NODE_ENV) {
     appUrl =
       data?.NODE_ENV == "development"
-        ? "http://localhost:4000"
+        ? "http://localhost:9000"
         : "https://nieuwkoop.onrender.com";
   }
   const itemsPerPage = 25;
@@ -168,11 +168,12 @@ export default function Index() {
     setImportStatus(IMPORT_STATUS.IN_PROGRESS);
     for (const variant of inputItems) {
       let singleProduct = {};
-      let variants = items.filter(
+      let variants = products.filter(
         (item) =>
           item.matchingElement == variant.matchingElement &&
           removeSizeInTitles(item.title) == removeSizeInTitles(variant.title),
       );
+
       if (variants.length == 0) {
         singleProduct = [variant.sku];
       } else {
@@ -204,7 +205,7 @@ export default function Index() {
         setImportStatus(IMPORT_STATUS.FAILED);
       }
     }
-  }, [togglePopoverActive, items, selectedProducts, appUrl]);
+  }, [togglePopoverActive, selectedProducts, appUrl, products]);
 
   const nextPage = () => {
     if (currentPage <= Math.ceil(items.length / itemsPerPage)) {

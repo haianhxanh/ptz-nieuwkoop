@@ -3,6 +3,7 @@ import { promisify } from "util";
 import { ITEM_DIAMETERS, ITEM_HEIGHTS, TAG_CODES } from "./constants";
 import { getTag } from "./specs";
 import { productVariantsBulkUpdateQuery } from "./../queries/productVariantsBulkUpdate";
+import { GraphQLClient } from "graphql-request";
 const sleep = promisify(setTimeout);
 const {
   PTZ_ACCESS_TOKEN,
@@ -37,6 +38,16 @@ interface Metafield {
   value: string;
   type: string;
 }
+
+export const shopifyClient = new GraphQLClient(
+  `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
+  {
+    // @ts-ignore
+    headers: {
+      "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN,
+    },
+  }
+);
 
 export async function variantExists(sku: any) {
   /*===================================== Check variant existence =====================================*/
