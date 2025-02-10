@@ -1,19 +1,21 @@
 FROM node:20-alpine
 
-EXPOSE 3000
-
 WORKDIR /app
+
+COPY package.json package-lock.json ./
+
+RUN npm install --omit=dev && npm cache clean --force
+
 COPY . .
 
-ENV NODE_ENV=production
+RUN npm remove @shopify/app @shopify/cli || true
 
-RUN npm install --omit=dev
-# Remove CLI packages since we don't need them in production by default.
-# Remove this line if you want to run CLI commands in your container.
-RUN npm remove @shopify/app @shopify/cli
 RUN npm run build
 
-# You'll probably want to remove this in production, it's here to make it easier to test things!
-RUN rm -f prisma/dev.sqlite
+RUN rm -f prisma/dev.sqlite || true
+
+EXPOSE 3000
+
+ENV NODE_ENV=production
 
 CMD ["npm", "run", "docker-start"]
