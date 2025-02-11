@@ -1,20 +1,18 @@
-FROM node:20-alpine
+FROM node:18-alpine
+
+EXPOSE 3000
 
 WORKDIR /app
 
-COPY package.json ./
+COPY package*.json ./
 
-RUN npm install --omit=dev && npm cache clean --force
+RUN npm install --omit=dev
 
 COPY . .
 
-RUN npm remove @shopify/app @shopify/cli || true
-
 RUN npm run build
 
-RUN rm -f prisma/dev.sqlite || true
-
-EXPOSE 3000
+RUN rm -f prisma/dev.sqlite
 
 ENV NODE_ENV=production
 
