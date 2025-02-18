@@ -236,7 +236,7 @@ export async function allVariants(
       `https://${storeUrl}/admin/api/${API_VERSION}/graphql.json`,
       {
         query: `query {
-          productVariants(query:"${query}", first: 250${
+          productVariants(query:"${query}", reverse:true, first: 250${
           cursor ? `, after: "${cursor}"` : ""
         }) {
             pageInfo {
@@ -291,7 +291,7 @@ export async function allVariants(
     hasNextPage = data?.pageInfo?.hasNextPage;
     cursor = data?.pageInfo?.endCursor;
     variants = variants.concat(data.edges);
-    await sleep(750);
+    await sleep(200);
   }
 
   return variants;

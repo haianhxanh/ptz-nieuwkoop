@@ -32,13 +32,10 @@ export const sync_variants = async (req: Request, res: Response) => {
       let metafields = variant.node.metafields.edges;
       let lastSyncMeta = metafields.find(
         (metafield: any) =>
-          metafield.node.namespace == "custom" &&
           metafield.node.key == "nieuwkoop_last_inventory_sync"
       );
       let discontinuedItemMeta = metafields.find(
-        (metafield: any) =>
-          metafield.node.namespace == "custom" &&
-          metafield.node.key == "item_discontinued"
+        (metafield: any) => metafield.node.key == "item_discontinued"
       );
       if (discontinuedItemMeta) {
         if (discontinuedItemMeta.node.value == "true") {
@@ -60,8 +57,8 @@ export const sync_variants = async (req: Request, res: Response) => {
       }
     });
 
-    if (variants.length > 100) {
-      variants = variants.slice(0, 100);
+    if (variants.length > 250) {
+      variants = variants.slice(0, 250);
     }
 
     let resVariants = [];
@@ -140,18 +137,18 @@ export const sync_variants = async (req: Request, res: Response) => {
           matchingApiVariant ? matchingApiVariant[0] : null
         );
 
-        await sleep(500);
+        await sleep(200);
       }
     }
     if (discontinuedItems.length > 0 || costUpdatedItems.length > 0) {
-      // let slackNotification = send_slack_notification(
-      //   discontinuedItems,
-      //   costUpdatedItems
-      // );
+      let slackNotification = send_slack_notification(
+        discontinuedItems,
+        costUpdatedItems
+      );
     }
     let syncFinish = performance.now();
-    let syncTime = (syncFinish - syncStart) / 1000;
-    console.log("Sync time: " + syncTime + " seconds");
+    let syncTime = ((syncFinish - syncStart) / 1000 / 60).toFixed(2);
+    console.log("Sync time: " + syncTime + " minutes");
     return res.status(200).json({
       message: "Inventory synced successfully",
       time: new Date().toLocaleString(),
