@@ -27,6 +27,7 @@ import {
   tagsAdd,
   variantsQuery,
 } from "../app_stores_sync/queries";
+import axios from "axios";
 
 dotenv.config();
 
@@ -35,7 +36,11 @@ type Variant = {
   sku: string;
 };
 
-const { PTZ_STORE_LOCATION_ID } = process.env;
+const {
+  PTZ_STORE_LOCATION_ID,
+  SLACK_WEBHOOK_URL,
+  SLACK_DEVELOPER_WEBHOOK_URL,
+} = process.env;
 
 export const import_products = async (req: Request, res: Response) => {
   try {
@@ -71,11 +76,11 @@ export const import_products = async (req: Request, res: Response) => {
         productTitle = productTitle + " " + itemVariety;
       }
 
-      for (const [index, variant] of product.entries()) {
-        let isVariant = await variantExists(variant);
+      for (const [index, variantSku] of product.entries()) {
+        let isVariant = await variantExists(variantSku);
         if (isVariant) {
           let existingVariant = await shopifyClient.request(variantsQuery, {
-            query: `sku:${matchingProduct[0].Itemcode}`,
+            query: `sku:${variantSku}`,
           });
           if (
             existingVariant?.productVariants?.edges.length > 0 &&
@@ -86,7 +91,6 @@ export const import_products = async (req: Request, res: Response) => {
             };
             existingProduct.product.variants = [];
           }
-          break;
         }
       }
 
@@ -353,7 +357,19 @@ export const import_products = async (req: Request, res: Response) => {
             newProduct.product.body_html = productBodyHtml;
           }
         } catch (error) {
-          console.error("App Error creating product body html:", error);
+          const errorMessage = error?.response?.data?.error?.message;
+          if (errorMessage) {
+            const errorMessageNotification = `Error creating product AI description: ${errorMessage}`;
+            console.error(errorMessageNotification);
+            // const slackMessage = await axios.post(
+            //   SLACK_WEBHOOK_URL || "",
+            //   errorMessageNotification
+            // );
+            const dev_slackMessage = await axios.post(
+              SLACK_DEVELOPER_WEBHOOK_URL || "",
+              errorMessageNotification
+            );
+          }
         }
 
         try {
