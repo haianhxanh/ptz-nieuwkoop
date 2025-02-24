@@ -23,7 +23,7 @@ var corsOptions = {
     "https://admin.shopify.com/store/potzillas",
     "https://potzillas.myshopify.com",
     "potzillas.myshopify.com",
-    "https://angela-oliver-whats-five.trycloudflare.com",
+    "https://disabilities-quiet-doll-accountability.trycloudflare.com",
     "https://extensions.shopifycdn.com",
   ],
   optionsSuccessStatus: 200,

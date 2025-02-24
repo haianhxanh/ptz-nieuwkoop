@@ -357,7 +357,7 @@ export const import_products = async (req: Request, res: Response) => {
             newProduct.product.body_html = productBodyHtml;
           }
         } catch (error) {
-          const errorMessage = error?.response?.data?.error?.message;
+          const errorMessage = (error as any)?.response?.data?.error?.message;
           if (errorMessage) {
             const errorMessageNotification = `Error creating product AI description: ${errorMessage}`;
             console.error(errorMessageNotification);
