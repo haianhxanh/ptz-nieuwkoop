@@ -384,7 +384,7 @@ export const import_products = async (req: Request, res: Response) => {
 
         const tagsAdded = await shopifyClient.request(tagsAdd, {
           id: existingProduct.product.id,
-          tags: existingProduct.product.tags.split[", "],
+          tags: existingProduct.product.tags,
         });
 
         await sleep(500);
