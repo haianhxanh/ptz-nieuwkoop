@@ -382,6 +382,9 @@ export const import_products = async (req: Request, res: Response) => {
           }),
         });
 
+        console.log("existingProduct.product.tags", existingProduct.product.tags);
+        console.log("tags", tags);
+
         const tagsAdded = await shopifyClient.request(tagsAdd, {
           id: existingProduct.product.id,
           tags: existingProduct.product.tags,
