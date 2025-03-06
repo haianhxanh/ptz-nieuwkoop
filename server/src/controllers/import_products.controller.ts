@@ -296,11 +296,8 @@ export const import_products = async (req: Request, res: Response) => {
           if (errorMessage) {
             const errorMessageNotification = `Error creating product AI description: ${errorMessage}`;
             console.error(errorMessageNotification);
-            // const slackMessage = await axios.post(
-            //   SLACK_WEBHOOK_URL || "",
-            //   errorMessageNotification
-            // );
-            const dev_slackMessage = await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessageNotification);
+            const slackMessage = await axios.post(SLACK_WEBHOOK_URL || "", errorMessageNotification);
+            const devSlackMessage = await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessageNotification);
           }
         }
 
@@ -382,15 +379,12 @@ export const import_products = async (req: Request, res: Response) => {
           }),
         });
 
-        console.log("existingProduct.product.tags", existingProduct.product.tags);
-        console.log("tags", tags);
-
         const tagsAdded = await shopifyClient.request(tagsAdd, {
           id: existingProduct.product.id,
           tags: existingProduct.product.tags,
         });
 
-        await sleep(500);
+        await sleep(300);
       }
     }
 
