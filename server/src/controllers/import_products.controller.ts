@@ -3,11 +3,7 @@ import { promisify } from "util";
 const sleep = promisify(setTimeout);
 import dotenv from "dotenv";
 
-import {
-  createVariantSpecs,
-  getTag,
-  extractSizeInTitles,
-} from "../utilities/specs";
+import { createVariantSpecs, getTag, extractSizeInTitles } from "../utilities/specs";
 
 import {
   createOptionTitle,
@@ -22,11 +18,7 @@ import {
   variantExists,
   shopifyClient,
 } from "./../utilities/helper";
-import {
-  productVariantsBulkCreate,
-  tagsAdd,
-  variantsQuery,
-} from "../app_stores_sync/queries";
+import { productVariantsBulkCreate, tagsAdd, variantsQuery } from "../app_stores_sync/queries";
 import axios from "axios";
 
 dotenv.config();
@@ -36,11 +28,7 @@ type Variant = {
   sku: string;
 };
 
-const {
-  PTZ_STORE_LOCATION_ID,
-  SLACK_WEBHOOK_URL,
-  SLACK_DEVELOPER_WEBHOOK_URL,
-} = process.env;
+const { PTZ_STORE_LOCATION_ID, SLACK_WEBHOOK_URL, SLACK_DEVELOPER_WEBHOOK_URL } = process.env;
 
 export const import_products = async (req: Request, res: Response) => {
   try {
@@ -64,9 +52,7 @@ export const import_products = async (req: Request, res: Response) => {
         }
       }
 
-      let firstVariantHeightAndDiameterTag = await createRangeTags(
-        matchingProduct[0]
-      );
+      let firstVariantHeightAndDiameterTag = await createRangeTags(matchingProduct[0]);
       tags += firstVariantHeightAndDiameterTag + ",";
       tags += "Nieuwkoop ,";
       tags += "Pending approval" + ",";
@@ -82,10 +68,7 @@ export const import_products = async (req: Request, res: Response) => {
           let existingVariant = await shopifyClient.request(variantsQuery, {
             query: `sku:${variantSku}`,
           });
-          if (
-            existingVariant?.productVariants?.edges.length > 0 &&
-            existingVariant?.productVariants?.edges[0]?.node?.product
-          ) {
+          if (existingVariant?.productVariants?.edges.length > 0 && existingVariant?.productVariants?.edges[0]?.node?.product) {
             existingProduct = {
               product: existingVariant.productVariants.edges[0].node.product,
             };
@@ -97,20 +80,12 @@ export const import_products = async (req: Request, res: Response) => {
       if (!existingProduct) {
         if (matchingProduct && matchingProduct.length > 0) {
           let firstVariantInventoryPolicy = "continue";
-          let firstVariantStock = await getVariantStock(
-            matchingProduct[0].Itemcode
-          );
+          let firstVariantStock = await getVariantStock(matchingProduct[0].Itemcode);
           let firstVariantAvailable = firstVariantStock.FirstAvailable;
-          if (
-            firstVariantStock.StockAvailable <= 0 &&
-            isFutureDate(firstVariantAvailable)
-          ) {
+          if (firstVariantStock.StockAvailable <= 0 && isFutureDate(firstVariantAvailable)) {
             firstVariantInventoryPolicy = "continue";
           }
-          if (
-            firstVariantStock.StockAvailable <= 0 &&
-            matchingProduct.DeliveryTimeInDays == 999
-          ) {
+          if (firstVariantStock.StockAvailable <= 0 && matchingProduct.DeliveryTimeInDays == 999) {
             firstVariantInventoryPolicy = "deny";
           }
 
@@ -123,22 +98,15 @@ export const import_products = async (req: Request, res: Response) => {
               // @ts-ignore
               const diffTime = Math.abs(futureDate - today);
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              firstVariantDeliveryTime =
-                diffDays + 7 + matchingProduct[0].DeliveryTimeInDays;
+              firstVariantDeliveryTime = diffDays + 7 + matchingProduct[0].DeliveryTimeInDays;
             } else {
-              firstVariantDeliveryTime =
-                matchingProduct[0].DeliveryTimeInDays + 7;
+              firstVariantDeliveryTime = matchingProduct[0].DeliveryTimeInDays + 7;
             }
           }
 
-          let firstOptionSize = extractSizeInTitles(
-            matchingProduct[0].ItemDescription_EN
-          );
+          let firstOptionSize = extractSizeInTitles(matchingProduct[0].ItemDescription_EN);
 
-          let firstOptionTitle = createOptionTitle(
-            firstOptionSize,
-            matchingProduct[0]
-          );
+          let firstOptionTitle = createOptionTitle(firstOptionSize, matchingProduct[0]);
 
           let firstVariantSpecs = await createVariantSpecs(matchingProduct[0]);
 
@@ -160,9 +128,7 @@ export const import_products = async (req: Request, res: Response) => {
                 {
                   option1: firstOptionTitle,
                   sku: matchingProduct[0].Itemcode,
-                  price: Math.ceil(
-                    matchingProduct[0].Salesprice * 26 * 2 * 1.21
-                  ).toFixed(0),
+                  price: Math.ceil(matchingProduct[0].Salesprice * 26 * 2 * 1.21).toFixed(0),
                   inventory_quantity: 0,
                   grams: matchingProduct[0].Weight.toFixed(2) * 1000,
                   barcode: matchingProduct[0].GTINCode,
@@ -210,26 +176,16 @@ export const import_products = async (req: Request, res: Response) => {
             for (const [index, variant] of product.entries()) {
               let matchingVariant = await getApiVariant(variant);
               let variantInventoryPolicy = "continue";
-              let variantStock = await getVariantStock(
-                matchingVariant[0].Itemcode
-              );
+              let variantStock = await getVariantStock(matchingVariant[0].Itemcode);
               let variantAvailable = variantStock.FirstAvailable;
 
-              let variantHeightAndDiameterTag = await createRangeTags(
-                matchingVariant[0]
-              );
+              let variantHeightAndDiameterTag = await createRangeTags(matchingVariant[0]);
               newProduct.product.tags += variantHeightAndDiameterTag + ",";
 
-              if (
-                variantStock.StockAvailable <= 0 &&
-                isFutureDate(variantAvailable)
-              ) {
+              if (variantStock.StockAvailable <= 0 && isFutureDate(variantAvailable)) {
                 variantInventoryPolicy = "continue";
               }
-              if (
-                variantStock.StockAvailable <= 0 &&
-                matchingProduct.DeliveryTimeInDays == 999
-              ) {
+              if (variantStock.StockAvailable <= 0 && matchingProduct.DeliveryTimeInDays == 999) {
                 variantInventoryPolicy = "deny";
               }
 
@@ -243,22 +199,15 @@ export const import_products = async (req: Request, res: Response) => {
                   // @ts-ignore
                   const diffTime = Math.abs(futureDate - today);
                   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  variantDeliveryTime =
-                    diffDays + 7 + matchingVariant[0].DeliveryTimeInDays;
+                  variantDeliveryTime = diffDays + 7 + matchingVariant[0].DeliveryTimeInDays;
                 } else {
-                  variantDeliveryTime =
-                    matchingVariant[0].DeliveryTimeInDays + 7;
+                  variantDeliveryTime = matchingVariant[0].DeliveryTimeInDays + 7;
                 }
               }
 
-              let optionSize = extractSizeInTitles(
-                matchingVariant[0].ItemDescription_EN
-              );
+              let optionSize = extractSizeInTitles(matchingVariant[0].ItemDescription_EN);
 
-              let optionTitle = createOptionTitle(
-                optionSize,
-                matchingVariant[0]
-              );
+              let optionTitle = createOptionTitle(optionSize, matchingVariant[0]);
               let variantSpecs = await createVariantSpecs(matchingVariant[0]);
 
               if (index > 0) {
@@ -290,22 +239,14 @@ export const import_products = async (req: Request, res: Response) => {
           let variantStock = await getVariantStock(matchingVariant[0].Itemcode);
           let variantAvailable = variantStock.FirstAvailable;
 
-          let variantHeightAndDiameterTag = await createRangeTags(
-            matchingVariant[0]
-          );
+          let variantHeightAndDiameterTag = await createRangeTags(matchingVariant[0]);
 
           existingProduct.product.tags += variantHeightAndDiameterTag + ",";
 
-          if (
-            variantStock.StockAvailable <= 0 &&
-            isFutureDate(variantAvailable)
-          ) {
+          if (variantStock.StockAvailable <= 0 && isFutureDate(variantAvailable)) {
             variantInventoryPolicy = "continue";
           }
-          if (
-            variantStock.StockAvailable <= 0 &&
-            matchingProduct.DeliveryTimeInDays == 999
-          ) {
+          if (variantStock.StockAvailable <= 0 && matchingProduct.DeliveryTimeInDays == 999) {
             variantInventoryPolicy = "deny";
           }
           let variantDeliveryTime;
@@ -317,16 +258,13 @@ export const import_products = async (req: Request, res: Response) => {
               // @ts-ignore
               const diffTime = Math.abs(futureDate - today);
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              variantDeliveryTime =
-                diffDays + 7 + matchingVariant[0].DeliveryTimeInDays;
+              variantDeliveryTime = diffDays + 7 + matchingVariant[0].DeliveryTimeInDays;
             } else {
               variantDeliveryTime = matchingVariant[0].DeliveryTimeInDays + 7;
             }
           }
 
-          let optionSize = extractSizeInTitles(
-            matchingVariant[0].ItemDescription_EN
-          );
+          let optionSize = extractSizeInTitles(matchingVariant[0].ItemDescription_EN);
 
           let optionTitle = createOptionTitle(optionSize, matchingVariant[0]);
           let variantSpecs = await createVariantSpecs(matchingVariant[0]);
@@ -349,10 +287,7 @@ export const import_products = async (req: Request, res: Response) => {
       if (newProduct) {
         let newProductRes;
         try {
-          let productBodyHtml = await createAiDescription(
-            newProduct,
-            matchingProduct
-          );
+          let productBodyHtml = await createAiDescription(newProduct, matchingProduct);
           if (productBodyHtml) {
             newProduct.product.body_html = productBodyHtml;
           }
@@ -365,10 +300,7 @@ export const import_products = async (req: Request, res: Response) => {
             //   SLACK_WEBHOOK_URL || "",
             //   errorMessageNotification
             // );
-            const dev_slackMessage = await axios.post(
-              SLACK_DEVELOPER_WEBHOOK_URL || "",
-              errorMessageNotification
-            );
+            const dev_slackMessage = await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessageNotification);
           }
         }
 
@@ -382,12 +314,7 @@ export const import_products = async (req: Request, res: Response) => {
         if (newProductRes) {
           let newProductId = newProductRes.id;
           try {
-            let newImage = await createImages(
-              newProductId,
-              matchingProduct[0].Itemcode,
-              undefined,
-              newProductRes.handle
-            );
+            let newImage = await createImages(newProductId, matchingProduct[0].Itemcode, undefined, newProductRes.handle);
             await sleep(500);
           } catch (error) {
             console.error("App Error creating image:", error);
@@ -397,13 +324,8 @@ export const import_products = async (req: Request, res: Response) => {
             try {
               let inventoryItemId = variant.inventory_item_id;
               let apiVariant = await getApiVariant(variant.sku);
-              let variantCost = Math.ceil(
-                apiVariant[0].Salesprice * 26
-              ).toFixed(2);
-              let addVariantCost = await updateVariantCost(
-                inventoryItemId,
-                variantCost
-              );
+              let variantCost = Math.ceil(apiVariant[0].Salesprice * 26).toFixed(2);
+              let addVariantCost = await updateVariantCost(inventoryItemId, variantCost);
               let variantObj = {
                 productId: newProductId,
                 sku: variant.sku,
@@ -418,57 +340,51 @@ export const import_products = async (req: Request, res: Response) => {
       }
 
       if (existingProduct) {
-        const productVariantsCreate = await shopifyClient.request(
-          productVariantsBulkCreate,
-          {
-            productId: existingProduct.product.id,
-            variants: existingProduct.product.variants.map((variant: any) => {
-              return {
-                price: variant.price,
-                inventoryPolicy: variant.inventory_policy.toUpperCase(),
-                inventoryQuantities: {
-                  availableQuantity: variant.inventory_quantity,
-                  locationId: "gid://shopify/Location/" + PTZ_STORE_LOCATION_ID,
-                },
-                inventoryItem: {
-                  sku: variant.sku,
-                  cost:
-                    variant.metafields.find(
-                      (metafield: any) => metafield.key === "cost_eur"
-                    ).value * 26,
-                  requiresShipping: variant.requires_shipping,
-                  measurement: {
-                    weight: {
-                      value: variant.grams,
-                      unit: "GRAMS",
-                    },
+        const productVariantsCreate = await shopifyClient.request(productVariantsBulkCreate, {
+          productId: existingProduct.product.id,
+          variants: existingProduct.product.variants.map((variant: any) => {
+            return {
+              price: variant.price,
+              inventoryPolicy: variant.inventory_policy.toUpperCase(),
+              inventoryQuantities: {
+                availableQuantity: variant.inventory_quantity,
+                locationId: "gid://shopify/Location/" + PTZ_STORE_LOCATION_ID,
+              },
+              inventoryItem: {
+                sku: variant.sku,
+                cost: variant.metafields.find((metafield: any) => metafield.key === "cost_eur").value * 26,
+                requiresShipping: variant.requires_shipping,
+                measurement: {
+                  weight: {
+                    value: variant.grams,
+                    unit: "GRAMS",
                   },
                 },
-                barcode: variant.barcode,
-                metafields: variant.metafields.map((metafield: any) => {
-                  if (metafield.value !== null) {
-                    return {
-                      key: metafield.key,
-                      value: metafield.value.toString(),
-                      type: metafield.value_type,
-                      namespace: metafield.namespace,
-                    };
-                  }
-                }),
-                optionValues: [
-                  {
-                    name: variant.option1,
-                    optionId: existingProduct?.product?.options[0]?.id,
-                  },
-                ],
-              };
-            }),
-          }
-        );
+              },
+              barcode: variant.barcode,
+              metafields: variant.metafields.map((metafield: any) => {
+                if (metafield.value !== null) {
+                  return {
+                    key: metafield.key,
+                    value: metafield.value.toString(),
+                    type: metafield.value_type,
+                    namespace: metafield.namespace,
+                  };
+                }
+              }),
+              optionValues: [
+                {
+                  name: variant.option1,
+                  optionId: existingProduct?.product?.options[0]?.id,
+                },
+              ],
+            };
+          }),
+        });
 
         const tagsAdded = await shopifyClient.request(tagsAdd, {
           id: existingProduct.product.id,
-          tags: existingProduct.product.tags,
+          tags: existingProduct.product.tags.split[", "],
         });
 
         await sleep(500);
