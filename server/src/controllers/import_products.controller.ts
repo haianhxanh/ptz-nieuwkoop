@@ -41,7 +41,7 @@ export const import_products = async (req: Request, res: Response) => {
       let existingProduct;
       let matchingProduct = await getApiVariant(product[0]);
       let itemVariety = matchingProduct[0]?.ItemVariety_EN;
-      let tags = "";
+      let tags = ",";
 
       if (matchingProduct[0]?.Tags) {
         for (const tagObj of matchingProduct[0].Tags) {

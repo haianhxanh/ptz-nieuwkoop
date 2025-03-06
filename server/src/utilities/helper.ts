@@ -39,15 +39,12 @@ interface Metafield {
   type: string;
 }
 
-export const shopifyClient = new GraphQLClient(
-  `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`,
-  {
-    // @ts-ignore
-    headers: {
-      "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN,
-    },
-  }
-);
+export const shopifyClient = new GraphQLClient(`https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/graphql.json`, {
+  // @ts-ignore
+  headers: {
+    "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN,
+  },
+});
 
 export async function variantExists(sku: any) {
   /*===================================== Check variant existence =====================================*/
@@ -84,9 +81,7 @@ export async function variantExists(sku: any) {
 }
 
 export async function getApiVariant(sku: any) {
-  const auth = Buffer.from(
-    `${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`
-  ).toString("base64");
+  const auth = Buffer.from(`${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`).toString("base64");
 
   let url: string = NIEUWKOOP_API_ENDPOINT + `&itemCode=${sku}`;
 
@@ -106,9 +101,7 @@ export async function getApiVariant(sku: any) {
 }
 
 export async function getVariantStock(sku: any) {
-  const auth = Buffer.from(
-    `${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`
-  ).toString("base64");
+  const auth = Buffer.from(`${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`).toString("base64");
 
   let url = NIEUWKOOP_API_STOCK_ENDPOINT + `&itemCode=${sku}`;
 
@@ -127,28 +120,17 @@ export async function getVariantStock(sku: any) {
 }
 
 export async function createProduct(product: any) {
-  let newProductRes = await axios.post(
-    `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/products.json`,
-    product,
-    {
-      headers: {
-        "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  let newProductRes = await axios.post(`https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/products.json`, product, {
+    headers: {
+      "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
+      "Content-Type": "application/json",
+    },
+  });
   return newProductRes.data.product;
 }
 
-export const createImages = async (
-  productId: any,
-  sku: any,
-  variant: any,
-  productHandle: any
-) => {
-  const auth = Buffer.from(
-    `${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`
-  ).toString("base64");
+export const createImages = async (productId: any, sku: any, variant: any, productHandle: any) => {
+  const auth = Buffer.from(`${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`).toString("base64");
 
   let url = NIEUWKOOP_API_IMAGE_ENDPOINT?.replace("[sku]", sku);
 
@@ -191,9 +173,7 @@ export const createImages = async (
 };
 
 export async function createAiDescription(product: any, matchingProduct: any) {
-  let content = `Projdi tento produkt ${JSON.stringify(
-    product
-  )} a tento zdroj ${JSON.stringify(
+  let content = `Projdi tento produkt ${JSON.stringify(product)} a tento zdroj ${JSON.stringify(
     matchingProduct
   )}, a zkus napsat stručný popis produktu. Zaměř na vlastnosti produktu vycházející z informací, které máš k dispozici, ale není třeba uvést SKU nebo rozměry nebo cenu v popisu, jelikož parametry produktu budeme zobrazovat zvlášť. Nezmiňuj Potzillas jelikož je to název obchodu. Pokud budeš potřebovat, můžeš se inspirovat na webu výrobce. Můžeš použít HTML pro zvýraznění některých částí textu. Rozděl text do odstavců s mezerou mezi odstavci pro čitelnost. Nic jiného kromě popisu prosím nepiš. Také určité výrazy neopakuj příliš víckrát, jako název produktu, nebo značku. 
   Inspirovat se můžeš tímhle textem: "Černý květináč Jesslyn z kolekce Granite﻿ od holandské značky Pottery Pots, je vrcholem elegance a robustnosti, jehož textura a půlnočně černá barva se nápadně blíží vzhledu opravdového granitového kamene. Jeho unikátní povrchová úprava přidává každému prostoru prvek surového luxusu a je zárukou, že každá rostlina v něm zazáří v plné kráse. Designový a praktický květináč je vyroben z odolného Fiberstone, aby odolal vlivům počasí a byl vhodný jak pro interiér, tak pro exteriér. Ideální pro ty, kteří hledají květináč, který je lehký, odolný a vizuálně impozantní. Pro venkovní použití je nutné v květináči vyvrtat otvor po odtékání přebytečné vody. Při vnitřním použití bez plastového květníku se doporučuje použít plastový 'liner' nebo jinou ochranu pro dlouhodobý kontakt mokrého materiálu s květináčem."
@@ -223,11 +203,7 @@ export async function createAiDescription(product: any, matchingProduct: any) {
   return ai_response.choices[0].message.content;
 }
 
-export async function allVariants(
-  query: string,
-  storeUrl: string,
-  accessToken: string
-) {
+export async function allVariants(query: string, storeUrl: string, accessToken: string) {
   let cursor = "";
   let hasNextPage = true;
   let variants: any[] = [];
@@ -236,9 +212,7 @@ export async function allVariants(
       `https://${storeUrl}/admin/api/${API_VERSION}/graphql.json`,
       {
         query: `query {
-          productVariants(query:"${query}", reverse:true, first: 250${
-          cursor ? `, after: "${cursor}"` : ""
-        }) {
+          productVariants(query:"${query}", reverse:true, first: 250${cursor ? `, after: "${cursor}"` : ""}) {
             pageInfo {
               hasNextPage
               endCursor
@@ -297,25 +271,17 @@ export async function allVariants(
   return variants;
 }
 
-export async function syncVariantStock(
-  variant: any,
-  matchingStockVariant: any,
-  matchingApiVariant: any
-) {
+export async function syncVariantStock(variant: any, matchingStockVariant: any, matchingApiVariant: any) {
   let productId = variant.node.product.id;
   let continueSelling = false;
   let itemDiscontinued = false;
-  let itemDiscontinuedMeta = variant.node.metafields.edges.find(
-    (meta: any) =>
-      meta.node.namespace == "custom" && meta.node.key == "item_discontinued"
-  );
+  let itemDiscontinuedMeta = variant.node.metafields.edges.find((meta: any) => meta.node.namespace == "custom" && meta.node.key == "item_discontinued");
   let discontinuedItems = [];
 
   if (
     !matchingStockVariant ||
     !matchingApiVariant ||
-    (matchingStockVariant.StockAvailable == 0 &&
-      matchingApiVariant.DeliveryTimeInDays == 999) ||
+    (matchingStockVariant.StockAvailable == 0 && matchingApiVariant.DeliveryTimeInDays == 999) ||
     matchingApiVariant.ShowOnWebsite == false ||
     matchingApiVariant.ShowOnWebsite == undefined ||
     matchingApiVariant.ItemStatus != "A"
@@ -326,9 +292,7 @@ export async function syncVariantStock(
   if (
     matchingStockVariant &&
     matchingApiVariant &&
-    (matchingApiVariant?.ItemStatus == "A" ||
-      (matchingApiVariant?.ItemStatus == "D" &&
-        matchingStockVariant?.StockAvailable > 0)) &&
+    (matchingApiVariant?.ItemStatus == "A" || (matchingApiVariant?.ItemStatus == "D" && matchingStockVariant?.StockAvailable > 0)) &&
     matchingApiVariant?.ShowOnWebsite &&
     matchingApiVariant?.ShowOnWebsite == true
   ) {
@@ -336,10 +300,7 @@ export async function syncVariantStock(
     itemDiscontinued = false;
   }
 
-  if (
-    matchingApiVariant?.ShowOnWebsite == undefined ||
-    matchingApiVariant?.ShowOnWebsite == false
-  ) {
+  if (matchingApiVariant?.ShowOnWebsite == undefined || matchingApiVariant?.ShowOnWebsite == false) {
     itemDiscontinued = true;
   }
 
@@ -349,17 +310,13 @@ export async function syncVariantStock(
     if (matchingStockVariant.StockAvailable > 0) {
       deliveryTimeInDays = 7;
     } else {
-      if (
-        matchingStockVariant.FirstAvailable &&
-        isFutureDate(matchingStockVariant.FirstAvailable)
-      ) {
+      if (matchingStockVariant.FirstAvailable && isFutureDate(matchingStockVariant.FirstAvailable)) {
         let today = new Date();
         let futureDate = new Date(matchingStockVariant.FirstAvailable);
         // @ts-ignore
         const diffTime = Math.abs(futureDate - today);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        deliveryTimeInDays =
-          diffDays + 7 + matchingApiVariant.DeliveryTimeInDays;
+        deliveryTimeInDays = diffDays + 7 + matchingApiVariant.DeliveryTimeInDays;
       } else {
         deliveryTimeInDays = 7;
       }
@@ -369,21 +326,15 @@ export async function syncVariantStock(
   }
 
   metafields.push({
-    id: variant.node.metafields.edges.find(
-      (meta: any) => meta.node.key == "available_date"
-    )?.node.id,
+    id: variant.node.metafields.edges.find((meta: any) => meta.node.key == "available_date")?.node.id,
     namespace: "custom",
     type: "date_time",
     key: "available_date",
-    value: matchingStockVariant
-      ? matchingStockVariant.FirstAvailable
-      : "9999-12-31T23:59:59Z",
+    value: matchingStockVariant ? matchingStockVariant.FirstAvailable : "9999-12-31T23:59:59Z",
   });
 
   metafields.push({
-    id: variant.node.metafields.edges.find(
-      (meta: any) => meta.node.key == "delivery_time"
-    )?.node.id,
+    id: variant.node.metafields.edges.find((meta: any) => meta.node.key == "delivery_time")?.node.id,
     namespace: "custom",
     type: "number_integer",
     key: "delivery_time",
@@ -391,21 +342,15 @@ export async function syncVariantStock(
   });
 
   metafields.push({
-    id: variant.node.metafields.edges.find(
-      (meta: any) => meta.node.key == "inventory_qty"
-    )?.node.id,
+    id: variant.node.metafields.edges.find((meta: any) => meta.node.key == "inventory_qty")?.node.id,
     namespace: "custom",
     type: "number_integer",
     key: "inventory_qty",
-    value: matchingStockVariant
-      ? matchingStockVariant.StockAvailable.toString()
-      : "0",
+    value: matchingStockVariant ? matchingStockVariant.StockAvailable.toString() : "0",
   });
 
   metafields.push({
-    id: variant.node.metafields.edges.find(
-      (meta: any) => meta.node.key == "nieuwkoop_last_inventory_sync"
-    )?.node.id,
+    id: variant.node.metafields.edges.find((meta: any) => meta.node.key == "nieuwkoop_last_inventory_sync")?.node.id,
     namespace: "custom",
     type: "date_time",
     key: "nieuwkoop_last_inventory_sync",
@@ -413,9 +358,7 @@ export async function syncVariantStock(
   });
 
   metafields.push({
-    id: variant.node.metafields.edges.find(
-      (meta: any) => meta.node.key == "item_discontinued"
-    )?.node.id,
+    id: variant.node.metafields.edges.find((meta: any) => meta.node.key == "item_discontinued")?.node.id,
     namespace: "custom",
     type: "boolean",
     key: "item_discontinued",
@@ -423,9 +366,7 @@ export async function syncVariantStock(
   });
 
   metafields.push({
-    id: variant.node.metafields.edges.find(
-      (meta: any) => meta.node.key == "cost_eur"
-    )?.node.id,
+    id: variant.node.metafields.edges.find((meta: any) => meta.node.key == "cost_eur")?.node.id,
     namespace: "custom",
     type: "number_decimal",
     key: "cost_eur",
@@ -490,27 +431,15 @@ export const createOptionTitle = (optionSize: any, matchingVariant: any) => {
     optionTitle += ` D ${matchingVariant.Length} cm`;
   }
 
-  if (
-    !optionSize &&
-    !matchingVariant.Diameter &&
-    !matchingVariant.Height &&
-    !matchingVariant.Length
-  ) {
+  if (!optionSize && !matchingVariant.Diameter && !matchingVariant.Height && !matchingVariant.Length) {
     optionTitle = matchingVariant?.ItemVariety_EN;
   }
-  optionTitle = optionTitle
-    .trim()
-    .replace(" Ø", " / Ø")
-    .replace(" V", " / V")
-    .replace(" D", " / D");
+  optionTitle = optionTitle.trim().replace(" Ø", " / Ø").replace(" V", " / V").replace(" D", " / D");
 
   return optionTitle;
 };
 
-export const updateProductDescription = async (
-  productId: any,
-  description: any
-) => {
+export const updateProductDescription = async (productId: any, description: any) => {
   let product = {
     product: {
       id: productId,
@@ -518,16 +447,12 @@ export const updateProductDescription = async (
     },
   };
 
-  let updateProduct = await axios.put(
-    `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/products/${productId}.json`,
-    product,
-    {
-      headers: {
-        "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  let updateProduct = await axios.put(`https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/products/${productId}.json`, product, {
+    headers: {
+      "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
+      "Content-Type": "application/json",
+    },
+  });
 
   return updateProduct.data;
 };
@@ -540,16 +465,12 @@ export const updateVariantCost = async (inventoryItemId: any, cost: any) => {
     },
   };
 
-  let updateCost = await axios.put(
-    `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/inventory_items/${inventoryItemId}.json`,
-    inventory_item,
-    {
-      headers: {
-        "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  let updateCost = await axios.put(`https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/inventory_items/${inventoryItemId}.json`, inventory_item, {
+    headers: {
+      "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
+      "Content-Type": "application/json",
+    },
+  });
 
   return updateCost.data;
 };
@@ -568,24 +489,16 @@ export const createRangeTags = async (matchingVariant: any) => {
   if (!matchingVariant) {
     return "";
   }
-  let tag = "";
+  let tag = ",";
   if (matchingVariant.Height) {
-    let matchingHeight = ITEM_HEIGHTS.find(
-      (height) =>
-        matchingVariant.Height >= height.min &&
-        matchingVariant.Height <= height.max
-    );
+    let matchingHeight = ITEM_HEIGHTS.find((height) => matchingVariant.Height >= height.min && matchingVariant.Height <= height.max);
     if (matchingHeight) {
       tag += matchingHeight.tag + ",";
     }
   }
 
   if (matchingVariant.Diameter) {
-    let matchingDiameter = ITEM_DIAMETERS.find(
-      (diameter) =>
-        matchingVariant.Diameter >= diameter.min &&
-        matchingVariant.Diameter <= diameter.max
-    );
+    let matchingDiameter = ITEM_DIAMETERS.find((diameter) => matchingVariant.Diameter >= diameter.min && matchingVariant.Diameter <= diameter.max);
     if (matchingDiameter) {
       tag += matchingDiameter.tag + ",";
     }
@@ -654,16 +567,12 @@ export const get_order_by_id = async (order_id: string) => {
     }
   );
 
-  let is_POS_order =
-    data?.data?.node?.sourceIdentifier?.includes("-") &&
-    data?.data?.node?.customer === null;
+  let is_POS_order = data?.data?.node?.sourceIdentifier?.includes("-") && data?.data?.node?.customer === null;
 
   // return empty array if order is POS order or it's not an order
   if (!data.data.node || is_POS_order) return [];
 
-  const is_np_order = data?.data?.node?.lineItems?.edges?.some((item: any) =>
-    item?.node?.product?.tags.includes("Nieuwkoop")
-  );
+  const is_np_order = data?.data?.node?.lineItems?.edges?.some((item: any) => item?.node?.product?.tags.includes("Nieuwkoop"));
 
   if (!is_np_order) return [];
 
@@ -738,11 +647,7 @@ export const get_orders = async () => {
 export const getNextMonday = (date: Date): Date => {
   const day = date.getDay();
   let diff = 7 - ((day - 1) % 7);
-  let nextMonday = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate() + diff
-  );
+  let nextMonday = new Date(date.getFullYear(), date.getMonth(), date.getDate() + diff);
   let gmtNextMonday = new Date(nextMonday.getTime() + 1000 * 60 * 60 * 2);
   return new Date(gmtNextMonday);
 };
@@ -758,9 +663,7 @@ type SalesOrderLine = {
 };
 
 export const createApiSalesOrder = async (order: SalesOrder) => {
-  const auth = Buffer.from(
-    `${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`
-  ).toString("base64");
+  const auth = Buffer.from(`${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`).toString("base64");
   const api_order = await axios.post(`${NIEUWKOOP_API_SALESORDER}`, order, {
     headers: {
       Authorization: `Basic ${auth}`,
@@ -770,11 +673,7 @@ export const createApiSalesOrder = async (order: SalesOrder) => {
   return api_order.data;
 };
 
-export const tagOrder = async (
-  shopifyOrderId: any,
-  tags: string,
-  tag: string
-) => {
+export const tagOrder = async (shopifyOrderId: any, tags: string, tag: string) => {
   let newTags = tags + ", " + tag;
   let order = {
     order: {
@@ -783,25 +682,17 @@ export const tagOrder = async (
     },
   };
 
-  let tagOrder = await axios.put(
-    `https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/orders/${shopifyOrderId}.json`,
-    order,
-    {
-      headers: {
-        "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  let tagOrder = await axios.put(`https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/orders/${shopifyOrderId}.json`, order, {
+    headers: {
+      "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
+      "Content-Type": "application/json",
+    },
+  });
 
   return tagOrder.data;
 };
 
-export const updateOrderAttributesAndTags = async (
-  shopifyOrderId: any,
-  attributes: any,
-  tags: any
-) => {
+export const updateOrderAttributesAndTags = async (shopifyOrderId: any, attributes: any, tags: any) => {
   let query = `
     mutation updateOrderAttributesAndTags($input: OrderInput!) {
       orderUpdate(input: $input) {
