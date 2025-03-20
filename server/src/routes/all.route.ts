@@ -44,7 +44,7 @@ router.get("/variants/update/specs", update_specs);
 router.post("/stores/order-pickup-notification-sms", order_pickup_notification_sms);
 
 // ====================== INVENTORY SYNC ======================
-const MAX_REQUEST_AGE_MS = 5 * 60 * 1000;
+const MAX_REQUEST_AGE_MS = 3 * 60 * 1000;
 let isProcessingInventorySync = false;
 const requestSet = new Set<string>(); // Store unique request identifiers
 
