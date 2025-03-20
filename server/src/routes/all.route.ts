@@ -40,19 +40,26 @@ router.get("/tags", tags);
 router.get("/variant-store-inventory", variant_store_inventory);
 router.get("/variants/update/cost/eur", update_cost_eur);
 router.get("/variants/update/specs", update_specs);
-router.post(
-  "/stores/order-pickup-notification-sms",
-  order_pickup_notification_sms
-);
+router.post("/stores/order-pickup-notification-sms", order_pickup_notification_sms);
 
 // ====================== INVENTORY SYNC ======================
 let isProcessingInventorySync = false;
+const requestSet = new Set<string>(); // Store unique request identifiers
+
+const generateRequestKey = (req: Request): string => {
+  return JSON.stringify(req.body);
+};
+
 const processQueueInventorySync = async () => {
   if (isProcessingInventorySync || requestQueue.length === 0) {
     return;
   }
   isProcessingInventorySync = true;
+
   const { req, res } = requestQueue.shift()!;
+  const requestKey = generateRequestKey(req);
+  requestSet.delete(requestKey); // Remove from tracking set
+
   try {
     await stores_inventory_sync_on_inventory_level_update(req, res);
   } catch (error) {
@@ -66,8 +73,15 @@ const processQueueInventorySync = async () => {
 };
 
 router.post("/stores/inventory-sync", (req: Request, res: Response) => {
-  requestQueue.push({ req, res });
-  processQueueInventorySync();
+  const requestKey = generateRequestKey(req);
+
+  if (!requestSet.has(requestKey)) {
+    requestSet.add(requestKey); // Track unique request
+    requestQueue.push({ req, res });
+    processQueueInventorySync();
+  } else {
+    res.status(429).json({ message: "Duplicate request ignored" });
+  }
 });
 // ====================== END INVENTORY SYNC ======================
 
