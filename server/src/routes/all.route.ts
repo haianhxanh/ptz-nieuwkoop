@@ -24,6 +24,7 @@ const router = express.Router();
 interface QueueItem {
   req: Request;
   res: Response;
+  timestamp: number;
 }
 const requestQueue: QueueItem[] = [];
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -43,6 +44,7 @@ router.get("/variants/update/specs", update_specs);
 router.post("/stores/order-pickup-notification-sms", order_pickup_notification_sms);
 
 // ====================== INVENTORY SYNC ======================
+const MAX_REQUEST_AGE_MS = 5 * 60 * 1000;
 let isProcessingInventorySync = false;
 const requestSet = new Set<string>(); // Store unique request identifiers
 
@@ -54,11 +56,16 @@ const processQueueInventorySync = async () => {
   if (isProcessingInventorySync || requestQueue.length === 0) {
     return;
   }
-  isProcessingInventorySync = true;
-
-  const { req, res } = requestQueue.shift()!;
+  const currentTime = Date.now();
+  const { req, res, timestamp } = requestQueue.shift()!;
   const requestKey = generateRequestKey(req);
   requestSet.delete(requestKey); // Remove from tracking set
+
+  if (!timestamp || currentTime - timestamp > MAX_REQUEST_AGE_MS) {
+    console.warn("Skipping outdated or invalid request");
+    return processQueueInventorySync();
+  }
+  isProcessingInventorySync = true;
 
   try {
     await stores_inventory_sync_on_inventory_level_update(req, res);
@@ -74,10 +81,11 @@ const processQueueInventorySync = async () => {
 
 router.post("/stores/inventory-sync", (req: Request, res: Response) => {
   const requestKey = generateRequestKey(req);
+  const timestamp = Date.now();
 
   if (!requestSet.has(requestKey)) {
     requestSet.add(requestKey); // Track unique request
-    requestQueue.push({ req, res });
+    requestQueue.push({ req, res, timestamp });
     processQueueInventorySync();
   } else {
     return res.status(200).json({ message: "Duplicate request ignored" });
