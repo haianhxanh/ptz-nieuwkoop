@@ -64,7 +64,7 @@ const processQueueInventorySync = async () => {
     await stores_inventory_sync_on_inventory_level_update(req, res);
   } catch (error) {
     console.error("Error processing request:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(200).json({ message: "Internal server error" });
   } finally {
     await delay(500);
     isProcessingInventorySync = false;
@@ -80,7 +80,7 @@ router.post("/stores/inventory-sync", (req: Request, res: Response) => {
     requestQueue.push({ req, res });
     processQueueInventorySync();
   } else {
-    res.status(429).json({ message: "Duplicate request ignored" });
+    return res.status(200).json({ message: "Duplicate request ignored" });
   }
 });
 // ====================== END INVENTORY SYNC ======================
