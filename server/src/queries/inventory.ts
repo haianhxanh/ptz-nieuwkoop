@@ -1,23 +1,19 @@
 import { gql } from "graphql-request";
 
 export const inventoryQuery = gql`
-  query ($query: String!, $locationId: ID!) {
-    productVariants(first: 1, query: $query) {
-      edges {
-        node {
+  query ($locationId: ID!, $id: ID!) {
+    productVariant(id: $id) {
+      id
+      inventoryItem {
+        variant {
           id
-          inventoryItem {
-            variant {
-              id
-            }
-            inventoryHistoryUrl
-            inventoryLevel(locationId: $locationId) {
-              id
-              quantities(names: ["committed", "available", "on_hand"]) {
-                name
-                quantity
-              }
-            }
+        }
+        inventoryHistoryUrl
+        inventoryLevel(locationId: $locationId) {
+          id
+          quantities(names: ["committed", "available", "on_hand"]) {
+            name
+            quantity
           }
         }
       }
