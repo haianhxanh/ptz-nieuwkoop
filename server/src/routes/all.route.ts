@@ -20,6 +20,7 @@ import { gift_card_create } from "../app_gift_cards/gift_card_create.controller"
 import { gift_card_update } from "../app_gift_cards/gift_card_update.controller";
 import { order_update_ready_for_pickup } from "../controllers/order_update_ready_for_pickup.controller";
 import { stores_price_sync } from "../app_stores_sync/stores_price_sync.controller";
+import { sync_variants_bulk } from "../controllers/sync_variants_bulk.controller";
 const router = express.Router();
 interface QueueItem {
   req: Request;
@@ -35,6 +36,7 @@ router.get("/get-app-metaobject", get_app_metaobject);
 router.post("/update-app-metaobject", update_app_metaobject);
 router.post("/import-products", import_products);
 router.get("/sync-variants", auth, sync_variants);
+router.get("/sync-variants-bulk", sync_variants_bulk);
 router.get("/all-variants", all_variants);
 router.post("/post-order", auth, post_order);
 router.get("/tags", tags);

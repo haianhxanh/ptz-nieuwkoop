@@ -1,9 +1,6 @@
 import axios from "axios";
 const { SLACK_WEBHOOK_URL, SLACK_DEVELOPER_WEBHOOK_URL } = process.env;
-export const send_slack_notification = async (
-  discontinuedItems: any,
-  costUpdatedItems: any
-) => {
+export const send_slack_notification = async (discontinuedItems: any, costUpdatedItems: any) => {
   let discontinuedItemsMessage = "";
   let discontinuedItemsBulletPoints: any = [];
   let formattedBulletPoints;
@@ -13,9 +10,7 @@ export const send_slack_notification = async (
       discontinuedItemsBulletPoints.push(`<${item.product}|${item.sku}>`);
     });
     if (discontinuedItemsBulletPoints.length > 0) {
-      formattedBulletPoints = discontinuedItemsBulletPoints
-        .map((point: any) => `• ${point}`)
-        .join("\n");
+      formattedBulletPoints = discontinuedItemsBulletPoints.map((point: any) => `• ${point}`).join("\n");
     }
 
     try {
@@ -23,10 +18,7 @@ export const send_slack_notification = async (
         text: `${discontinuedItemsMessage}\n\n${formattedBulletPoints}`,
       };
       const slackMessage = await axios.post(SLACK_WEBHOOK_URL || "", message);
-      const dev_slackMessage = await axios.post(
-        SLACK_DEVELOPER_WEBHOOK_URL || "",
-        message
-      );
+      const dev_slackMessage = await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", message);
     } catch (error) {
       console.error("Error sending notification:", error);
     }
@@ -37,14 +29,10 @@ export const send_slack_notification = async (
     let costUpdatedItemsBulletPoints: any = [];
     let formattedCostUpdatedBulletPoints;
     costUpdatedItems.forEach((item: any) => {
-      costUpdatedItemsBulletPoints.push(
-        `<${item.product}|${item.sku}>: € ${item.oldCost} -> € ${item.newCost}`
-      );
+      costUpdatedItemsBulletPoints.push(`<${item.product}|${item.sku}>: € ${item.oldCost} -> € ${item.newCost}`);
     });
     if (costUpdatedItemsBulletPoints.length > 0) {
-      formattedCostUpdatedBulletPoints = costUpdatedItemsBulletPoints
-        .map((point: any) => `• ${point}`)
-        .join("\n");
+      formattedCostUpdatedBulletPoints = costUpdatedItemsBulletPoints.map((point: any) => `• ${point}`).join("\n");
     }
 
     try {
@@ -52,12 +40,20 @@ export const send_slack_notification = async (
         text: `${costUpdatedItemsMessage}\n\n${formattedCostUpdatedBulletPoints}`,
       };
       const slackMessage = await axios.post(SLACK_WEBHOOK_URL || "", message);
-      const dev_slackMessage = await axios.post(
-        SLACK_DEVELOPER_WEBHOOK_URL || "",
-        message
-      );
+      const dev_slackMessage = await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", message);
     } catch (error) {
       console.error("Error sending notification:", error);
     }
+  }
+};
+
+export const notify_dev = async (errorType: string, errors: any) => {
+  try {
+    const message = {
+      text: `${errorType}: ${JSON.stringify(errors)}`,
+    };
+    const slackMessage = await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", message);
+  } catch (error) {
+    console.error("Error sending notification:", error);
   }
 };

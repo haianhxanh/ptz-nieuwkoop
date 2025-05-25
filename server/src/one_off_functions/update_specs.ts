@@ -16,28 +16,18 @@ dotenv.config();
 export const update_specs = async (req: Request, res: Response) => {
   try {
     const query = "tag:'Nieuwkoop'";
-    let variants = await allVariants(
-      query,
-      PTZ_STORE_URL as string,
-      PTZ_ACCESS_TOKEN as string
-    );
+    let variants = await allVariants(query, PTZ_STORE_URL as string, PTZ_ACCESS_TOKEN as string);
     for (const [index, variant] of variants.entries()) {
-      let specs = variant.node.metafields.edges.find(
-        (meta: any) => meta.node.key == "specifikace"
-      );
+      let specs = variant.node.metafields.edges.find((meta: any) => meta.node.key == "specifikace");
       if (!specs || !specs.node.value.includes("undefined")) {
         continue;
       }
-      if (
-        specs.node.value.includes("undefined") &&
-        variant.node.sku &&
-        variant.node.sku != ""
-      ) {
+      if (specs.node.value.includes("undefined") && variant.node.sku && variant.node.sku != "") {
         let matchingApiVariant = await getApiVariant(variant.node.sku);
-        if (matchingApiVariant.length == 0) {
+        if (!matchingApiVariant) {
           continue;
         }
-        let variantSpecs = await createVariantSpecs(matchingApiVariant[0]);
+        let variantSpecs = await createVariantSpecs(matchingApiVariant);
         let specsMetaId = specs.node.id;
 
         let updatedVariant = await axios
@@ -75,12 +65,7 @@ export const update_specs = async (req: Request, res: Response) => {
             console.error(error);
           });
         await sleep(500);
-        console.log(
-          index +
-            ". " +
-            updatedVariant?.data?.productVariantsBulkUpdate?.productVariants[0]
-              ?.sku
-        );
+        console.log(index + ". " + updatedVariant?.data?.productVariantsBulkUpdate?.productVariants[0]?.sku);
       }
     }
     res.status(200).json({ message: "Cost EUR updated successfully" });

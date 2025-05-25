@@ -40,11 +40,11 @@ export const import_products = async (req: Request, res: Response) => {
       let newProduct;
       let existingProduct;
       let matchingProduct = await getApiVariant(product[0]);
-      let itemVariety = matchingProduct[0]?.ItemVariety_EN;
+      let itemVariety = matchingProduct?.ItemVariety_EN;
       let tags = ",";
 
-      if (matchingProduct[0]?.Tags) {
-        for (const tagObj of matchingProduct[0].Tags) {
+      if (matchingProduct?.Tags) {
+        for (const tagObj of matchingProduct.Tags) {
           const tagValue = await getTag(tagObj);
           if (tagValue) {
             tags += tagValue + ",";
@@ -52,12 +52,12 @@ export const import_products = async (req: Request, res: Response) => {
         }
       }
 
-      let firstVariantHeightAndDiameterTag = await createRangeTags(matchingProduct[0]);
+      let firstVariantHeightAndDiameterTag = await createRangeTags(matchingProduct);
       tags += firstVariantHeightAndDiameterTag + ",";
       tags += "Nieuwkoop ,";
       tags += "Pending approval" + ",";
 
-      let productTitle = matchingProduct[0].ItemDescription_EN;
+      let productTitle = matchingProduct.ItemDescription_EN;
       if (itemVariety) {
         productTitle = productTitle + " " + itemVariety;
       }
@@ -78,9 +78,9 @@ export const import_products = async (req: Request, res: Response) => {
       }
 
       if (!existingProduct) {
-        if (matchingProduct && matchingProduct.length > 0) {
+        if (matchingProduct) {
           let firstVariantInventoryPolicy = "continue";
-          let firstVariantStock = await getVariantStock(matchingProduct[0].Itemcode);
+          let firstVariantStock = await getVariantStock(matchingProduct.Itemcode);
           let firstVariantAvailable = firstVariantStock.FirstAvailable;
           if (firstVariantStock.StockAvailable <= 0 && isFutureDate(firstVariantAvailable)) {
             firstVariantInventoryPolicy = "continue";
@@ -98,17 +98,17 @@ export const import_products = async (req: Request, res: Response) => {
               // @ts-ignore
               const diffTime = Math.abs(futureDate - today);
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              firstVariantDeliveryTime = diffDays + 7 + matchingProduct[0].DeliveryTimeInDays;
+              firstVariantDeliveryTime = diffDays + 7 + matchingProduct.DeliveryTimeInDays;
             } else {
-              firstVariantDeliveryTime = matchingProduct[0].DeliveryTimeInDays + 7;
+              firstVariantDeliveryTime = matchingProduct.DeliveryTimeInDays + 7;
             }
           }
 
-          let firstOptionSize = extractSizeInTitles(matchingProduct[0].ItemDescription_EN);
+          let firstOptionSize = extractSizeInTitles(matchingProduct.ItemDescription_EN);
 
-          let firstOptionTitle = createOptionTitle(firstOptionSize, matchingProduct[0]);
+          let firstOptionTitle = createOptionTitle(firstOptionSize, matchingProduct);
 
-          let firstVariantSpecs = await createVariantSpecs(matchingProduct[0]);
+          let firstVariantSpecs = await createVariantSpecs(matchingProduct);
 
           newProduct = {
             product: {
@@ -127,11 +127,11 @@ export const import_products = async (req: Request, res: Response) => {
               variants: [
                 {
                   option1: firstOptionTitle,
-                  sku: matchingProduct[0].Itemcode,
-                  price: Math.ceil(matchingProduct[0].Salesprice * 26 * 2 * 1.21).toFixed(0),
+                  sku: matchingProduct.Itemcode,
+                  price: Math.ceil(matchingProduct.Salesprice * 26 * 2 * 1.21).toFixed(0),
                   inventory_quantity: 0,
-                  grams: matchingProduct[0].Weight.toFixed(2) * 1000,
-                  barcode: matchingProduct[0].GTINCode,
+                  grams: matchingProduct.Weight.toFixed(2) * 1000,
+                  barcode: matchingProduct.GTINCode,
                   inventory_management: "shopify",
                   inventory_policy: firstVariantInventoryPolicy,
                   requires_shipping: true,
@@ -162,7 +162,7 @@ export const import_products = async (req: Request, res: Response) => {
                     },
                     {
                       key: "cost_eur",
-                      value: matchingProduct[0].Salesprice,
+                      value: matchingProduct.Salesprice,
                       value_type: "number_decimal",
                       namespace: "custom",
                     },
@@ -176,10 +176,10 @@ export const import_products = async (req: Request, res: Response) => {
             for (const [index, variant] of product.entries()) {
               let matchingVariant = await getApiVariant(variant);
               let variantInventoryPolicy = "continue";
-              let variantStock = await getVariantStock(matchingVariant[0].Itemcode);
+              let variantStock = await getVariantStock(matchingVariant.Itemcode);
               let variantAvailable = variantStock.FirstAvailable;
 
-              let variantHeightAndDiameterTag = await createRangeTags(matchingVariant[0]);
+              let variantHeightAndDiameterTag = await createRangeTags(matchingVariant);
               newProduct.product.tags += variantHeightAndDiameterTag + ",";
 
               if (variantStock.StockAvailable <= 0 && isFutureDate(variantAvailable)) {
@@ -199,16 +199,16 @@ export const import_products = async (req: Request, res: Response) => {
                   // @ts-ignore
                   const diffTime = Math.abs(futureDate - today);
                   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  variantDeliveryTime = diffDays + 7 + matchingVariant[0].DeliveryTimeInDays;
+                  variantDeliveryTime = diffDays + 7 + matchingVariant.DeliveryTimeInDays;
                 } else {
-                  variantDeliveryTime = matchingVariant[0].DeliveryTimeInDays + 7;
+                  variantDeliveryTime = matchingVariant.DeliveryTimeInDays + 7;
                 }
               }
 
-              let optionSize = extractSizeInTitles(matchingVariant[0].ItemDescription_EN);
+              let optionSize = extractSizeInTitles(matchingVariant.ItemDescription_EN);
 
-              let optionTitle = createOptionTitle(optionSize, matchingVariant[0]);
-              let variantSpecs = await createVariantSpecs(matchingVariant[0]);
+              let optionTitle = createOptionTitle(optionSize, matchingVariant);
+              let variantSpecs = await createVariantSpecs(matchingVariant);
 
               if (index > 0) {
                 const assembledVariant = assembleVariant(
@@ -321,7 +321,7 @@ export const import_products = async (req: Request, res: Response) => {
             try {
               let inventoryItemId = variant.inventory_item_id;
               let apiVariant = await getApiVariant(variant.sku);
-              let variantCost = Math.ceil(apiVariant[0].Salesprice * 26).toFixed(2);
+              let variantCost = Math.ceil(apiVariant.Salesprice * 26).toFixed(2);
               let addVariantCost = await updateVariantCost(inventoryItemId, variantCost);
               let variantObj = {
                 productId: newProductId,

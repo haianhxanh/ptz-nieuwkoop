@@ -23,6 +23,8 @@ export const variant_store_inventory = async (req: Request, res: Response) => {
       return res.status(200).json({ message: "Store not found" });
     }
 
+    const variants = await allVariants("status:ACTIVE", stores.origin.storeUrl as string, stores.origin.accessToken as string);
+
     const shopifyClient = new GraphQLClient(`https://${stores?.origin.storeUrl}/admin/api/${API_VERSION}/graphql.json`, {
       // @ts-ignore
       headers: {
@@ -30,32 +32,41 @@ export const variant_store_inventory = async (req: Request, res: Response) => {
       },
     });
 
-    const apiVariant = await shopifyClient.request(inventoryQuery, {
-      id: variantId,
-      locationId: stores?.origin.locationId,
-    });
+    for (const [index, variant] of variants.entries()) {
+      console.log("sku", variant.node.sku, index + 1, "of", variants.length);
 
-    if (!apiVariant?.productVariant?.id) {
-      return res.status(200).json({ message: "Variant not found" });
-    }
-
-    let metafields = [];
-    metafields.push({
-      namespace: "custom",
-      type: "number_integer",
-      key: "store_availability",
-      value: apiVariant?.productVariant?.inventoryItem?.inventoryLevel?.quantities[1]?.quantity?.toString() || "0",
-      ownerId: variantId,
-    });
-
-    try {
-      const variantStock = await shopifyClient.request(metafieldsSet, {
-        metafields: metafields,
+      const apiVariant = await shopifyClient.request(inventoryQuery, {
+        id: variant.node.id,
+        locationId: stores?.origin.locationId,
       });
-      return res.status(200).json(variantStock);
-    } catch (error) {
-      console.log(error);
+
+      if (!apiVariant?.productVariant?.id) {
+        return res.status(200).json({ message: "Variant not found" });
+      }
+
+      let metafields = [];
+      metafields.push({
+        namespace: "custom",
+        type: "number_integer",
+        key: "store_availability",
+        value: apiVariant?.productVariant?.inventoryItem?.inventoryLevel?.quantities[1]?.quantity?.toString() || "0",
+        ownerId: variant.node.id,
+      });
+
+      try {
+        const variantStock = await shopifyClient.request(metafieldsSet, {
+          metafields: metafields,
+        });
+        console.log("variantStock updated", variant.node.id);
+
+        // return res.status(200).json(variantStock);
+      } catch (error) {
+        console.log(error);
+        return res.status(200).json(error);
+      }
+      await sleep(500);
     }
+    return res.status(200).json({ message: "All variants updated" });
   } catch (error) {
     res.status(200).json({ message: "Internal server error" });
   }

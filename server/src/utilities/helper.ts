@@ -93,7 +93,7 @@ export async function getApiVariant(sku: any) {
   });
 
   if (variant?.data) {
-    if (variant?.data?.length > 0) return variant.data;
+    if (variant?.data?.length > 0) return variant.data[0];
     return null;
   } else {
     return null;
@@ -370,7 +370,7 @@ export async function syncVariantStock(variant: any, matchingStockVariant: any, 
     namespace: "custom",
     type: "number_decimal",
     key: "cost_eur",
-    value: matchingApiVariant?.Salesprice.toString(),
+    value: matchingApiVariant?.Salesprice ? matchingApiVariant?.Salesprice.toString() : "0",
   });
 
   let input = {
@@ -380,11 +380,8 @@ export async function syncVariantStock(variant: any, matchingStockVariant: any, 
   } as VariantUpdateInput;
 
   if (!itemDiscontinued) {
-    // input.price = (matchingApiVariant?.Salesprice * 26 * 2 * 1.21)
-    //   .toFixed(0)
-    //   .toString();
     input.inventoryItem = {
-      cost: (matchingApiVariant?.Salesprice * 26).toString(),
+      cost: matchingApiVariant?.Salesprice ? (matchingApiVariant?.Salesprice * 26).toString() : "0",
     };
   }
 
@@ -733,4 +730,107 @@ export const updateOrderAttributesAndTags = async (shopifyOrderId: any, attribut
   });
 
   return response.data;
+};
+
+export const createProductMetafields = (variant: any, matchingApiVariant: any, matchingStockVariant: any) => {
+  const deliveryTimeInDays = getDeliveryTimeInDays(matchingStockVariant, matchingApiVariant);
+  const itemDiscontinued = setItemDiscontinuedStatus(matchingApiVariant);
+
+  const metafields = [];
+  metafields.push({
+    id: variant.metafields.find((meta: any) => meta.key == "available_date")?.id,
+    namespace: "custom",
+    type: "date_time",
+    key: "available_date",
+    value: matchingStockVariant ? matchingStockVariant?.FirstAvailable : "9999-12-31T23:59:59Z",
+  });
+
+  metafields.push({
+    id: variant.metafields.find((meta: any) => meta.key == "delivery_time")?.id,
+    namespace: "custom",
+    type: "number_integer",
+    key: "delivery_time",
+    value: deliveryTimeInDays.toString(),
+  });
+
+  metafields.push({
+    id: variant.metafields.find((meta: any) => meta.key == "inventory_qty")?.id,
+    namespace: "custom",
+    type: "number_integer",
+    key: "inventory_qty",
+    value: matchingStockVariant ? matchingStockVariant.StockAvailable?.toString() : "0",
+  });
+
+  metafields.push({
+    id: variant.metafields.find((meta: any) => meta.key == "nieuwkoop_last_inventory_sync")?.id,
+    namespace: "custom",
+    type: "date_time",
+    key: "nieuwkoop_last_inventory_sync",
+    value: new Date().toISOString(),
+  });
+
+  metafields.push({
+    id: variant.metafields.find((meta: any) => meta.key == "item_discontinued")?.id,
+    namespace: "custom",
+    type: "boolean",
+    key: "item_discontinued",
+    value: itemDiscontinued ? "true" : "false",
+  });
+
+  metafields.push({
+    id: variant.metafields.find((meta: any) => meta.key == "cost_eur")?.id,
+    namespace: "custom",
+    type: "number_decimal",
+    key: "cost_eur",
+    value: matchingApiVariant?.Salesprice ? matchingApiVariant?.Salesprice.toString() : "0",
+  });
+
+  return metafields;
+};
+
+const getDeliveryTimeInDays = (matchingApiVariant: any, matchingStockVariant: any) => {
+  if (matchingApiVariant && matchingStockVariant) {
+    if (matchingStockVariant.StockAvailable > 0) {
+      return 7;
+    } else {
+      if (matchingStockVariant.FirstAvailable && isFutureDate(matchingStockVariant.FirstAvailable)) {
+        let today = new Date() as any;
+        let futureDate = new Date(matchingStockVariant.FirstAvailable) as any;
+        const diffTime = Math.abs(futureDate - today);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays + 7 + matchingApiVariant.DeliveryTimeInDays;
+      } else {
+        return 7;
+      }
+    }
+  } else {
+    return 999;
+  }
+};
+
+const setItemDiscontinuedStatus = (matchingApiVariant: any) => {
+  return matchingApiVariant?.ShowOnWebsite ? false : true;
+};
+
+export const setContinueSelling = (matchingApiVariant: any, matchingStockVariant: any) => {
+  if (
+    !matchingStockVariant ||
+    !matchingApiVariant ||
+    (matchingStockVariant.StockAvailable == 0 && matchingApiVariant.DeliveryTimeInDays == 999) ||
+    matchingApiVariant.ShowOnWebsite == false ||
+    matchingApiVariant.ShowOnWebsite == undefined ||
+    matchingApiVariant.ItemStatus != "A"
+  ) {
+    return false;
+  }
+
+  if (
+    matchingStockVariant &&
+    matchingApiVariant &&
+    (matchingApiVariant?.ItemStatus == "A" || (matchingApiVariant?.ItemStatus == "D" && matchingStockVariant?.StockAvailable > 0)) &&
+    matchingApiVariant?.ShowOnWebsite &&
+    matchingApiVariant?.ShowOnWebsite == true
+  ) {
+    return true;
+  }
 };
