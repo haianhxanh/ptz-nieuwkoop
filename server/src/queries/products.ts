@@ -39,6 +39,9 @@ export const bulkQueryGetProducts = `#graphql
                   }
                 }
               }
+              metafield(namespace: "custom", key: "nieuwkoop_last_inventory_sync") {
+                value
+              }
             }
           }
         }

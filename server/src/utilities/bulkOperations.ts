@@ -1,8 +1,8 @@
 import { queryCurrentBulkOperation } from "../queries/bulkOperations";
 import { shopifyClient } from "./helper";
+
 export async function initiateShopifyBulkOperation(query: string) {
   const response = await shopifyClient.request(query);
-  return response;
   if (response.data?.bulkOperationRunQuery?.userErrors?.length > 0) {
     throw new Error(`Shopify bulk operation errors: ${JSON.stringify(response.data.bulkOperationRunQuery.userErrors)}`);
   }
@@ -75,6 +75,7 @@ export async function mapProductsData(objects: any[]) {
         tags: object.tags,
         status: object.status,
         variants: variantsData,
+        nieuwkoop_last_inventory_sync: object.metafield?.value ? new Date(object.metafield?.value) : "2000-01-01T00:00:00.000Z",
       };
       productsData.push(product);
     }

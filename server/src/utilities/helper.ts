@@ -834,3 +834,9 @@ export const setContinueSelling = (matchingApiVariant: any, matchingStockVariant
     return true;
   }
 };
+
+export const sortProductsByLastInventorySync = (products: any[]) => {
+  return products.sort((a, b) => {
+    return new Date(a.nieuwkoop_last_inventory_sync).getTime() - new Date(b.nieuwkoop_last_inventory_sync).getTime();
+  });
+};
