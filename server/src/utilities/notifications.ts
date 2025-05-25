@@ -2,20 +2,13 @@ import axios from "axios";
 const { SLACK_WEBHOOK_URL, SLACK_DEVELOPER_WEBHOOK_URL } = process.env;
 export const send_slack_notification = async (discontinuedItems: any, costUpdatedItems: any) => {
   let discontinuedItemsMessage = "";
-  let discontinuedItemsBulletPoints: any = [];
-  let formattedBulletPoints;
+  // join discontinuedItems with comma
+  const discontinuedItemsString = discontinuedItems.map((item: any) => `<${item.product}|${item.sku}>`).join(", ");
   if (discontinuedItems.length > 0) {
     discontinuedItemsMessage = "There are discontinued items as follows:";
-    discontinuedItems.forEach((item: any) => {
-      discontinuedItemsBulletPoints.push(`<${item.product}|${item.sku}>`);
-    });
-    if (discontinuedItemsBulletPoints.length > 0) {
-      formattedBulletPoints = discontinuedItemsBulletPoints.map((point: any) => `• ${point}`).join("\n");
-    }
-
     try {
       const message = {
-        text: `${discontinuedItemsMessage}\n\n${formattedBulletPoints}`,
+        text: `${discontinuedItemsMessage}\n\n${discontinuedItemsString}`,
       };
       const slackMessage = await axios.post(SLACK_WEBHOOK_URL || "", message);
       const dev_slackMessage = await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", message);
