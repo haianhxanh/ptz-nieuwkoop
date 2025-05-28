@@ -77,7 +77,7 @@ export const sync_variants_bulk = async (req: Request, res: Response) => {
         productVariantsToUpdate.push(variantToUpdate);
 
         if (!matchingApiVariant || !matchingStockVariant) {
-          // if already discontinued, don't add to discontinuedItems to avoid multiple notifications          
+          // if already discontinued, don't add to discontinuedItems to avoid multiple notifications
           if (!discontinuedMeta || Boolean(discontinuedMeta.value) == false) {
             discontinuedItems.push({
               sku: variant.sku,
