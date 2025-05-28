@@ -816,23 +816,15 @@ export const setContinueSelling = (matchingApiVariant: any, matchingStockVariant
   if (
     !matchingStockVariant ||
     !matchingApiVariant ||
-    (matchingStockVariant.StockAvailable == 0 && matchingApiVariant.DeliveryTimeInDays == 999) ||
+    (matchingStockVariant?.StockAvailable == 0 && matchingApiVariant?.DeliveryTimeInDays == 999) ||
     matchingApiVariant.ShowOnWebsite == false ||
     matchingApiVariant.ShowOnWebsite == undefined ||
-    matchingApiVariant.ItemStatus != "A"
+    (matchingApiVariant?.ItemStatus != "A" && matchingApiVariant?.StockAvailable <= 0)
   ) {
     return false;
   }
 
-  if (
-    matchingStockVariant &&
-    matchingApiVariant &&
-    (matchingApiVariant?.ItemStatus == "A" || (matchingApiVariant?.ItemStatus == "D" && matchingStockVariant?.StockAvailable > 0)) &&
-    matchingApiVariant?.ShowOnWebsite &&
-    matchingApiVariant?.ShowOnWebsite == true
-  ) {
-    return true;
-  }
+  return true;
 };
 
 export const sortProductsByLastInventorySync = (products: any[]) => {

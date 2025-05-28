@@ -50,6 +50,7 @@ export const sync_variants_bulk = async (req: Request, res: Response) => {
         const matchingApiVariant = await getApiVariant(variant.sku);
 
         const costEurMeta = variant.metafields.find((meta: any) => meta.key == "cost_eur");
+        const discontinuedMeta = variant.metafields.find((meta: any) => meta.key == "item_discontinued");
         const costEur = costEurMeta ? parseFloat(costEurMeta.value) : 0;
         const productAdminUrl =
           STORE_ADMIN_PRODUCT_URL + product.id.replace("gid://shopify/Product/", "") + "/variants/" + variant.id.replace("gid://shopify/ProductVariant/", "");
@@ -76,12 +77,16 @@ export const sync_variants_bulk = async (req: Request, res: Response) => {
         productVariantsToUpdate.push(variantToUpdate);
 
         if (!matchingApiVariant || !matchingStockVariant) {
-          discontinuedItems.push({
-            sku: variant.sku,
-            product: productAdminUrl,
-          });
+          // if already discontinued, don't add to discontinuedItems to avoid multiple notifications          
+          if (!discontinuedMeta || Boolean(discontinuedMeta.value) == false) {
+            discontinuedItems.push({
+              sku: variant.sku,
+              product: productAdminUrl,
+            });
+          }
         }
       }
+
       const updatedProduct = await shopifyClient.request(productVariantsBulkUpdateQuery, {
         productId: product.id,
         variants: productVariantsToUpdate,
