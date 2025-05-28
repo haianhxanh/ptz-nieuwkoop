@@ -3,6 +3,7 @@ import logger from "morgan";
 import dotenv from "dotenv";
 import cors from "cors";
 import all_routes from "./routes/all.route";
+import wolt_routes from "./app_wolt/routes";
 import bodyParser from "body-parser";
 import { db } from "./database_connection/db_connect";
 
@@ -32,6 +33,7 @@ var corsOptions = {
 app.use(cors(corsOptions));
 
 app.use("/", all_routes);
+app.use("/wolt", wolt_routes);
 
 /*----Checking Database Connection-------------*/
 db.sync({ alter: true })
