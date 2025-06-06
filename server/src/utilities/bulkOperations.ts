@@ -1,15 +1,15 @@
 import { queryCurrentBulkOperation } from "../queries/bulkOperations";
-import { shopifyClient } from "./helper";
+import { GraphQLClient } from "graphql-request";
 
-export async function initiateShopifyBulkOperation(query: string) {
+export async function initiateShopifyBulkOperation(shopifyClient: GraphQLClient, query: string) {
   const response = await shopifyClient.request(query);
-  if (response.data?.bulkOperationRunQuery?.userErrors?.length > 0) {
-    throw new Error(`Shopify bulk operation errors: ${JSON.stringify(response.data.bulkOperationRunQuery.userErrors)}`);
+  if (response?.bulkOperationRunQuery?.userErrors?.length > 0) {
+    throw new Error(`Shopify bulk operation errors: ${JSON.stringify(response.bulkOperationRunQuery.userErrors)}`);
   }
-  return response.data?.bulkOperationRunQuery?.bulkOperation?.id;
+  return response?.bulkOperationRunQuery?.bulkOperation?.id;
 }
 
-export async function checkBulkOperationStatus() {
+export async function checkBulkOperationStatus(shopifyClient: GraphQLClient) {
   const response = await shopifyClient.request(queryCurrentBulkOperation);
   if (response?.errorCode) {
     throw new Error(`Shopify bulk operation errors: ${JSON.stringify(response.data.errorCode)}`);

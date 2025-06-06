@@ -127,14 +127,8 @@ export const ALL_STORES = [
 ];
 
 export const get_stores_by_location_id = (locationId: any) => {
-  let STORE_ORIGIN = ALL_STORES.find(
-    (store) => store.locationId === locationId
-  );
-  let STORE_DESTINATIONS = ALL_STORES.filter(
-    (store) =>
-      store.locationId !== STORE_ORIGIN?.locationId &&
-      store.index === STORE_ORIGIN?.index
-  );
+  let STORE_ORIGIN = ALL_STORES.find((store) => store.locationId === locationId);
+  let STORE_DESTINATIONS = ALL_STORES.filter((store) => store.locationId !== STORE_ORIGIN?.locationId && store.index === STORE_ORIGIN?.index);
 
   STORE_DESTINATIONS = STORE_DESTINATIONS.map((store) => ({
     ...store,
@@ -148,7 +142,28 @@ export const get_stores_by_location_id = (locationId: any) => {
 };
 
 export const remove_duplicated_objects = (array: any) => {
-  return array.filter(
-    (v: any, i: any, a: any) => a.findIndex((t: any) => t.sku === v.sku) === i
-  );
+  return array.filter((v: any, i: any, a: any) => a.findIndex((t: any) => t.sku === v.sku) === i);
+};
+
+export const get_store = (storeHandle: string) => {
+  if (PTZ_STORE_URL?.includes(storeHandle)) {
+    return {
+      storeUrl: PTZ_STORE_URL,
+      accessToken: PTZ_ACCESS_TOKEN,
+    };
+  } else if (DMP_STORE_URL?.includes(storeHandle)) {
+    return {
+      storeUrl: DMP_STORE_URL,
+      accessToken: DMP_ACCESS_TOKEN,
+    };
+  }
+  return null;
+};
+
+export const getYesterday = () => {
+  // get date in czech timezone (CET)
+  const date = new Date();
+  date.setHours(date.getHours() + 2);
+  date.setDate(date.getDate() - 1);
+  return date.toISOString().split("T")[0];
 };
