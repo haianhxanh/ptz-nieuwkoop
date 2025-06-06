@@ -16,9 +16,9 @@ export const sync_variants_bulk = async (req: Request, res: Response) => {
     // bulk query products with tag 'Nieuwkoop'
     let bulkOperation: any;
     let isCompleted = false;
-    await initiateShopifyBulkOperation(bulkQueryGetProducts);
+    await initiateShopifyBulkOperation(shopifyClient, bulkQueryGetProducts);
     while (!isCompleted) {
-      bulkOperation = await checkBulkOperationStatus();
+      bulkOperation = await checkBulkOperationStatus(shopifyClient);
       if (bulkOperation?.status === "COMPLETED") {
         isCompleted = true;
       } else if (["FAILED", "CANCELLED"].includes(bulkOperation.status)) {
