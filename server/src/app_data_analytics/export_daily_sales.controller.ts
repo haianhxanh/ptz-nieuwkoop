@@ -29,9 +29,12 @@ export const export_daily_sales = async (req: Request, res: Response) => {
 
     const bulkOperationUrl = await getBulkOperationUrl(store, date);
     const ordersData = await downloadBulkResults(bulkOperationUrl);
-    const orders = mapOrdersData(ordersData);
+    // return res.status(200).json({ message: "Orders data", ordersData });
+    const orders = mapOrdersData(ordersData, date);
     // const processedData = processOrdersData(store, orders, date); // test gross sales
     const processedData = orders; // test detailed data
+
+    // return res.status(200).json({ message: "Orders data", orders });
 
     try {
       const workbook = new ExcelJS.Workbook();
@@ -50,16 +53,18 @@ export const export_daily_sales = async (req: Request, res: Response) => {
   }
 };
 
-const mapOrdersData = (ordersData: any) => {
+const mapOrdersData = (ordersData: any, date: string) => {
   return ordersData
     .map((order: any) => {
       const lineItems = ordersData.filter((item: any) => item.__parentId === order.id);
       return {
+        date,
         id: order.id,
         name: order.name,
         subtotalPrice: order.subtotalPrice,
         lineItems,
         sourceName: order.sourceName,
+        shippingPrice: order.currentShippingPriceSet?.shopMoney?.amount || 0,
       };
     })
     .filter((order: any) => order.subtotalPrice);
@@ -143,12 +148,27 @@ const addDataToSheet = (store: any, worksheet: any, data: any) => {
   } else {
     // worksheet.addRow(["date", "gross_sales", "gross_sales_pos", "gross_sales_web"]);
     // worksheet.addRow([data.date, data.grossSales, data.grossSalesBySource.pos, data.grossSalesBySource.web]);
-
-    worksheet.addRow(["date", "order_number", "product_title", "total_price", "source"]);
+    worksheet.addRow(["date", "order_number", "product_title", "sku", "quantity", "line_unit_price", "line_total_price", "line_total_discount", "source"]);
     data.forEach((order: any) => {
       order.lineItems.forEach((item: any) => {
-        worksheet.addRow([data.date, order.name, item.title, item.originalTotalSet.shopMoney.amount, order.sourceName]);
+        const totalDiscount = item.discountAllocations
+          .reduce((acc: number, discount: any) => acc + parseFloat(discount.allocatedAmountSet.shopMoney.amount), 0)
+          .toFixed(2);
+        worksheet.addRow([
+          order.date,
+          order.name,
+          item.title,
+          item.sku,
+          item.quantity,
+          (item.originalUnitPriceSet?.shopMoney?.amount - totalDiscount / item.quantity).toFixed(2),
+          (item.originalTotalSet?.shopMoney?.amount - totalDiscount).toFixed(2),
+          totalDiscount > 0 ? totalDiscount : "",
+          order.sourceName,
+        ]);
       });
+      if (order.shippingPrice > 0) {
+        worksheet.addRow([order.date, order.name, "Doprava", "", 1, order.shippingPrice, order.shippingPrice, "", order.sourceName]);
+      }
     });
   }
 };

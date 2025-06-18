@@ -11,10 +11,22 @@ export const bulkQueryGetOrders = (query: string) => `#graphql
               sourceName
               name
               subtotalPrice
+              currentShippingPriceSet {
+                shopMoney {
+                  amount
+                }
+              }
               lineItems(first: 250) {
                 edges {
                   node {
                     title
+                    quantity
+                    sku
+                    originalUnitPriceSet {
+                      shopMoney {
+                        amount
+                      }
+                    }
                     originalTotalSet {
                       shopMoney {
                         amount
@@ -22,6 +34,13 @@ export const bulkQueryGetOrders = (query: string) => `#graphql
                     }
                     product {
                       title
+                    }
+                    discountAllocations {
+                      allocatedAmountSet {
+                        shopMoney {
+                          amount
+                        }
+                      }
                     }
                   }
                 }
