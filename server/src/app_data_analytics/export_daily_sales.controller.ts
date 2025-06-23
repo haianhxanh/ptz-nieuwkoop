@@ -6,12 +6,12 @@ import { initiateShopifyBulkOperation, checkBulkOperationStatus, downloadBulkRes
 import { bulkQueryGetOrders } from "../queries/orders";
 import { get_store, getYesterday } from "../app_stores_sync/utils";
 import { GraphQLClient } from "graphql-request";
-import ExcelJS from "exceljs";
+import { writeToGoogleSheetWithCredentials, formatOrderDataForSheets } from "../utilities/googleSheetsSimple";
 dotenv.config();
 
 const API_VERSION = "2025-04";
 
-const { DMP_STORE_URL } = process.env;
+const { DMP_STORE_URL, GOOGLE_SPREADSHEET_ID_PTZ, GOOGLE_SPREADSHEET_ID_DMP } = process.env;
 
 export const export_daily_sales = async (req: Request, res: Response) => {
   try {
@@ -34,15 +34,13 @@ export const export_daily_sales = async (req: Request, res: Response) => {
     // const processedData = processOrdersData(store, orders, date); // test gross sales
     const processedData = orders; // test detailed data
 
-    // return res.status(200).json({ message: "Orders data", orders });
-
     try {
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Daily Sales");
-      addDataToSheet(store, worksheet, processedData);
-      await workbook.xlsx.writeFile(`./${storeHandle}_${date}_daily_sales.xlsx`);
-
-      return res.status(200).json({ message: `Sales on ${date} exported for ${storeHandle}`, processedData });
+      const googleSheetResult = await addDataToGoogleSheet(store, processedData);
+      if (googleSheetResult) {
+        return res.status(200).json({ message: `Sales on ${date} exported for ${storeHandle}`, processedData });
+      } else {
+        return res.status(500).json({ message: "Error exporting daily sales" });
+      }
     } catch (error) {
       console.error(error);
       return res.status(500).json({ message: "Error generating worksheet" });
@@ -171,4 +169,19 @@ const addDataToSheet = (store: any, worksheet: any, data: any) => {
       }
     });
   }
+};
+
+const addDataToGoogleSheet = async (store: any, data: any) => {
+  const formattedData = formatOrderDataForSheets(data, store.storeUrl);
+  const spreadsheetId = DMP_STORE_URL === store.storeUrl ? GOOGLE_SPREADSHEET_ID_DMP : GOOGLE_SPREADSHEET_ID_PTZ;
+  if (spreadsheetId && formattedData) {
+    try {
+      const result = await writeToGoogleSheetWithCredentials(spreadsheetId, formattedData);
+      return result;
+    } catch (googleSheetsError) {
+      console.error("Google Sheets error:", googleSheetsError);
+      return null;
+    }
+  }
+  return null;
 };
