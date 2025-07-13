@@ -10,23 +10,39 @@ export async function initiateShopifyBulkOperation(shopifyClient: GraphQLClient,
 }
 
 export async function checkBulkOperationStatus(shopifyClient: GraphQLClient) {
-  const response = await shopifyClient.request(queryCurrentBulkOperation);
-  if (response?.errorCode) {
-    throw new Error(`Shopify bulk operation errors: ${JSON.stringify(response.data.errorCode)}`);
+  try {
+    const response = await shopifyClient.request(queryCurrentBulkOperation);
+    if (response?.errorCode) {
+      throw new Error(`Shopify bulk operation errors: ${JSON.stringify(response.data.errorCode)}`);
+    }
+
+    const currentBulkOperation = response.currentBulkOperation;
+    return currentBulkOperation;
+  } catch (error) {
+    console.error("Error checking bulk operation status:", error);
+    throw error;
   }
-  return response.currentBulkOperation;
 }
 
 export async function downloadBulkResults(url: string) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to download Shopify bulk results: ${response.status} ${response.statusText}`);
+  if (!url) {
+    throw new Error("URL is null or undefined");
   }
-  const jsonlData = await response.text();
-  const lines = jsonlData.trim().split("\n");
-  const shopifyItems = lines.map((line) => JSON.parse(line));
 
-  return shopifyItems;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to download Shopify bulk results: ${response.status} ${response.statusText}`);
+    }
+    const jsonlData = await response.text();
+    const lines = jsonlData.trim().split("\n");
+    const shopifyItems = lines.map((line) => JSON.parse(line));
+
+    return shopifyItems;
+  } catch (error) {
+    console.error("Error downloading bulk results:", error);
+    throw error;
+  }
 }
 
 export async function mapVariantsData(objects: any[]) {

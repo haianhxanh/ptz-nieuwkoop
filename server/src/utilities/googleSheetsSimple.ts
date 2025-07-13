@@ -64,9 +64,11 @@ export const writeToGoogleSheetWithServiceAccount = async (spreadsheetId: string
 };
 
 // Option 3: Using Service Account with credentials from environment
-export const writeToGoogleSheetWithCredentials = async (spreadsheetId: string, data: any[], range: string = "Sheet1!A:Z") => {
+export const writeToGoogleSheetWithCredentials = async (store: any, spreadsheetId: string, data: any[], range: string = "Sheet1!A:Z") => {
   try {
     let auth;
+    const GOOGLE_SERVICE_ACCOUNT_CREDENTIALS =
+      store.storeUrl === DMP_STORE_URL ? process.env.GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_DMP : process.env.GOOGLE_SERVICE_ACCOUNT_CREDENTIALS_PTZ;
 
     if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE) {
       console.log("Using service account key file...");
@@ -74,10 +76,10 @@ export const writeToGoogleSheetWithCredentials = async (spreadsheetId: string, d
         keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE,
         scopes: ["https://www.googleapis.com/auth/spreadsheets"],
       });
-    } else if (process.env.GOOGLE_SERVICE_ACCOUNT_CREDENTIALS) {
+    } else if (GOOGLE_SERVICE_ACCOUNT_CREDENTIALS) {
       console.log("Using service account credentials from environment...");
       try {
-        const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_CREDENTIALS);
+        const credentials = JSON.parse(GOOGLE_SERVICE_ACCOUNT_CREDENTIALS);
         auth = new google.auth.GoogleAuth({
           credentials,
           scopes: ["https://www.googleapis.com/auth/spreadsheets"],

@@ -16,6 +16,8 @@ const { DMP_STORE_URL, GOOGLE_SPREADSHEET_ID_PTZ, GOOGLE_SPREADSHEET_ID_DMP } = 
 export const export_daily_sales = async (req: Request, res: Response) => {
   try {
     const date = (req.query?.date as string) || getYesterday();
+    const dateFrom = (req.query?.dateFrom as string) || null;
+    const dateTo = (req.query?.dateTo as string) || null;
     const storeHandle = req.query.storeHandle as string;
     const store = get_store(storeHandle);
 
@@ -27,27 +29,62 @@ export const export_daily_sales = async (req: Request, res: Response) => {
       return res.status(400).json({ message: `Store not found for storeHandle: ${storeHandle}` });
     }
 
-    const bulkOperationUrl = await getBulkOperationUrl(store, date);
-    const ordersData = await downloadBulkResults(bulkOperationUrl);
-    // return res.status(200).json({ message: "Orders data", ordersData });
-    const orders = mapOrdersData(ordersData, date);
-    // const processedData = processOrdersData(store, orders, date); // test gross sales
-    const processedData = orders; // test detailed data
-
-    try {
-      const googleSheetResult = await addDataToGoogleSheet(store, processedData);
-      if (googleSheetResult) {
-        return res.status(200).json({ message: `Sales on ${date} exported for ${storeHandle}`, processedData });
-      } else {
-        return res.status(500).json({ message: "Error exporting daily sales" });
+    if (dateFrom && dateTo) {
+      const dates = getDatesRange(dateFrom, dateTo);
+      // return res.status(200).json({ message: "Dates range", dates });
+      for (const date of dates) {
+        try {
+          const bulkOperationUrl = await getBulkOperationUrl(store, date);
+          const ordersData = await downloadBulkResults(bulkOperationUrl);
+          const orders = mapOrdersData(ordersData, date);
+          const processedData = orders;
+          const googleSheetResult = await addDataToGoogleSheet(store, processedData);
+          if (googleSheetResult) {
+            console.log(`Sales on ${date} exported for ${storeHandle}`);
+          } else {
+            console.error(`Error exporting daily sales on ${date} for ${storeHandle}`);
+          }
+          await sleep(1000);
+        } catch (error) {
+          console.error(`Error processing date ${date}:`, error);
+          // Continue with next date instead of failing completely
+        }
       }
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: "Error generating worksheet" });
+      return res.status(200).json({ message: `Sales exported for dates range ${dateFrom} - ${dateTo} for ${storeHandle}` });
+    } else {
+      try {
+        const bulkOperationUrl = await getBulkOperationUrl(store, date);
+        const ordersData = await downloadBulkResults(bulkOperationUrl);
+        const orders = mapOrdersData(ordersData, date);
+
+        // const processedData = processOrdersData(store, orders, date); // test gross sales
+        const processedData = orders; // test detailed data
+
+        try {
+          const googleSheetResult = await addDataToGoogleSheet(store, processedData);
+          if (googleSheetResult) {
+            return res.status(200).json({ message: `Sales on ${date} exported for ${storeHandle}`, processedData });
+          } else {
+            return res.status(500).json({ message: "Error exporting daily sales" });
+          }
+        } catch (error) {
+          console.error("Error with Google Sheets:", error);
+          return res.status(500).json({ message: "Error generating worksheet" });
+        }
+      } catch (error) {
+        console.error("Error in bulk operation:", error);
+        return res.status(500).json({
+          message: "Error in bulk operation",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
     }
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Error exporting daily sales" });
+    console.error("Error in export_daily_sales:", error);
+    return res.status(500).json({
+      message: "Error exporting daily sales",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 };
 
@@ -78,9 +115,19 @@ const getBulkOperationUrl = async (store: any, date: string) => {
 
   let bulkOperation: any;
   let isCompleted = false;
-  await initiateShopifyBulkOperation(shopifyClient, bulkQueryGetOrders(`created_at:${date}`));
-  while (!isCompleted) {
+  const bulkOperationInitiated = await initiateShopifyBulkOperation(shopifyClient, bulkQueryGetOrders(`created_at:${date}`));
+
+  if (!bulkOperationInitiated) {
+    throw new Error("Failed to initiate bulk operation");
+  }
+
+  while (!isCompleted && !bulkOperation?.url) {
     bulkOperation = await checkBulkOperationStatus(shopifyClient);
+
+    if (!bulkOperation) {
+      throw new Error("Bulk operation not found or failed to check status");
+    }
+
     if (bulkOperation?.status === "COMPLETED") {
       isCompleted = true;
     } else if (["FAILED", "CANCELLED"].includes(bulkOperation.status)) {
@@ -89,6 +136,10 @@ const getBulkOperationUrl = async (store: any, date: string) => {
       // Check every 5 seconds
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
+  }
+
+  if (!bulkOperation.url) {
+    throw new Error("Bulk operation completed but no URL was returned");
   }
 
   return bulkOperation.url;
@@ -176,7 +227,7 @@ const addDataToGoogleSheet = async (store: any, data: any) => {
   const spreadsheetId = DMP_STORE_URL === store.storeUrl ? GOOGLE_SPREADSHEET_ID_DMP : GOOGLE_SPREADSHEET_ID_PTZ;
   if (spreadsheetId && formattedData) {
     try {
-      const result = await writeToGoogleSheetWithCredentials(spreadsheetId, formattedData);
+      const result = await writeToGoogleSheetWithCredentials(store, spreadsheetId, formattedData);
       return result;
     } catch (googleSheetsError) {
       console.error("Google Sheets error:", googleSheetsError);
@@ -184,4 +235,14 @@ const addDataToGoogleSheet = async (store: any, data: any) => {
     }
   }
   return null;
+};
+
+const getDatesRange = (dateFrom: string, dateTo: string) => {
+  const dates = [];
+  const startDate = new Date(dateFrom);
+  const endDate = new Date(dateTo);
+  for (let date = startDate; date <= endDate; date.setDate(date.getDate() + 1)) {
+    dates.push(new Date(date).toISOString().split("T")[0]);
+  }
+  return dates;
 };
