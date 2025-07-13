@@ -7,6 +7,7 @@ import { notify_dev, send_slack_notification } from "../utilities/notifications"
 import { productVariantsBulkUpdateQuery } from "../queries/productVariantsBulkUpdate";
 import { bulkQueryGetProducts } from "../queries/products";
 import { metafieldsSet } from "../queries/metafieldsSetMutation";
+import { GraphQLClient } from "graphql-request";
 dotenv.config();
 
 const { STORE_ADMIN_PRODUCT_URL } = process.env;
@@ -16,9 +17,13 @@ export const sync_variants_bulk = async (req: Request, res: Response) => {
     // bulk query products with tag 'Nieuwkoop'
     let bulkOperation: any;
     let isCompleted = false;
-    await initiateShopifyBulkOperation(shopifyClient, bulkQueryGetProducts);
+
+    // Explicitly type the shopifyClient to ensure TypeScript understands it
+    const client: GraphQLClient = shopifyClient;
+    await initiateShopifyBulkOperation(client, bulkQueryGetProducts);
+
     while (!isCompleted) {
-      bulkOperation = await checkBulkOperationStatus(shopifyClient);
+      bulkOperation = await checkBulkOperationStatus(client);
       if (bulkOperation?.status === "COMPLETED") {
         isCompleted = true;
       } else if (["FAILED", "CANCELLED"].includes(bulkOperation.status)) {
