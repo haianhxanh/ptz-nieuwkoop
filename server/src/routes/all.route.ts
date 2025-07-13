@@ -21,6 +21,7 @@ import { gift_card_update } from "../app_gift_cards/gift_card_update.controller"
 import { order_update_ready_for_pickup } from "../controllers/order_update_ready_for_pickup.controller";
 import { stores_price_sync } from "../app_stores_sync/stores_price_sync.controller";
 import { sync_variants_bulk } from "../controllers/sync_variants_bulk.controller";
+import { export_daily_sales } from "../app_data_analytics/export_daily_sales.controller";
 const router = express.Router();
 interface QueueItem {
   req: Request;
@@ -106,5 +107,8 @@ router.post("/order/update/ready-for-pickup", order_update_ready_for_pickup);
 
 // ====================== VARIANT PRICE SYNC ======================
 router.get("/stores/sync/price", stores_price_sync);
+
+// ====================== EXPORT DAILY SALES ======================
+router.get("/data/export/sales/daily", export_daily_sales);
 
 export default router;
