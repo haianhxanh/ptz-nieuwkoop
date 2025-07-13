@@ -112,6 +112,7 @@ export const sync_variants_bulk = async (req: Request, res: Response) => {
       if (updatedProduct.errors) {
         errors.push(updatedProduct.errors);
       }
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
 
     // send Slack notifications about cost updated items and discontinued items
