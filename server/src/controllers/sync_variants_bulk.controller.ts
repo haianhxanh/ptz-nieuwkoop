@@ -12,6 +12,8 @@ dotenv.config();
 
 const { STORE_ADMIN_PRODUCT_URL } = process.env;
 
+const MAX_PRODUCTS_TO_UPDATE = 200;
+
 export const sync_variants_bulk = async (req: Request, res: Response) => {
   try {
     // bulk query products with tag 'Nieuwkoop'
@@ -41,7 +43,7 @@ export const sync_variants_bulk = async (req: Request, res: Response) => {
 
     // sort products by nieuwkoop_last_inventory_sync
     let productsToUpdate = sortProductsByLastInventorySync(products);
-    productsToUpdate = productsToUpdate.slice(0, 250);
+    productsToUpdate = productsToUpdate.slice(0, MAX_PRODUCTS_TO_UPDATE);
 
     const discontinuedItems: any[] = [];
     const costUpdatedItems: any[] = [];
@@ -111,8 +113,10 @@ export const sync_variants_bulk = async (req: Request, res: Response) => {
 
       if (updatedProduct.errors) {
         errors.push(updatedProduct.errors);
+      } else {
+        console.log("Updated product", product.id, "with variants", productVariantsToUpdate.length);
       }
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 250));
     }
 
     // send Slack notifications about cost updated items and discontinued items
