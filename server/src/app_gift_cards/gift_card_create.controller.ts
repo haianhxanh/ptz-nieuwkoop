@@ -109,10 +109,7 @@ export const gift_card_create = async (req: Request, res: Response) => {
         order_name: orderName,
       },
     });
-    console.log(
-      "Gift cards of the same order in DB:",
-      giftCardsOfTheSameOrderInDB
-    );
+    console.log("Gift cards of the same order in DB:", orderName);
 
     if (giftCardsOfTheSameOrderInDB.length >= totalGiftCardsToCreate) {
       console.log(

@@ -96,9 +96,56 @@ router.post("/stores/inventory-sync", (req: Request, res: Response) => {
 });
 // ====================== END INVENTORY SYNC ======================
 
+// ====================== GIFT CARD WEBHOOK ======================
+// Store processed event IDs in memory to prevent duplicate processing
+const processedEventIds = new Set<string>();
+
+const isDuplicateWebhook = (eventId: string): boolean => {
+  if (!eventId) return false;
+  return processedEventIds.has(eventId);
+};
+
+const markEventAsProcessed = (eventId: string): void => {
+  if (eventId) {
+    processedEventIds.add(eventId);
+    // Clean up old event IDs (keep last 1000 to prevent memory leaks)
+    if (processedEventIds.size > 1000) {
+      const eventIdsArray = Array.from(processedEventIds);
+      const idsToRemove = eventIdsArray.slice(0, eventIdsArray.length - 1000);
+      idsToRemove.forEach((id) => processedEventIds.delete(id));
+    }
+  }
+};
+
+router.post("/giftcard/create", async (req: Request, res: Response) => {
+  const eventId = req.headers["x-shopify-event-id"] as string;
+  const orderName = req.body.name || req.body.order_number;
+
+  console.log(`GIFT CARD WEBHOOK: Received event ${eventId} for order ${orderName}`);
+
+  // Check if this webhook has already been processed
+  if (isDuplicateWebhook(eventId)) {
+    console.log(`GIFT CARD WEBHOOK: Duplicate event ${eventId} for order ${orderName} - skipping`);
+    return res.status(200).json({ message: "Duplicate webhook event - already processed" });
+  }
+
+  try {
+    // Mark event as processed before processing to prevent race conditions
+    markEventAsProcessed(eventId);
+
+    console.log(`GIFT CARD WEBHOOK: Processing event ${eventId} for order ${orderName}`);
+    await gift_card_create(req, res);
+    console.log(`GIFT CARD WEBHOOK: Successfully processed event ${eventId} for order ${orderName}`);
+  } catch (error) {
+    console.error(`GIFT CARD WEBHOOK: Error processing event ${eventId} for order ${orderName}:`, error);
+    // Note: We don't remove from processed events on error to prevent retry loops
+    return res.status(200).json({ message: "Internal server error" });
+  }
+});
+// ====================== END GIFT CARD WEBHOOK ======================
+
 // ====================== GIFT CARDS ======================
 router.get("/giftcard/prepolulate-codes", codes_prepopulate);
-router.post("/giftcard/create", gift_card_create);
 router.post("/giftcard/update", gift_card_update);
 // ====================== END GIFT CARDS ======================
 
