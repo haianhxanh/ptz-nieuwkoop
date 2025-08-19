@@ -36,6 +36,11 @@ export const import_products = async (req: Request, res: Response) => {
     let variants = [];
     let today = new Date();
 
+    products = [
+      ["6ACPW0503", "6ACPW0505"],
+      ["6ACPW0506", "6ACPW0507", "6ACPW0508"],
+    ];
+
     for (const [index, product] of products.entries()) {
       let newProduct;
       let existingProduct;
@@ -165,6 +170,9 @@ export const import_products = async (req: Request, res: Response) => {
                       value: matchingProduct.Salesprice,
                       value_type: "number_decimal",
                       namespace: "custom",
+
+
+
                     },
                   ],
                 },
@@ -236,10 +244,10 @@ export const import_products = async (req: Request, res: Response) => {
 
           let matchingVariant = await getApiVariant(variant);
           let variantInventoryPolicy = "continue";
-          let variantStock = await getVariantStock(matchingVariant[0].Itemcode);
+          let variantStock = await getVariantStock(matchingVariant.Itemcode);
           let variantAvailable = variantStock.FirstAvailable;
 
-          let variantHeightAndDiameterTag = await createRangeTags(matchingVariant[0]);
+          let variantHeightAndDiameterTag = await createRangeTags(matchingVariant);
 
           existingProduct.product.tags += variantHeightAndDiameterTag + ",";
 
@@ -258,16 +266,16 @@ export const import_products = async (req: Request, res: Response) => {
               // @ts-ignore
               const diffTime = Math.abs(futureDate - today);
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              variantDeliveryTime = diffDays + 7 + matchingVariant[0].DeliveryTimeInDays;
+              variantDeliveryTime = diffDays + 7 + matchingVariant.DeliveryTimeInDays;
             } else {
-              variantDeliveryTime = matchingVariant[0].DeliveryTimeInDays + 7;
+              variantDeliveryTime = matchingVariant.DeliveryTimeInDays + 7;
             }
           }
 
-          let optionSize = extractSizeInTitles(matchingVariant[0].ItemDescription_EN);
+          let optionSize = extractSizeInTitles(matchingVariant.ItemDescription_EN);
 
-          let optionTitle = createOptionTitle(optionSize, matchingVariant[0]);
-          let variantSpecs = await createVariantSpecs(matchingVariant[0]);
+          let optionTitle = createOptionTitle(optionSize, matchingVariant);
+          let variantSpecs = await createVariantSpecs(matchingVariant);
 
           const assembledVariant = assembleVariant(
             optionTitle,
@@ -311,7 +319,7 @@ export const import_products = async (req: Request, res: Response) => {
         if (newProductRes) {
           let newProductId = newProductRes.id;
           try {
-            let newImage = await createImages(newProductId, matchingProduct[0].Itemcode, undefined, newProductRes.handle);
+            let newImage = await createImages(newProductId, matchingProduct.Itemcode, undefined, newProductRes.handle);
             await sleep(500);
           } catch (error) {
             console.error("App Error creating image:", error);
@@ -410,11 +418,11 @@ function assembleVariant(
 ) {
   const variant = {
     option1: optionTitle,
-    sku: matchingVariant[0].Itemcode,
-    price: Math.ceil(matchingVariant[0].Salesprice * 26 * 2 * 1.21).toFixed(0),
+    sku: matchingVariant.Itemcode,
+    price: Math.ceil(matchingVariant.Salesprice * 26 * 2 * 1.21).toFixed(0),
     inventory_quantity: 0,
-    grams: matchingVariant[0].Weight.toFixed(2) * 1000,
-    barcode: matchingVariant[0].GTINCode,
+    grams: matchingVariant.Weight.toFixed(2) * 1000,
+    barcode: matchingVariant.GTINCode,
     inventory_management: "shopify",
     inventory_policy: variantInventoryPolicy,
     requires_shipping: true,
@@ -445,7 +453,7 @@ function assembleVariant(
       },
       {
         key: "cost_eur",
-        value: matchingVariant[0].Salesprice,
+        value: matchingVariant.Salesprice,
         value_type: "number_decimal",
         namespace: "custom",
       },
