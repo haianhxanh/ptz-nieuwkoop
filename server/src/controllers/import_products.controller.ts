@@ -36,11 +36,6 @@ export const import_products = async (req: Request, res: Response) => {
     let variants = [];
     let today = new Date();
 
-    products = [
-      ["6ACPW0503", "6ACPW0505"],
-      ["6ACPW0506", "6ACPW0507", "6ACPW0508"],
-    ];
-
     for (const [index, product] of products.entries()) {
       let newProduct;
       let existingProduct;
@@ -170,9 +165,6 @@ export const import_products = async (req: Request, res: Response) => {
                       value: matchingProduct.Salesprice,
                       value_type: "number_decimal",
                       namespace: "custom",
-
-
-
                     },
                   ],
                 },
