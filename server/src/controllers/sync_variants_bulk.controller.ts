@@ -22,7 +22,7 @@ export const sync_variants_bulk = async (req: Request, res: Response) => {
 
     // Explicitly type the shopifyClient to ensure TypeScript understands it
     const client: GraphQLClient = shopifyClient;
-    await initiateShopifyBulkOperation(client, bulkQueryGetProducts);
+    await initiateShopifyBulkOperation(client, bulkQueryGetProducts("tag:Nieuwkoop"));
 
     while (!isCompleted) {
       bulkOperation = await checkBulkOperationStatus(client);

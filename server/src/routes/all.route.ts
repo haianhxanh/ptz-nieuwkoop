@@ -22,6 +22,7 @@ import { order_update_ready_for_pickup } from "../controllers/order_update_ready
 import { stores_price_sync } from "../app_stores_sync/stores_price_sync.controller";
 import { sync_variants_bulk } from "../controllers/sync_variants_bulk.controller";
 import { export_daily_sales } from "../app_data_analytics/export_daily_sales.controller";
+import { migrate_tags_to_metafields } from "../data_management/migrate_tags_to_metafields.controller";
 const router = express.Router();
 interface QueueItem {
   req: Request;
@@ -157,5 +158,8 @@ router.get("/stores/sync/price", stores_price_sync);
 
 // ====================== EXPORT DAILY SALES ======================
 router.get("/data/export/sales/daily", export_daily_sales);
+
+// ====================== MIGRATE TAGS TO METAFIELDS ======================
+router.get("/data/migrate/tags-to-metafields", migrate_tags_to_metafields);
 
 export default router;

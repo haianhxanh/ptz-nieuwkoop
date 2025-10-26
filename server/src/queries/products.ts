@@ -1,11 +1,11 @@
 import { gql } from "graphql-request";
 
-export const bulkQueryGetProducts = `#graphql
+export const bulkQueryGetProducts = (productQuery: string) => `#graphql
   mutation getProducts {
     bulkOperationRunQuery(
       query: """
       {
-        products(query: "tag:'Nieuwkoop'") {
+        products(query: "${productQuery}") {
           edges {
             node {
               id
