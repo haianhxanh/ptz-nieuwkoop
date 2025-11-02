@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import dotenv from "dotenv";
 import { checkBulkOperationStatus, downloadBulkResults, initiateShopifyBulkOperation, mapProductsData } from "../utilities/bulkOperations";
-import { createProductMetafields, getApiVariant, setContinueSelling, shopifyClient, sortProductsByLastInventorySync } from "../utilities/helper";
+import { createVariantMetafields, getApiVariant, setContinueSelling, shopifyClient, sortProductsByLastInventorySync } from "../utilities/helper";
 import { getVariantStock } from "../utilities/helper";
 import { notify_dev, send_slack_notification } from "../utilities/notifications";
 import { productVariantsBulkUpdateQuery } from "../queries/productVariantsBulkUpdate";
@@ -48,9 +48,10 @@ export const sync_variants_bulk = async (req: Request, res: Response) => {
     const discontinuedItems: any[] = [];
     const costUpdatedItems: any[] = [];
     const errors: any[] = [];
-    const productsToUpdateSyncMeta: any[] = [];
 
     for (const [index, product] of productsToUpdate.entries()) {
+      console.log("product", index + 1, "/", productsToUpdate.length);
+      const productsToUpdateSyncMeta: any[] = [];
       const productVariantsToUpdate = [];
       for (const variant of product.variants) {
         const matchingStockVariant = await getVariantStock(variant.sku);
@@ -70,8 +71,7 @@ export const sync_variants_bulk = async (req: Request, res: Response) => {
           };
           costUpdatedItems.push(costUpdatedItem);
         }
-
-        const metafields = createProductMetafields(variant, matchingApiVariant, matchingStockVariant);
+        const metafields = createVariantMetafields(variant, matchingApiVariant, matchingStockVariant);
         const variantToUpdate = {
           id: variant.id,
           inventoryPolicy: setContinueSelling(matchingApiVariant, matchingStockVariant) ? "CONTINUE" : "DENY",
@@ -89,6 +89,25 @@ export const sync_variants_bulk = async (req: Request, res: Response) => {
             discontinuedItems.push({
               sku: variant.sku,
               product: productAdminUrl,
+            });
+          }
+        }
+
+        const hasDrainageHole = matchingApiVariant?.Tags.find((tag: any) => tag.Code == "MaterialProperties")?.Values?.find((value: any) =>
+          value.Description_EN.includes("With drainage hole")
+        )
+          ? true
+          : false;
+
+        if (hasDrainageHole) {
+          console.log("hasDrainageHole", product.id);
+          if (!productsToUpdateSyncMeta.some((meta: any) => meta.ownerId == product.id && meta.key == "drainage_hole")) {
+            productsToUpdateSyncMeta.push({
+              namespace: "custom",
+              type: "boolean",
+              key: "drainage_hole",
+              value: "true",
+              ownerId: product.id,
             });
           }
         }

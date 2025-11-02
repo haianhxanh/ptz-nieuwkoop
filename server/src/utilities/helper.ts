@@ -732,7 +732,7 @@ export const updateOrderAttributesAndTags = async (shopifyOrderId: any, attribut
   return response.data;
 };
 
-export const createProductMetafields = (variant: any, matchingApiVariant: any, matchingStockVariant: any) => {
+export const createVariantMetafields = (variant: any, matchingApiVariant: any, matchingStockVariant: any) => {
   const deliveryTimeInDays = getDeliveryTimeInDays(matchingStockVariant, matchingApiVariant);
   const itemDiscontinued = setItemDiscontinuedStatus(matchingApiVariant);
 
