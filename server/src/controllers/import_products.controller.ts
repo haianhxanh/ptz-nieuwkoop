@@ -9,40 +9,46 @@ import {
   createOptionTitle,
   createRangeTags,
   isFutureDate,
-  updateVariantCost,
   createAiDescription,
-  createImages,
   createProduct,
   getApiVariant,
   getVariantStock,
   variantExists,
   shopifyClient,
+  createVariantImage,
 } from "./../utilities/helper";
 import { productVariantsBulkCreate, tagsAdd, variantsQuery } from "../app_stores_sync/queries";
-import axios from "axios";
+import { productVariantsBulkCreateMutation } from "../queries/productVariantsBulkCreateMutation";
+import { productVariantsBulkDeleteMutation } from "../queries/productVariantsBulkDelete";
 
 dotenv.config();
 
-type Variant = {
-  productId: string;
-  sku: string;
-};
+/*-------------------------------------MAIN FUNCTION-----------------------------------------------*/
+// From FE, receive products array consisting of array of variant SKUs
+
+// Finally, update product tags with tagsAdd and metafields
+
+// TODO: Check existing product and variants and add missing variants
+/*-----------------------------------END MAIN FUNCTION---------------------------------------------*/
 
 const { PTZ_STORE_LOCATION_ID, SLACK_WEBHOOK_URL, SLACK_DEVELOPER_WEBHOOK_URL } = process.env;
 
 export const import_products = async (req: Request, res: Response) => {
   try {
-    let products = req.body;
-    let variants = [];
-    let today = new Date();
+    const products = req.body;
+    const today = new Date();
 
     for (const [index, product] of products.entries()) {
-      let newProduct;
+      let newProduct: any = {
+        product: {},
+        media: [],
+        variants: [],
+      } as any;
       let existingProduct;
-      let matchingProduct = await getApiVariant(product[0]);
-      let itemVariety = matchingProduct?.ItemVariety_EN;
-      let tags = ",";
-
+      const matchingProduct = await getApiVariant(product[0]);
+      const itemVariety = matchingProduct?.ItemVariety_EN;
+      const productTitle = itemVariety ? matchingProduct.ItemDescription_EN + " " + itemVariety : matchingProduct.ItemDescription_EN;
+      let tags = "Nieuwkoop, Pending approval,";
       if (matchingProduct?.Tags) {
         for (const tagObj of matchingProduct.Tags) {
           const tagValue = await getTag(tagObj);
@@ -52,20 +58,10 @@ export const import_products = async (req: Request, res: Response) => {
         }
       }
 
-      let firstVariantHeightAndDiameterTag = await createRangeTags(matchingProduct);
-      tags += firstVariantHeightAndDiameterTag + ",";
-      tags += "Nieuwkoop ,";
-      tags += "Pending approval" + ",";
-
-      let productTitle = matchingProduct.ItemDescription_EN;
-      if (itemVariety) {
-        productTitle = productTitle + " " + itemVariety;
-      }
-
       for (const [index, variantSku] of product.entries()) {
-        let isVariant = await variantExists(variantSku);
+        const isVariant = await variantExists(variantSku);
         if (isVariant) {
-          let existingVariant = await shopifyClient.request(variantsQuery, {
+          const existingVariant = await shopifyClient.request(variantsQuery, {
             query: `sku:${variantSku}`,
           });
           if (existingVariant?.productVariants?.edges.length > 0 && existingVariant?.productVariants?.edges[0]?.node?.product) {
@@ -78,208 +74,52 @@ export const import_products = async (req: Request, res: Response) => {
       }
 
       if (!existingProduct) {
+        // If no product in Shopify, create the product
         if (matchingProduct) {
-          let firstVariantInventoryPolicy = "continue";
-          let firstVariantStock = await getVariantStock(matchingProduct.Itemcode);
-          let firstVariantAvailable = firstVariantStock.FirstAvailable;
-          if (firstVariantStock.StockAvailable <= 0 && isFutureDate(firstVariantAvailable)) {
-            firstVariantInventoryPolicy = "continue";
-          }
-          if (firstVariantStock.StockAvailable <= 0 && matchingProduct.DeliveryTimeInDays == 999) {
-            firstVariantInventoryPolicy = "deny";
-          }
+          const productMetafields = createProductMetafields(matchingProduct);
 
-          let firstVariantDeliveryTime;
-          if (firstVariantStock.StockAvailable > 0) {
-            firstVariantDeliveryTime = 7;
-          } else {
-            if (isFutureDate(firstVariantAvailable)) {
-              let futureDate = new Date(firstVariantAvailable);
-              // @ts-ignore
-              const diffTime = Math.abs(futureDate - today);
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              firstVariantDeliveryTime = diffDays + 7 + matchingProduct.DeliveryTimeInDays;
-            } else {
-              firstVariantDeliveryTime = matchingProduct.DeliveryTimeInDays + 7;
-            }
-          }
-
-          let firstOptionSize = extractSizeInTitles(matchingProduct.ItemDescription_EN);
-
-          let firstOptionTitle = createOptionTitle(firstOptionSize, matchingProduct);
-
-          let firstVariantSpecs = await createVariantSpecs(matchingProduct);
-
-          newProduct = {
-            product: {
-              title: productTitle,
-              vendor: "Potzillas",
-              status: "draft",
-              giftCard: false,
-              tags: tags,
-              body_html: "",
-              product_type: "",
-              options: [
-                {
-                  name: "Velikost",
-                },
-              ],
-              variants: [
-                {
-                  option1: firstOptionTitle,
-                  sku: matchingProduct.Itemcode,
-                  price: Math.ceil(matchingProduct.Salesprice * 26 * 2 * 1.21).toFixed(0),
-                  inventory_quantity: 0,
-                  grams: matchingProduct.Weight.toFixed(2) * 1000,
-                  barcode: matchingProduct.GTINCode,
-                  inventory_management: "shopify",
-                  inventory_policy: firstVariantInventoryPolicy,
-                  requires_shipping: true,
-                  metafields: [
-                    {
-                      key: "specifikace",
-                      value: firstVariantSpecs,
-                      value_type: "multi_line_text_field",
-                      namespace: "custom",
-                    },
-                    {
-                      key: "available_date",
-                      value: firstVariantAvailable,
-                      value_type: "date_time",
-                      namespace: "custom",
-                    },
-                    {
-                      key: "delivery_time",
-                      value: firstVariantDeliveryTime,
-                      value_type: "number_integer",
-                      namespace: "custom",
-                    },
-                    {
-                      key: "inventory_qty",
-                      value: firstVariantStock.StockAvailable,
-                      value_type: "number_integer",
-                      namespace: "custom",
-                    },
-                    {
-                      key: "cost_eur",
-                      value: matchingProduct.Salesprice,
-                      value_type: "number_decimal",
-                      namespace: "custom",
-                    },
-                  ],
-                },
-              ],
-            },
-          };
-
-          if (product.length > 1) {
-            for (const [index, variant] of product.entries()) {
-              let matchingVariant = await getApiVariant(variant);
-              let variantInventoryPolicy = "continue";
-              let variantStock = await getVariantStock(matchingVariant.Itemcode);
-              let variantAvailable = variantStock.FirstAvailable;
-
-              let variantHeightAndDiameterTag = await createRangeTags(matchingVariant);
-              newProduct.product.tags += variantHeightAndDiameterTag + ",";
-
-              if (variantStock.StockAvailable <= 0 && isFutureDate(variantAvailable)) {
-                variantInventoryPolicy = "continue";
-              }
-              if (variantStock.StockAvailable <= 0 && matchingProduct.DeliveryTimeInDays == 999) {
-                variantInventoryPolicy = "deny";
-              }
-
-              let variantDeliveryTime;
-
-              if (variantStock.StockAvailable > 0) {
-                variantDeliveryTime = 7;
-              } else {
-                if (isFutureDate(variantAvailable)) {
-                  let futureDate = new Date(variantAvailable);
-                  // @ts-ignore
-                  const diffTime = Math.abs(futureDate - today);
-                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                  variantDeliveryTime = diffDays + 7 + matchingVariant.DeliveryTimeInDays;
-                } else {
-                  variantDeliveryTime = matchingVariant.DeliveryTimeInDays + 7;
-                }
-              }
-
-              let optionSize = extractSizeInTitles(matchingVariant.ItemDescription_EN);
-
-              let optionTitle = createOptionTitle(optionSize, matchingVariant);
-              let variantSpecs = await createVariantSpecs(matchingVariant);
-
-              if (index > 0) {
-                const assembledVariant = assembleVariant(
-                  optionTitle,
-                  matchingVariant,
-                  variantInventoryPolicy,
-                  variantSpecs,
-                  variantAvailable,
-                  variantDeliveryTime,
-                  variantStock
-                );
-                newProduct.product.variants.push(assembledVariant);
+          // Loop through all variants and create objects
+          if (product.length > 0) {
+            for (const [index, variantSku] of product.entries()) {
+              const matchingVariant = await getApiVariant(variantSku);
+              const variantObject = await createVariantObject(variantSku);
+              const variantRangeTags = await createRangeTags(matchingVariant);
+              newProduct.variants.push(variantObject);
+              if (variantRangeTags) {
+                tags += variantRangeTags + ",";
               }
               await sleep(500);
             }
           }
+
+          // Get image from API
+          const variantImageUrl = await createVariantImage(product[0]);
+          if (variantImageUrl) {
+            newProduct.media.push({
+              alt: `${matchingProduct.ItemDescription_EN} ${matchingProduct.ItemVariety_EN} ${product[0]}`,
+              originalSource: variantImageUrl,
+              mediaContentType: "IMAGE",
+            });
+          }
+
+          // Finally, create the product object
+          newProduct.product = createProductObject(productTitle, tags, productMetafields);
         }
       } else {
+        // TODO
         // if there's an existing product, update the inventory quantity
-        for (const [index, variant] of product.entries()) {
+        for (const [index, variantSku] of product.entries()) {
           const existingVariant = await shopifyClient.request(variantsQuery, {
-            query: `sku:${variant}`,
+            query: `sku:${variantSku}`,
           });
           if (existingVariant?.productVariants?.edges.length > 0) continue;
 
-          let matchingVariant = await getApiVariant(variant);
-          let variantInventoryPolicy = "continue";
-          let variantStock = await getVariantStock(matchingVariant.Itemcode);
-          let variantAvailable = variantStock.FirstAvailable;
-
-          let variantHeightAndDiameterTag = await createRangeTags(matchingVariant);
-
-          existingProduct.product.tags += variantHeightAndDiameterTag + ",";
-
-          if (variantStock.StockAvailable <= 0 && isFutureDate(variantAvailable)) {
-            variantInventoryPolicy = "continue";
-          }
-          if (variantStock.StockAvailable <= 0 && matchingProduct.DeliveryTimeInDays == 999) {
-            variantInventoryPolicy = "deny";
-          }
-          let variantDeliveryTime;
-          if (variantStock.StockAvailable > 0) {
-            variantDeliveryTime = 7;
-          } else {
-            if (isFutureDate(variantAvailable)) {
-              let futureDate = new Date(variantAvailable);
-              // @ts-ignore
-              const diffTime = Math.abs(futureDate - today);
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              variantDeliveryTime = diffDays + 7 + matchingVariant.DeliveryTimeInDays;
-            } else {
-              variantDeliveryTime = matchingVariant.DeliveryTimeInDays + 7;
-            }
-          }
-
-          let optionSize = extractSizeInTitles(matchingVariant.ItemDescription_EN);
-
-          let optionTitle = createOptionTitle(optionSize, matchingVariant);
-          let variantSpecs = await createVariantSpecs(matchingVariant);
-
-          const assembledVariant = assembleVariant(
-            optionTitle,
-            matchingVariant,
-            variantInventoryPolicy,
-            variantSpecs,
-            variantAvailable,
-            variantDeliveryTime,
-            variantStock
-          );
-          existingProduct.product.variants.push(assembledVariant);
-
+          // Create object for the new variant
+          const matchingVariant = await getApiVariant(variantSku);
+          const variantObject = await createVariantObject(variantSku);
+          const variantRangeTags = await createRangeTags(matchingVariant);
+          existingProduct.product.tags += variantRangeTags + ",";
+          existingProduct.product.variants.push(variantObject);
           await sleep(500);
         }
       }
@@ -287,17 +127,17 @@ export const import_products = async (req: Request, res: Response) => {
       if (newProduct) {
         let newProductRes;
         try {
-          let productBodyHtml = await createAiDescription(newProduct, matchingProduct);
+          const productBodyHtml = await createAiDescription(newProduct, matchingProduct);
           if (productBodyHtml) {
-            newProduct.product.body_html = productBodyHtml;
+            newProduct.product.descriptionHtml = productBodyHtml;
           }
         } catch (error) {
           const errorMessage = (error as any)?.response?.data?.error?.message;
           if (errorMessage) {
             const errorMessageNotification = `Error creating product AI description: ${errorMessage}`;
             console.error(errorMessageNotification);
-            const slackMessage = await axios.post(SLACK_WEBHOOK_URL || "", errorMessageNotification);
-            const devSlackMessage = await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessageNotification);
+            // await axios.post(SLACK_WEBHOOK_URL || "", errorMessageNotification);
+            // await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessageNotification);
           }
         }
 
@@ -310,86 +150,71 @@ export const import_products = async (req: Request, res: Response) => {
 
         if (newProductRes) {
           let newProductId = newProductRes.id;
-          try {
-            let newImage = await createImages(newProductId, matchingProduct.Itemcode, undefined, newProductRes.handle);
-            await sleep(500);
-          } catch (error) {
-            console.error("App Error creating image:", error);
-          }
+          // create the variants and remove the first default variant
+          await shopifyClient.request(productVariantsBulkCreateMutation, {
+            productId: newProductId,
+            variants: newProduct.variants,
+          });
 
-          for (const variant of newProductRes.variants) {
-            try {
-              let inventoryItemId = variant.inventory_item_id;
-              let apiVariant = await getApiVariant(variant.sku);
-              let variantCost = Math.ceil(apiVariant.Salesprice * 26).toFixed(2);
-              let addVariantCost = await updateVariantCost(inventoryItemId, variantCost);
-              let variantObj = {
-                productId: newProductId,
-                sku: variant.sku,
-              };
-              variants.push(variantObj);
-              await sleep(500);
-            } catch (error) {
-              console.error("App Error getting variant cost:", error);
-            }
-          }
+          // cleanup default variant with Default Variant
+          const defaultVariantId = newProductRes.variants?.edges?.find((variant: any) => variant.node.title === "Default Variant")?.node?.id;
+          await shopifyClient.request(productVariantsBulkDeleteMutation, {
+            productId: newProductId,
+            variantsIds: [defaultVariantId],
+          });
         }
       }
 
       if (existingProduct) {
-        const productVariantsCreate = await shopifyClient.request(productVariantsBulkCreate, {
-          productId: existingProduct.product.id,
-          variants: existingProduct.product.variants.map((variant: any) => {
-            return {
-              price: variant.price,
-              inventoryPolicy: variant.inventory_policy.toUpperCase(),
-              inventoryQuantities: {
-                availableQuantity: variant.inventory_quantity,
-                locationId: "gid://shopify/Location/" + PTZ_STORE_LOCATION_ID,
-              },
-              inventoryItem: {
-                sku: variant.sku,
-                cost: variant.metafields.find((metafield: any) => metafield.key === "cost_eur").value * 26,
-                requiresShipping: variant.requires_shipping,
-                measurement: {
-                  weight: {
-                    value: variant.grams,
-                    unit: "GRAMS",
-                  },
-                },
-              },
-              barcode: variant.barcode,
-              metafields: variant.metafields.map((metafield: any) => {
-                if (metafield.value !== null) {
-                  return {
-                    key: metafield.key,
-                    value: metafield.value.toString(),
-                    type: metafield.value_type,
-                    namespace: metafield.namespace,
-                  };
-                }
-              }),
-              optionValues: [
-                {
-                  name: variant.option1,
-                  optionId: existingProduct?.product?.options[0]?.id,
-                },
-              ],
-            };
-          }),
-        });
+        try {
+          const productVariantsCreate = await shopifyClient.request(productVariantsBulkCreate, {
+            productId: existingProduct.product.id,
+            variants: existingProduct.product.variants,
+          });
 
-        const tagsAdded = await shopifyClient.request(tagsAdd, {
-          id: existingProduct.product.id,
-          tags: existingProduct.product.tags,
-        });
+          if (productVariantsCreate?.productVariantsBulkCreate?.userErrors?.length > 0) {
+            const errorMessage = `Error creating product variants (422): ${JSON.stringify(productVariantsCreate.productVariantsBulkCreate.userErrors)}`;
+            console.error(errorMessage);
+            // await axios.post(SLACK_WEBHOOK_URL || "", errorMessage);
+            // await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessage);
+          }
+        } catch (error: any) {
+          const errorData = error?.response?.data || error?.data || error;
+          const errorStatus = error?.response?.status || error?.status;
+          const errorMessage = `Error creating product variants (${errorStatus || 422}): ${JSON.stringify(errorData)}`;
+          console.error(errorMessage);
+          console.error("Full error object:", error);
+          // await axios.post(SLACK_WEBHOOK_URL || "", errorMessage);
+          // await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessage);
+        }
+
+        try {
+          const tagsAdded = await shopifyClient.request(tagsAdd, {
+            id: existingProduct.product.id,
+            tags: existingProduct.product.tags,
+          });
+
+          if (tagsAdded?.tagsAdd?.userErrors?.length > 0) {
+            const errorMessage = `Error adding tags (422): ${JSON.stringify(tagsAdded.tagsAdd.userErrors)}`;
+            console.error(errorMessage);
+            // await axios.post(SLACK_WEBHOOK_URL || "", errorMessage);
+            // await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessage);
+          }
+        } catch (error: any) {
+          const errorData = error?.response?.data || error?.data || error;
+          const errorStatus = error?.response?.status || error?.status;
+          const errorMessage = `Error adding tags (${errorStatus || 422}): ${JSON.stringify(errorData)}`;
+          console.error(errorMessage);
+          console.error("Full error object:", error);
+          // await axios.post(SLACK_WEBHOOK_URL || "", errorMessage);
+          // await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessage);
+        }
 
         await sleep(300);
       }
     }
 
     return res.status(200).json({
-      variants: variants,
       message: "Products imported successfully",
       time: new Date().toLocaleString(),
     });
@@ -399,57 +224,135 @@ export const import_products = async (req: Request, res: Response) => {
   }
 };
 
-function assembleVariant(
-  optionTitle: string,
-  matchingVariant: any,
-  variantInventoryPolicy: string,
-  variantSpecs: string,
-  variantAvailable: string,
-  variantDeliveryTime: number,
-  variantStock: any
-) {
+function createProductMetafields(matchingProduct: any) {
+  const productMetafields = [];
+  const hasDrainageHole = matchingProduct?.Tags.find((tag: any) => tag.Code == "MaterialProperties")?.Values?.find((value: any) =>
+    value.Description_EN.includes("With drainage hole")
+  )
+    ? true
+    : false;
+
+  if (hasDrainageHole) {
+    productMetafields.push({
+      namespace: "custom",
+      type: "boolean",
+      key: "drainage_hole",
+      value: "true",
+    });
+  }
+  return productMetafields;
+}
+
+function calculateVariantDeliveryTime(variantStock: any, matchingProduct: any) {
+  let deliveryTime;
+  if (variantStock.StockAvailable > 0) {
+    deliveryTime = 7;
+  } else {
+    if (isFutureDate(variantStock.FirstAvailable)) {
+      const futureDate = new Date(variantStock.FirstAvailable);
+      // @ts-ignore
+      const diffTime = Math.abs(futureDate - new Date());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      deliveryTime = diffDays + 7 + matchingProduct.DeliveryTimeInDays;
+    } else {
+      deliveryTime = matchingProduct.DeliveryTimeInDays + 7;
+    }
+  }
+  return deliveryTime;
+}
+
+async function setVariantInventoryPolicy(variantSku: string) {
+  const matchingVariant = await getApiVariant(variantSku);
+  const variantStock = await getVariantStock(variantSku);
+  if (variantStock.StockAvailable <= 0 && isFutureDate(variantStock.FirstAvailable)) {
+    return "CONTINUE";
+  }
+  if (variantStock.StockAvailable <= 0 && matchingVariant.DeliveryTimeInDays == 999) {
+    return "DENY";
+  }
+  return "CONTINUE";
+}
+
+async function createVariantObject(variantSku: string) {
+  const matchingVariant = await getApiVariant(variantSku);
+  const variantStock = await getVariantStock(variantSku);
+  const optionSize = extractSizeInTitles(matchingVariant.ItemDescription_EN);
+  const optionTitle = createOptionTitle(optionSize, matchingVariant);
+  const variantSpecs = await createVariantSpecs(matchingVariant);
+  const variantDeliveryTime = calculateVariantDeliveryTime(variantStock, matchingVariant);
   const variant = {
-    option1: optionTitle,
-    sku: matchingVariant.Itemcode,
-    price: Math.ceil(matchingVariant.Salesprice * 26 * 2 * 1.21).toFixed(0),
-    inventory_quantity: 0,
-    grams: matchingVariant.Weight.toFixed(2) * 1000,
     barcode: matchingVariant.GTINCode,
-    inventory_management: "shopify",
-    inventory_policy: variantInventoryPolicy,
-    requires_shipping: true,
+    inventoryItem: {
+      cost: Math.ceil(matchingVariant.Salesprice * 26).toFixed(2),
+      measurement: {
+        weight: {
+          unit: "KILOGRAMS",
+          value: parseFloat(matchingVariant.Weight.toFixed(2)),
+        },
+      },
+      requiresShipping: true,
+      sku: variantSku,
+      tracked: true,
+    },
+    inventoryPolicy: await setVariantInventoryPolicy(variantSku),
     metafields: [
       {
         key: "specifikace",
         value: variantSpecs,
-        value_type: "multi_line_text_field",
+        type: "multi_line_text_field",
         namespace: "custom",
       },
       {
         key: "available_date",
-        value: variantAvailable,
-        value_type: "date_time",
+        value: variantStock.FirstAvailable.toString(),
+        type: "date_time",
         namespace: "custom",
       },
       {
         key: "delivery_time",
-        value: variantDeliveryTime,
-        value_type: "number_integer",
+        value: variantDeliveryTime.toString(),
+        type: "number_integer",
         namespace: "custom",
       },
       {
         key: "inventory_qty",
-        value: variantStock.StockAvailable,
-        value_type: "number_integer",
+        value: variantStock.StockAvailable.toString(),
+        type: "number_integer",
         namespace: "custom",
       },
       {
         key: "cost_eur",
-        value: matchingVariant.Salesprice,
-        value_type: "number_decimal",
+        value: matchingVariant.Salesprice.toString(),
+        type: "number_decimal",
         namespace: "custom",
       },
     ],
+    optionValues: [
+      {
+        name: optionTitle,
+        optionName: "Velikost",
+      },
+    ],
+    price: Math.ceil(matchingVariant.Salesprice * 26 * 2 * 1.21).toFixed(0),
   };
   return variant;
 }
+
+const createProductObject = (productTitle: string, tags: string, productMetafields: any) => {
+  const productObject = {
+    title: productTitle,
+    vendor: "Potzillas",
+    status: "DRAFT",
+    giftCard: false,
+    tags: tags,
+    descriptionHtml: "",
+    metafields: productMetafields,
+    productOptions: [
+      {
+        name: "Velikost",
+        values: [{ name: "Default Variant" }],
+      },
+    ],
+  };
+  return productObject;
+};

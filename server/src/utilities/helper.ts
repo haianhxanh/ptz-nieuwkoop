@@ -1,9 +1,13 @@
 import axios from "axios";
 import { promisify } from "util";
+import FormData from "form-data";
+import { XMLParser } from "fast-xml-parser";
 import { ITEM_DIAMETERS, ITEM_HEIGHTS, TAG_CODES } from "./constants";
 import { getTag } from "./specs";
 import { productVariantsBulkUpdateQuery } from "./../queries/productVariantsBulkUpdate";
 import { GraphQLClient } from "graphql-request";
+import { productCreateQuery } from "../queries/productCreate";
+import { stageUploadsCreateMutation } from "../queries/stageUploadsCreateMutation";
 const sleep = promisify(setTimeout);
 const {
   PTZ_ACCESS_TOKEN,
@@ -119,20 +123,22 @@ export async function getVariantStock(sku: any) {
   }
 }
 
-export async function createProduct(product: any) {
-  let newProductRes = await axios.post(`https://${PTZ_STORE_URL}/admin/api/${API_VERSION}/products.json`, product, {
-    headers: {
-      "X-Shopify-Access-Token": PTZ_ACCESS_TOKEN!,
-      "Content-Type": "application/json",
-    },
+export async function createProduct(productObject: any) {
+  const newProductRes = await shopifyClient.request(productCreateQuery, {
+    product: productObject.product,
+    media: productObject.media ? productObject.media : [],
   });
-  return newProductRes.data.product;
+  if (newProductRes.productCreate?.userErrors?.length > 0) {
+    console.error("Error creating product:", newProductRes.productCreate.userErrors);
+    return null;
+  }
+  return newProductRes.productCreate.product;
 }
 
 export const createImages = async (productId: any, sku: any, variant: any, productHandle: any) => {
   const auth = Buffer.from(`${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`).toString("base64");
 
-  let url = NIEUWKOOP_API_IMAGE_ENDPOINT?.replace("[sku]", sku);
+  const url = NIEUWKOOP_API_IMAGE_ENDPOINT?.replace("[sku]", sku);
 
   if (url) {
     let api_image = await axios.get(url, {
@@ -170,6 +176,26 @@ export const createImages = async (productId: any, sku: any, variant: any, produ
   } else {
     return null;
   }
+};
+
+export const createVariantImage = async (sku: any) => {
+  const auth = Buffer.from(`${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`).toString("base64");
+
+  const url = NIEUWKOOP_API_IMAGE_ENDPOINT?.replace("[sku]", sku);
+  if (url) {
+    let api_image = await axios.get(url, {
+      headers: {
+        Authorization: `Basic ${auth}`,
+      },
+      timeout: 15000,
+    });
+    if (api_image.data) {
+      const uploadedImageUrl = await uploadImageToShopify(api_image.data.Image, sku);
+      return uploadedImageUrl;
+    }
+    return null;
+  }
+  return null;
 };
 
 export async function createAiDescription(product: any, matchingProduct: any) {
@@ -831,4 +857,47 @@ export const sortProductsByLastInventorySync = (products: any[]) => {
   return products.sort((a, b) => {
     return new Date(a.nieuwkoop_last_inventory_sync).getTime() - new Date(b.nieuwkoop_last_inventory_sync).getTime();
   });
+};
+
+const uploadImageToShopify = async (imageBase64: string, sku: string) => {
+  const stagedUploadsCreate = await shopifyClient.request(stageUploadsCreateMutation, {
+    input: [
+      {
+        filename: sku,
+        mimeType: "image/png",
+        httpMethod: "POST",
+        resource: "PRODUCT_IMAGE",
+      },
+    ],
+  });
+  if (stagedUploadsCreate.stagedUploadsCreate.userErrors.length > 0) {
+    console.error("Error uploading image to Shopify:", stagedUploadsCreate.stagedUploadsCreate.userErrors);
+    return null;
+  }
+
+  if (stagedUploadsCreate?.stagedUploadsCreate?.stagedTargets[0]) {
+    const stagedTarget = stagedUploadsCreate?.stagedUploadsCreate?.stagedTargets[0];
+    const formData = new FormData();
+    stagedTarget?.parameters?.forEach((param: { name: string; value: string }) => {
+      formData.append(param.name, param.value);
+    });
+
+    const imageBuffer = Buffer.from(imageBase64, "base64");
+    formData.append("file", imageBuffer, {
+      filename: `${sku}.png`,
+      contentType: "image/png",
+    });
+
+    const response = await axios.post(stagedTarget.url, formData, {
+      headers: {
+        ...formData.getHeaders(),
+      },
+      responseType: "text",
+    });
+
+    const parser = new XMLParser();
+    const postResponse = await parser.parse(response.data);
+    return postResponse?.PostResponse?.Location ? postResponse?.PostResponse?.Location : null;
+  }
+  return null;
 };
