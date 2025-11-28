@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { promisify } from "util";
 const sleep = promisify(setTimeout);
 import dotenv from "dotenv";
+import axios from "axios";
 
 import { createVariantSpecs, getTag, extractSizeInTitles } from "../utilities/specs";
 
@@ -124,7 +125,7 @@ export const import_products = async (req: Request, res: Response) => {
         }
       }
 
-      if (newProduct) {
+      if (newProduct && newProduct.product && Object.keys(newProduct.product).length > 0) {
         let newProductRes;
         try {
           const productBodyHtml = await createAiDescription(newProduct, matchingProduct);
@@ -136,8 +137,7 @@ export const import_products = async (req: Request, res: Response) => {
           if (errorMessage) {
             const errorMessageNotification = `Error creating product AI description: ${errorMessage}`;
             console.error(errorMessageNotification);
-            // await axios.post(SLACK_WEBHOOK_URL || "", errorMessageNotification);
-            // await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessageNotification);
+            sendErrorNotification(errorMessageNotification);
           }
         }
 
@@ -165,7 +165,7 @@ export const import_products = async (req: Request, res: Response) => {
         }
       }
 
-      if (existingProduct) {
+      if (existingProduct && Object.keys(existingProduct.product).length > 0) {
         try {
           const productVariantsCreate = await shopifyClient.request(productVariantsBulkCreate, {
             productId: existingProduct.product.id,
@@ -175,8 +175,7 @@ export const import_products = async (req: Request, res: Response) => {
           if (productVariantsCreate?.productVariantsBulkCreate?.userErrors?.length > 0) {
             const errorMessage = `Error creating product variants (422): ${JSON.stringify(productVariantsCreate.productVariantsBulkCreate.userErrors)}`;
             console.error(errorMessage);
-            // await axios.post(SLACK_WEBHOOK_URL || "", errorMessage);
-            // await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessage);
+            sendErrorNotification(errorMessage);
           }
         } catch (error: any) {
           const errorData = error?.response?.data || error?.data || error;
@@ -184,8 +183,7 @@ export const import_products = async (req: Request, res: Response) => {
           const errorMessage = `Error creating product variants (${errorStatus || 422}): ${JSON.stringify(errorData)}`;
           console.error(errorMessage);
           console.error("Full error object:", error);
-          // await axios.post(SLACK_WEBHOOK_URL || "", errorMessage);
-          // await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessage);
+          sendErrorNotification(errorMessage);
         }
 
         try {
@@ -197,8 +195,7 @@ export const import_products = async (req: Request, res: Response) => {
           if (tagsAdded?.tagsAdd?.userErrors?.length > 0) {
             const errorMessage = `Error adding tags (422): ${JSON.stringify(tagsAdded.tagsAdd.userErrors)}`;
             console.error(errorMessage);
-            // await axios.post(SLACK_WEBHOOK_URL || "", errorMessage);
-            // await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessage);
+            sendErrorNotification(errorMessage);
           }
         } catch (error: any) {
           const errorData = error?.response?.data || error?.data || error;
@@ -206,8 +203,7 @@ export const import_products = async (req: Request, res: Response) => {
           const errorMessage = `Error adding tags (${errorStatus || 422}): ${JSON.stringify(errorData)}`;
           console.error(errorMessage);
           console.error("Full error object:", error);
-          // await axios.post(SLACK_WEBHOOK_URL || "", errorMessage);
-          // await axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessage);
+          sendErrorNotification(errorMessage);
         }
 
         await sleep(300);
@@ -355,4 +351,9 @@ const createProductObject = (productTitle: string, tags: string, productMetafiel
     ],
   };
   return productObject;
+};
+
+const sendErrorNotification = (errorMessage: string) => {
+  axios.post(SLACK_WEBHOOK_URL || "", errorMessage);
+  axios.post(SLACK_DEVELOPER_WEBHOOK_URL || "", errorMessage);
 };
