@@ -1,16 +1,8 @@
 import { Request, Response } from "express";
 import dotenv from "dotenv";
-import {
-  get_stores,
-  is_variant_to_sync,
-  remove_duplicated_objects,
-} from "./utils";
+import { get_stores, is_variant_to_sync, remove_duplicated_objects } from "./utils";
 import { GraphQLClient } from "graphql-request";
-import {
-  inventorySetQuantitiesMutation,
-  productVariantQuery,
-  productVariantsQuery,
-} from "./queries";
+import { inventorySetQuantitiesMutation, productVariantQuery, productVariantsQuery } from "./queries";
 
 dotenv.config();
 const { API_VERSION } = process.env;
@@ -20,10 +12,7 @@ interface SkuToSync {
   quantity: number;
 }
 
-export const stores_inventory_sync_on_order_update = async (
-  req: Request,
-  res: Response
-) => {
+export const stores_inventory_sync_on_order_update = async (req: Request, res: Response) => {
   try {
     // receive webhook
     // console.log("req.body", req.body);
@@ -33,21 +22,17 @@ export const stores_inventory_sync_on_order_update = async (
     let stores = get_stores(orderStatusUrl);
     if (!stores) return res.status(400).json({ message: "Store not found" });
 
-    const STORE_TO_SYNC_FROM = new GraphQLClient(
-      `https://${stores.origin.storeUrl}/admin/api/${API_VERSION}/graphql.json`,
-      {
-        // @ts-ignore
-        headers: {
-          "X-Shopify-Access-Token": stores.origin.accessToken,
-        },
-      }
-    );
+    const STORE_TO_SYNC_FROM = new GraphQLClient(`https://${stores.origin.storeUrl}/admin/api/${API_VERSION}/graphql.json`, {
+      // @ts-ignore
+      headers: {
+        "X-Shopify-Access-Token": stores.origin.accessToken,
+      },
+    });
 
     let skusToSync: SkuToSync[] = [];
 
     for (let item of orderItems) {
-      let variantId =
-        "gid://shopify/ProductVariant/" + item.variant_id.toString();
+      let variantId = "gid://shopify/ProductVariant/" + item.variant_id.toString();
 
       // Test PTZ
       // let variantId = "gid://shopify/ProductVariant/" + "49951188615505";
@@ -62,56 +47,43 @@ export const stores_inventory_sync_on_order_update = async (
       if (variant?.productVariant?.product?.tags?.includes("propojeni")) {
         skusToSync.push({
           sku: variant?.productVariant?.sku,
-          quantity:
-            variant?.productVariant?.inventoryItem?.inventoryLevel
-              ?.quantities[0]?.quantity,
+          quantity: variant?.productVariant?.inventoryItem?.inventoryLevel?.quantities[0]?.quantity,
         });
       }
     }
 
     let uniqueSkusToSync = remove_duplicated_objects(skusToSync);
 
-    if (uniqueSkusToSync.length == 0)
-      return res.status(200).json({ message: "No variants to sync" });
+    if (uniqueSkusToSync.length == 0) return res.status(200).json({ message: "No variants to sync" });
 
-    const STORE_TO_SYNC_TO = new GraphQLClient(
-      `https://${stores.destination.storeUrl}/admin/api/${API_VERSION}/graphql.json`,
-      {
-        // @ts-ignore
-        headers: {
-          "X-Shopify-Access-Token": stores.destination.accessToken,
-        },
-      }
-    );
+    const STORE_TO_SYNC_TO = new GraphQLClient(`https://${stores.destination.storeUrl}/admin/api/${API_VERSION}/graphql.json`, {
+      // @ts-ignore
+      headers: {
+        "X-Shopify-Access-Token": stores.destination.accessToken,
+      },
+    });
     for (let item of uniqueSkusToSync as SkuToSync[]) {
-      const variantToSync = await STORE_TO_SYNC_TO.request(
-        productVariantsQuery,
-        {
-          query: `sku:${item.sku}`,
-          locationId: stores.destination.locationId,
-        }
-      );
-      let inventoryItemId =
-        variantToSync?.productVariants?.edges[0]?.node?.inventoryItem?.id;
+      const variantToSync = await STORE_TO_SYNC_TO.request(productVariantsQuery, {
+        query: `sku:${item.sku}`,
+        locationId: stores.destination.locationId,
+      });
+      let inventoryItemId = variantToSync?.productVariants?.edges[0]?.node?.inventoryItem?.id;
       let quantity = item.quantity;
 
-      const syncedVariant = await STORE_TO_SYNC_TO.request(
-        inventorySetQuantitiesMutation,
-        {
-          input: {
-            ignoreCompareQuantity: true,
-            name: "available",
-            quantities: [
-              {
-                inventoryItemId: inventoryItemId,
-                locationId: stores.destination.locationId,
-                quantity: quantity,
-              },
-            ],
-            reason: "other",
-          },
-        }
-      );
+      const syncedVariant = await STORE_TO_SYNC_TO.request(inventorySetQuantitiesMutation, {
+        input: {
+          ignoreCompareQuantity: true,
+          name: "available",
+          quantities: [
+            {
+              inventoryItemId: inventoryItemId,
+              locationId: stores.destination.locationId,
+              quantity: quantity,
+            },
+          ],
+          reason: "other",
+        },
+      });
 
       console.log("syncedVariant", syncedVariant);
     }
