@@ -8,7 +8,7 @@ import { inventoryQuery } from "../queries/inventory";
 import { metafieldsSet } from "../queries/metafieldsSetMutation";
 dotenv.config();
 
-const API_VERSION = "2025-10";
+const API_VERSION = "2026-01";
 export const variant_store_inventory = async (req: Request, res: Response) => {
   try {
     const storeDomain = req.query.store as string;

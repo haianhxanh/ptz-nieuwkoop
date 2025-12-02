@@ -7,16 +7,16 @@ FLOW
 /data/export/sales/daily: DONE
 
 WEBHOOKS
-/giftcard/create
-/giftcard/update
-/order/update/ready-for-pickup
-/stores/inventory-sync
+/giftcard/create: DONE
+/giftcard/update: DONE
+/order/update/ready-for-pickup: DONE
+/stores/inventory-sync: DONE
 
 NP FRONTEND API_ROUTES
 /get-products
 /get-app-metaobject
 /update-app-metaobject
-/import-products
+/import-products: DONE
 /all-variants
 
 /get-products

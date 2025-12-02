@@ -9,7 +9,7 @@ import { GraphQLClient } from "graphql-request";
 import { writeToGoogleSheetWithCredentials, formatOrderDataForSheets } from "../utilities/googleSheetsSimple";
 dotenv.config();
 
-const API_VERSION = "2025-10";
+const API_VERSION = "2026-01";
 
 const { DMP_STORE_URL, GOOGLE_SPREADSHEET_ID_PTZ, GOOGLE_SPREADSHEET_ID_DMP } = process.env;
 

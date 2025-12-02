@@ -9,12 +9,8 @@ dotenv.config();
 const { API_VERSION } = process.env;
 const { SMSZASILAM_HASH } = process.env;
 
-export const order_update_ready_for_pickup = async (
-  req: Request,
-  res: Response
-) => {
+export const order_update_ready_for_pickup = async (req: Request, res: Response) => {
   try {
-    console.log(req?.body);
     let fulfillmentOrderId = req?.body?.fulfillment_order?.id;
 
     let store = req.query.store;
@@ -25,15 +21,12 @@ export const order_update_ready_for_pickup = async (
       stores = get_stores(store);
     }
 
-    const shopifyClient = new GraphQLClient(
-      `https://${stores?.origin.storeUrl}/admin/api/${API_VERSION}/graphql.json`,
-      {
-        // @ts-ignore
-        headers: {
-          "X-Shopify-Access-Token": stores?.origin.accessToken,
-        },
-      }
-    );
+    const shopifyClient = new GraphQLClient(`https://${stores?.origin.storeUrl}/admin/api/${API_VERSION}/graphql.json`, {
+      // @ts-ignore
+      headers: {
+        "X-Shopify-Access-Token": stores?.origin.accessToken,
+      },
+    });
 
     let fulfillmentOrder = await shopifyClient.request(fulfillmentOrderQuery, {
       fulfillmentOrderId: fulfillmentOrderId,
@@ -41,10 +34,7 @@ export const order_update_ready_for_pickup = async (
 
     let order = fulfillmentOrder?.fulfillmentOrder?.order;
 
-    if (!order?.billingAddress?.phone)
-      return res
-        .status(200)
-        .json({ error: `Order ${order.name} has no phone number` });
+    if (!order?.billingAddress?.phone) return res.status(200).json({ error: `Order ${order.name} has no phone number` });
 
     let phone = order.billingAddress.phone;
     let storeName = stores?.origin?.storeName || "Potzillas";
@@ -56,12 +46,7 @@ export const order_update_ready_for_pickup = async (
     let parsedPhone = phone.replace(/\D/g, "").replace(/^420/, "");
     let requestUrl = `https://app.smszasilam.cz/rest/?HASH=${SMSZASILAM_HASH}&number=${parsedPhone}&text=${message}`;
 
-    console.log(
-      "Sending message to",
-      parsedPhone,
-      "with message",
-      decodeURIComponent(message)
-    );
+    console.log("Sending message to", parsedPhone, "with message", decodeURIComponent(message));
 
     let messageSent = await axios.post(requestUrl);
 
