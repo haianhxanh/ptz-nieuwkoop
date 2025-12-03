@@ -214,11 +214,15 @@ export default function Index() {
     setImportStatus(IMPORT_STATUS.IN_PROGRESS);
     for (const variant of inputItems) {
       let singleProduct = {};
-      let variants = products.filter(
-        (item) =>
-          item.matchingElement == variant.matchingElement &&
-          removeSizeInTitles(item.title) == removeSizeInTitles(variant.title),
-      );
+      let variants =
+        products && Array.isArray(products)
+          ? products.filter(
+              (item) =>
+                item.matchingElement == variant.matchingElement &&
+                removeSizeInTitles(item.title) ==
+                  removeSizeInTitles(variant.title),
+            )
+          : [];
 
       if (variants.length == 0) {
         singleProduct = [variant.sku];
@@ -241,7 +245,7 @@ export default function Index() {
     if (importProductsRes?.status) {
       if (importProductsRes?.status == 200) {
         setImportStatus(IMPORT_STATUS.COMPLETED);
-        let variantsRes = importProductsRes?.data?.variants;
+        let variantsRes = importProductsRes?.data?.variants || [];
         setVariants((prevVariants) => [...prevVariants, ...variantsRes]);
 
         setTimeout(() => {
@@ -328,64 +332,76 @@ export default function Index() {
   const fetchData = async () => {
     setInit(true);
     const data = await getProducts(appUrl);
-    const fetchedData = data?.data.products
-      .map((product: any) => {
-        return {
-          id: product.Itemcode,
-          title: product.Description,
-          sku: product.Itemcode,
-          brand:
-            product.Tags.find((tag: any) => tag.Code == "Brand")?.Values[0]
-              .Description_EN || "",
-          price: (product.Salesprice * 26).toFixed(2),
-          collection:
-            product.Tags.find((tag: any) => tag.Code == "Collection")?.Values[0]
-              .Description_EN || "",
-          color:
-            product.Tags.find((tag: any) => tag.Code == "ColourPlanter")
-              ?.Values[0].Description_EN || undefined,
-          material:
-            product.Tags.find((tag: any) => tag.Code == "Material")?.Values[0]
-              .Description_EN || "",
-          weight: product.Weight.toFixed(2) || null,
-          length: product.Length || null,
-          width: product.Width || null,
-          height: product.Height || null,
-          depth: product.Depth || null,
-          diameter: product.Diameter || null,
-          opening: product.Opening || null,
-          image:
-            "https://images.nieuwkoop-europe.com/images/" +
-            product.ItemPictureName,
-          matchingElement: removeSizeInTitles(product?.ItemVariety_EN) || null,
-          itemStatus: product.ItemStatus,
-          isStockItem: product.IsStockItem,
-          mainGroupCode: product.MainGroupCode,
-          deliveryTime: product.DeliveryTimeInDays,
-          searchUrl: `https://www.nieuwkoop-europe.com/en/search-results?q=${product.Itemcode}`,
-          adminUrl:
-            process.env.NODE_ENV == "development"
-              ? API_ROUTES.SHOPIFY_ADMIN_URL_DEV
-              : API_ROUTES.SHOPIFY_ADMIN_URL_PROD,
-          type: product.ProductGroupDescription_EN,
-        };
-      })
-      .sort((a: any, b: any) => {
-        if (!a.matchingElement || !b.matchingElement) return false;
-        return a.matchingElement.localeCompare(b.matchingElement);
-      });
+    if (data?.data?.products && Array.isArray(data.data.products)) {
+      const fetchedData = data.data.products
+        .map((product: any) => {
+          return {
+            id: product.Itemcode,
+            title: product.Description,
+            sku: product.Itemcode,
+            brand:
+              product.Tags.find((tag: any) => tag.Code == "Brand")?.Values[0]
+                .Description_EN || "",
+            price: (product.Salesprice * 26).toFixed(2),
+            collection:
+              product.Tags.find((tag: any) => tag.Code == "Collection")
+                ?.Values[0].Description_EN || "",
+            color:
+              product.Tags.find((tag: any) => tag.Code == "ColourPlanter")
+                ?.Values[0].Description_EN || undefined,
+            material:
+              product.Tags.find((tag: any) => tag.Code == "Material")?.Values[0]
+                .Description_EN || "",
+            weight: product.Weight.toFixed(2) || null,
+            length: product.Length || null,
+            width: product.Width || null,
+            height: product.Height || null,
+            depth: product.Depth || null,
+            diameter: product.Diameter || null,
+            opening: product.Opening || null,
+            image:
+              "https://images.nieuwkoop-europe.com/images/" +
+              product.ItemPictureName,
+            matchingElement:
+              removeSizeInTitles(product?.ItemVariety_EN) || null,
+            itemStatus: product.ItemStatus,
+            isStockItem: product.IsStockItem,
+            mainGroupCode: product.MainGroupCode,
+            deliveryTime: product.DeliveryTimeInDays,
+            searchUrl: `https://www.nieuwkoop-europe.com/en/search-results?q=${product.Itemcode}`,
+            adminUrl:
+              process.env.NODE_ENV == "development"
+                ? API_ROUTES.SHOPIFY_ADMIN_URL_DEV
+                : API_ROUTES.SHOPIFY_ADMIN_URL_PROD,
+            type: product.ProductGroupDescription_EN,
+          };
+        })
+        .sort((a: any, b: any) => {
+          if (!a.matchingElement || !b.matchingElement) return false;
+          return a.matchingElement.localeCompare(b.matchingElement);
+        });
 
-    setInit(false);
-    setProducts(fetchedData);
+      setInit(false);
+      setProducts(fetchedData);
+    } else {
+      setInit(false);
+      setProducts([]);
+    }
   };
 
   useEffect(() => {
-    filterProducts(productType[0]);
+    if (products && products.length > 0 && productType) {
+      filterProducts(productType[0]);
+    }
   }, [products, productType]);
 
   const filterProducts = (type: string) => {
+    if (!products || !Array.isArray(products) || products.length === 0) {
+      return;
+    }
+
     let filteredItems =
-      type != ""
+      type != "" && type
         ? products.filter((product: any) => product.type == type)
         : products;
 
@@ -495,6 +511,9 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
+    if (!products || !Array.isArray(products)) {
+      return;
+    }
     if (filteredBrands.length > 0) {
       const filteredItems = products.filter((product) =>
         filteredBrands.includes(product.brand),
@@ -521,7 +540,7 @@ export default function Index() {
         selectedFilteredProducts = filteredProducts.filter((product) =>
           selectedResources.includes(product.id),
         );
-      } else if (products.length > 0) {
+      } else if (products && Array.isArray(products) && products.length > 0) {
         selectedFilteredProducts = products.filter((product) =>
           selectedResources.includes(product.id),
         );
@@ -544,17 +563,19 @@ export default function Index() {
   useEffect(() => {
     const fetchVariants = async () => {
       let data = await getAllVariants(appUrl);
-      let variants = data?.data.variants;
-      let variantsObj = variants.map((variant: any) => {
-        return {
-          productId: variant.node.product.id.replace(
-            "gid://shopify/Product/",
-            "",
-          ),
-          sku: variant.node.sku,
-        };
-      });
-      setVariants(variantsObj);
+      let variants = data?.data?.variants;
+      if (variants && Array.isArray(variants)) {
+        let variantsObj = variants.map((variant: any) => {
+          return {
+            productId: variant.node.product.id.replace(
+              "gid://shopify/Product/",
+              "",
+            ),
+            sku: variant.node.sku,
+          };
+        });
+        setVariants(variantsObj);
+      }
     };
 
     fetchVariants();
