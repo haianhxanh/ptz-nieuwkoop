@@ -4,13 +4,7 @@ import { promisify } from "util";
 const sleep = promisify(setTimeout);
 import dotenv from "dotenv";
 
-import {
-  createApiSalesOrder,
-  get_order_by_id,
-  getNextMonday,
-  getVariantStock,
-  tagOrder,
-} from "../utilities/helper";
+import { createApiSalesOrder, get_order_by_id, getNextMonday, getVariantStock, tagOrder } from "../utilities/helper";
 
 dotenv.config();
 
@@ -32,38 +26,25 @@ type Item = {
 
 export const post_order = async (req: Request, res: Response) => {
   try {
-    let order_id = (req.query.order_id as string).replace(
-      "gid://shopify/Order/",
-      ""
-    );
-    let order = await get_order_by_id(order_id);
+    const order_id = (req.query.order_id as string).replace("gid://shopify/Order/", "");
+    const order = await get_order_by_id(order_id);
 
     if (order == null || order.length == 0) {
       return res.status(200).json({
-        message: `Order ${
-          order?.name || order_id
-        } is not a Nieuwkoop order or is POS order`,
+        message: `Order ${order?.name || order_id} is not a Nieuwkoop order or is POS order`,
       });
     }
 
     let nieuwkoop = [] as Item[];
-    let ORDER_IS_PAID_OR_COD =
-      order?.displayFinancialStatus === "PAID" ||
-      order?.paymentGatewayNames?.includes("Cash on Delivery (COD)");
-    let ORDER_EXPORTED =
-      order?.tags?.includes("NP_EXPORTED") ||
-      order?.tags?.includes("NP_MANUAL");
-    let ORDER_HAS_NIEUWKOOP_ATTRIBUTES = order?.customAttributes?.find(
-      (attr: any) => attr.key === "Nieuwkoop" && attr.value != ""
-    );
+    const ORDER_IS_PAID_OR_COD = order?.displayFinancialStatus === "PAID" || order?.paymentGatewayNames?.includes("Cash on Delivery (COD)");
+    const ORDER_EXPORTED = order?.tags?.includes("NP_EXPORTED") || order?.tags?.includes("NP_MANUAL");
+    const ORDER_HAS_NIEUWKOOP_ATTRIBUTES = order?.customAttributes?.find((attr: any) => attr.key === "Nieuwkoop" && attr.value != "");
 
     if (ORDER_EXPORTED) {
-      return res
-        .status(200)
-        .json({ message: `Order ${order?.name} was already exported` });
+      return res.status(200).json({ message: `Order ${order?.name} was already exported` });
     }
 
-    let npItems = order?.lineItems?.edges?.filter(
+    const npItems = order?.lineItems?.edges?.filter(
       (item: any) =>
         item?.node?.variant?.inventoryQuantity < 0 &&
         item?.node?.product?.tags.includes("Nieuwkoop") &&
@@ -72,12 +53,11 @@ export const post_order = async (req: Request, res: Response) => {
 
     // Check how many items need to be purchased from NP and update order attributes
     if (!ORDER_HAS_NIEUWKOOP_ATTRIBUTES) {
-      for (let item of npItems) {
-        let purchasedQty = item?.node?.quantity;
-        let originalQty = item?.node?.variant?.inventoryQuantity + purchasedQty;
+      for (const item of npItems) {
+        const purchasedQty = item?.node?.quantity;
+        const originalQty = item?.node?.variant?.inventoryQuantity + purchasedQty;
 
-        let qtyToOrder =
-          originalQty > 0 ? purchasedQty - originalQty : purchasedQty;
+        const qtyToOrder = originalQty > 0 ? purchasedQty - originalQty : purchasedQty;
 
         if (qtyToOrder <= 0) continue;
         nieuwkoop.push({
@@ -91,20 +71,13 @@ export const post_order = async (req: Request, res: Response) => {
         key: "Nieuwkoop",
         value: JSON.stringify(nieuwkoop),
       });
-      let tags = order?.tags + ", NP";
-      let updateOrderAttributesRes = await updateOrderAttributesAndTags(
-        order_id,
-        orderAttributes,
-        tags
-      );
+      const tags = order?.tags + ", NP";
+      await updateOrderAttributesAndTags(order_id, orderAttributes, tags);
     } else {
-      nieuwkoop = JSON.parse(
-        order?.customAttributes?.find((attr: any) => attr.key === "Nieuwkoop")
-          ?.value
-      );
+      nieuwkoop = JSON.parse(order?.customAttributes?.find((attr: any) => attr.key === "Nieuwkoop")?.value);
     }
 
-    let salesOrders = [] as SalesOrder[];
+    const salesOrders = [] as SalesOrder[];
 
     if (nieuwkoop.length == 0) {
       return res.status(200).json({
@@ -113,9 +86,9 @@ export const post_order = async (req: Request, res: Response) => {
     }
 
     if (ORDER_IS_PAID_OR_COD) {
-      for (let item of nieuwkoop) {
-        let stockVariant = await getVariantStock(item.sku);
-        let line = {
+      for (const item of nieuwkoop) {
+        const stockVariant = await getVariantStock(item.sku);
+        const line = {
           Itemcode: item.sku,
           Quantity: item.qty,
         };
@@ -128,22 +101,16 @@ export const post_order = async (req: Request, res: Response) => {
             calculateDeliveryDate = getNextMonday(firstAvailableDate);
           }
         } else {
-          let today = new Date();
+          const today = new Date();
           calculateDeliveryDate = getNextMonday(today);
         }
-        if (calculateDeliveryDate != undefined)
-          await createSalesOrder(
-            salesOrders,
-            calculateDeliveryDate,
-            line,
-            order?.name
-          );
+        if (calculateDeliveryDate != undefined) await createSalesOrder(salesOrders, calculateDeliveryDate, line, order?.name);
       }
 
       if (!req.query.test && ORDER_IS_PAID_OR_COD) {
         if (salesOrders.length > 0)
           for (let salesOrder of salesOrders) {
-            const api_order = await createApiSalesOrder(salesOrder);
+            await createApiSalesOrder(salesOrder);
             await sleep(1000);
           }
       }
@@ -154,7 +121,7 @@ export const post_order = async (req: Request, res: Response) => {
         const tags = order.tags;
         let tag = "NP_EXPORTED, NP";
         if (req.query.test) tag = tag + ",  NP_TEST";
-        const tagShopifyOrder = await tagOrder(order_id, tags, tag);
+        await tagOrder(order_id, tags, tag);
         await sleep(1000);
       }
       console.log("Sales Orders: ", salesOrders);
@@ -169,26 +136,21 @@ export const post_order = async (req: Request, res: Response) => {
   }
 };
 
-const createSalesOrder = async (
-  salesOrders: SalesOrder[],
-  calculateDeliveryDate: any,
-  line: SalesOrderLine,
-  orderName: string
-) => {
+const createSalesOrder = async (salesOrders: SalesOrder[], calculateDeliveryDate: any, line: SalesOrderLine, orderName: string) => {
   // check if there's any sales order with the same delivery date
-  let date = new Date(calculateDeliveryDate);
-  let dateString = date.toISOString();
+  const date = new Date(calculateDeliveryDate);
+  const dateString = date.toISOString();
 
-  let sameOrder = salesOrders.find((x: SalesOrder) => {
-    let deliveryDate = new Date(x.DeliveryDate);
-    let deliveryDateString = deliveryDate.toISOString();
+  const sameOrder = salesOrders.find((x: SalesOrder) => {
+    const deliveryDate = new Date(x.DeliveryDate);
+    const deliveryDateString = deliveryDate.toISOString();
     if (deliveryDateString == dateString) {
       return x;
     }
   });
 
   if (sameOrder != undefined) {
-    let salesOrderLine = {
+    const salesOrderLine = {
       Itemcode: line.Itemcode,
       Quantity: line.Quantity,
     };
@@ -199,9 +161,10 @@ const createSalesOrder = async (
       sameOrder.Notes += `, ${orderName}`;
     }
   } else {
-    let salesOrder = {
+    const salesOrder = {
       DeliveryDate: calculateDeliveryDate,
       Notes: `DMP Internal orders: ${orderName}`,
+      Reference: orderName,
       SalesOrderLines: [
         {
           Itemcode: line.Itemcode,
