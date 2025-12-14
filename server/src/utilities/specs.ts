@@ -1,4 +1,4 @@
-import { EN_TAG_CODES, MAIN_SPECS, SIZES, TAGS, TAG_CODES } from "./constants";
+import { BOOLEAN_PROPERTIES, EN_TAG_CODES, MAIN_SPECS, SIZES, TAGS, TAG_CODES } from "./constants";
 import { capitalizeFirstLetter } from "./helper";
 
 export async function getTag(tagsObj: any) {
@@ -25,12 +25,7 @@ export async function getTag(tagsObj: any) {
   return capitalizeFirstLetter(tag) || "";
 }
 
-const appendSpec = (
-  specs: string,
-  label: string,
-  value: any,
-  unit: string = ""
-): string => {
+const appendSpec = (specs: string, label: string, value: any, unit: string = ""): string => {
   return value ? `${specs}<p>${label}: ${value} ${unit}</p>` : "";
 };
 
@@ -44,23 +39,13 @@ export const createVariantSpecs = async (matchingVariant: any) => {
 
   for (const spec of MAIN_SPECS) {
     if (matchingVariant[spec.value] && matchingVariant[spec.value] > 0) {
-      mainSpecs = appendSpec(
-        mainSpecs,
-        spec.label,
-        matchingVariant[spec.value],
-        spec.unit
-      );
+      mainSpecs = appendSpec(mainSpecs, spec.label, matchingVariant[spec.value], spec.unit);
     }
   }
 
   for (const spec of TAGS) {
-    if (
-      matchingVariant.Tags &&
-      matchingVariant.Tags.find((tag: any) => tag.Code == spec.tagCode)
-    ) {
-      let tagsObj = matchingVariant.Tags.find(
-        (tag: any) => tag.Code == spec.tagCode
-      );
+    if (matchingVariant.Tags && matchingVariant.Tags.find((tag: any) => tag.Code == spec.tagCode)) {
+      let tagsObj = matchingVariant.Tags.find((tag: any) => tag.Code == spec.tagCode);
 
       let tag = await getTag(tagsObj);
       tag.replace(/,\s*$/, "");
@@ -70,6 +55,13 @@ export const createVariantSpecs = async (matchingVariant: any) => {
   }
 
   let variantSpecs = mainSpecs + tagSpecs;
+
+  for (const property of BOOLEAN_PROPERTIES) {
+    const matchingTag = matchingVariant.Tags?.find((tag: any) => tag.Code === property.property);
+    const hasPropertyValue = matchingTag?.Values?.some((value: any) => value.Description_EN === property.value);
+    const propertyValue = hasPropertyValue ? property.labelPositive : property.labelNegative;
+    variantSpecs = appendSpec(variantSpecs, property.label, propertyValue, "");
+  }
 
   if (variantSpecs.includes(",  </p>")) {
     variantSpecs = variantSpecs.replace(",  </p>", "</p>");

@@ -107,7 +107,7 @@ export const TAG_CODES: TagCodesType = {
   MaterialProperties: {
     "Raised base": "Zvýšená základna",
     "Including wheels": "S kolečky",
-    "Including liner": "Včetně vložky",
+    // "Including liner": "Včetně vložky",
     "Fire retardant": "Ohnivzdorný",
     "Scratch and break resistant": "Odolný proti poškrábání a rozbití",
     "Recycled material": "Recyklovaný materiál",
@@ -115,7 +115,7 @@ export const TAG_CODES: TagCodesType = {
     "Frost resistant": "Odolný proti mrazu",
     "UV resistant": "Odolný proti UV",
     Waterproof: "Vodotěsný",
-    "With drainage hole": "S odtokovým otvorem",
+    // "With drainage hole ": "S drenážním otvorem",
     "With lighting": "S osvětlením",
   },
   Shape: {
@@ -304,6 +304,7 @@ export const MAIN_SPECS = [
 ];
 
 export const TAGS = [
+  { tagCode: "Brand", label: "Značka" },
   { tagCode: "Shape", label: "Tvar" },
   { tagCode: "ArtificialShape", label: "Tvar" },
   { tagCode: "ColourArtificial", label: "Barva" },
@@ -316,5 +317,21 @@ export const TAGS = [
   { tagCode: "ProductFeatures", label: "Jiné Vlastnosti" },
   { tagCode: "Accessories", label: "Příslušenství" },
   { tagCode: "ArtificialGroup", label: "Skupina" },
-  { tagCode: "Brand", label: "Značka" },
+];
+
+export const BOOLEAN_PROPERTIES = [
+  {
+    property: "MaterialProperties",
+    value: "With drainage hole ",
+    label: "S drenážním otvorem",
+    labelPositive: "Ano",
+    labelNegative: "Ne",
+  },
+  {
+    property: "MaterialProperties",
+    value: "Including liner",
+    label: "Obsahuje Liner (vložku)",
+    labelPositive: "Ano",
+    labelNegative: "Ne",
+  },
 ];
