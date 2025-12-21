@@ -135,6 +135,7 @@ export const TAG_CODES: TagCodesType = {
     Balloon: "Balón",
     Oval: "Ovál",
     "Hanging basket": "Visací koš",
+    Hanging: "Visací",
   },
   ColourPlanter: {
     White: "Bílá",
@@ -301,10 +302,14 @@ export const MAIN_SPECS = [
     value: "Volume",
     unit: "l",
   },
+  {
+    label: "Značka",
+    value: "Brand",
+    unit: "",
+  },
 ];
 
 export const TAGS = [
-  { tagCode: "Brand", label: "Značka" },
   { tagCode: "Shape", label: "Tvar" },
   { tagCode: "ArtificialShape", label: "Tvar" },
   { tagCode: "ColourArtificial", label: "Barva" },
@@ -318,6 +323,8 @@ export const TAGS = [
   { tagCode: "Accessories", label: "Příslušenství" },
   { tagCode: "ArtificialGroup", label: "Skupina" },
 ];
+
+export const UNTRANSLATED_TAGS = [{ tagCode: "Brand", label: "Značka" }];
 
 export const BOOLEAN_PROPERTIES = [
   {

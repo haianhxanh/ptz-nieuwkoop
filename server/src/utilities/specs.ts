@@ -1,4 +1,4 @@
-import { BOOLEAN_PROPERTIES, EN_TAG_CODES, MAIN_SPECS, SIZES, TAGS, TAG_CODES } from "./constants";
+import { BOOLEAN_PROPERTIES, EN_TAG_CODES, MAIN_SPECS, SIZES, TAGS, TAG_CODES, UNTRANSLATED_TAGS } from "./constants";
 import { capitalizeFirstLetter } from "./helper";
 
 export async function getTag(tagsObj: any) {
@@ -36,6 +36,12 @@ const appendSpec = (specs: string, label: string, value: any, unit: string = "")
 export const createVariantSpecs = async (matchingVariant: any) => {
   let mainSpecs = "";
   let tagSpecs = "";
+
+  for (const spec of UNTRANSLATED_TAGS) {
+    if (matchingVariant.Tags && matchingVariant.Tags.find((tag: any) => tag.Code == spec.tagCode)) {
+      mainSpecs = appendSpec(mainSpecs, spec.label, matchingVariant.Tags.find((tag: any) => tag.Code == spec.tagCode).Values[0].Description_EN, "");
+    }
+  }
 
   for (const spec of MAIN_SPECS) {
     if (matchingVariant[spec.value] && matchingVariant[spec.value] > 0) {
