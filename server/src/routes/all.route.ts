@@ -56,7 +56,7 @@ const generateRequestKey = (req: Request): string => {
   return JSON.stringify(req.body);
 };
 
-const processQueueInventorySync = async () => {
+const processQueueInventorySync = async (): Promise<any> => {
   if (isProcessingInventorySync || requestQueue.length === 0) {
     return;
   }
@@ -81,6 +81,7 @@ const processQueueInventorySync = async () => {
     isProcessingInventorySync = false;
     processQueueInventorySync();
   }
+  return res.status(200).json({ message: "Inventory sync processed" });
 };
 
 router.post("/stores/inventory-sync", (req: Request, res: Response) => {

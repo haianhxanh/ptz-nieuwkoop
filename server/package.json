@@ -8,7 +8,11 @@
     "begin": "node dist/index.js",
     "start": "nodemon dist/index.js",
     "compile": "tsc",
-    "build": "tsc -w"
+    "build": "tsc -w",
+    "build:prod": "tsc && cd client && npm install && npm run build",
+    "start:prod": "node dist/index.js",
+    "dev:server": "tsc -w",
+    "dev:client": "cd client && npm run dev"
   },
   "keywords": [],
   "author": "",
@@ -29,7 +33,8 @@
     "nodemailer": "^6.9.12",
     "nodemon": "^3.1.0",
     "pg": "^8.13.1",
-    "sequelize": "^6.37.5"
+    "sequelize": "^6.37.5",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
