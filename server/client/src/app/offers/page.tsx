@@ -87,7 +87,7 @@ export default function OffersPage() {
                     <TableHead>Název</TableHead>
                     <TableHead>Zákazník</TableHead>
                     <TableHead>Stav</TableHead>
-                    <TableHead>Počet</TableHead>
+                    <TableHead>Počet položek</TableHead>
                     <TableHead>Celkem</TableHead>
                     <TableHead>Vytvořeno</TableHead>
                   </TableRow>

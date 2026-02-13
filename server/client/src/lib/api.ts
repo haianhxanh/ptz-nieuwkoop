@@ -93,12 +93,12 @@ export interface Product {
 // API functions
 export const offersApi = {
   list: async () => {
-    const response = await apiClient.get<{ success: boolean; data: Offer[] }>("/offers");
+    const response = await apiClient.get<{ success: boolean; data: Offer[] }>("/api/offers");
     return response.data;
   },
 
   getById: async (id: string) => {
-    const response = await apiClient.get<{ success: boolean; data: Offer }>(`/offers/${id}`);
+    const response = await apiClient.get<{ success: boolean; data: Offer }>(`/api/offers/${id}`);
     return response.data;
   },
 
@@ -115,22 +115,32 @@ export const offersApi = {
     status?: OfferStatus;
     notes?: string;
   }) => {
-    const response = await apiClient.post<{ success: boolean; data: Offer }>("/offers", data);
+    const response = await apiClient.post<{ success: boolean; data: Offer }>("/api/offers", data);
     return response.data;
   },
 
   addItems: async (id: string, items: LineItem[]) => {
-    const response = await apiClient.post<{ success: boolean; data: Offer }>(`/offers/${id}/items`, { items });
+    const response = await apiClient.post<{ success: boolean; data: Offer }>(`/api/offers/${id}/items`, { items });
     return response.data;
   },
 
   update: async (id: string, data: Partial<Offer>) => {
-    const response = await apiClient.put<{ success: boolean; data: Offer }>(`/offers/${id}`, data);
+    const response = await apiClient.put<{ success: boolean; data: Offer }>(`/api/offers/${id}`, data);
     return response.data;
   },
 
   delete: async (id: string) => {
-    const response = await apiClient.delete<{ success: boolean }>(`/offers/${id}`);
+    const response = await apiClient.delete<{ success: boolean }>(`/api/offers/${id}`);
+    return response.data;
+  },
+
+  listCustomers: async () => {
+    const response = await apiClient.get<{ success: boolean; data: Customer[] }>("/api/offers/customers");
+    return response.data;
+  },
+
+  updateCustomer: async (id: string, data: Partial<Customer>) => {
+    const response = await apiClient.put<{ success: boolean; data: Customer }>(`/api/offers/customers/${id}`, data);
     return response.data;
   },
 };
@@ -146,7 +156,7 @@ export const authApi = {
   testCredentials: async (username: string, password: string): Promise<boolean> => {
     try {
       const auth = btoa(`${username}:${password}`);
-      const response = await axios.get(`${API_URL}/offers`, {
+      const response = await axios.get(`${API_URL}/api/offers`, {
         headers: {
           Authorization: `Basic ${auth}`,
         },

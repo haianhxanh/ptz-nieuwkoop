@@ -57,8 +57,8 @@ app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
 
 app.use(express.static(path.join(__dirname, "../public")));
 
+app.use("/api/offers", offer_routes);
 app.use("/wolt", wolt_routes);
-app.use("/offers", offer_routes);
 app.use("/", all_routes);
 
 /*----Checking Database Connection-------------*/

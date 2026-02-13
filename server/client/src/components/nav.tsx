@@ -43,6 +43,15 @@ export function Nav() {
               >
                 Produkty
               </Link>
+              <Link
+                href="/customers"
+                className={cn(
+                  "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  pathname === "/customers" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                Zákazníci
+              </Link>
             </nav>
             <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
               <LogOut className="h-4 w-4" />

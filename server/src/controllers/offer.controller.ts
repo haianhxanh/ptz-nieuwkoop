@@ -221,3 +221,30 @@ export const listCustomers = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const updateCustomer = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+
+    const customer = await offersService.updateCustomer(id, data);
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        error: "Customer not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: customer,
+    });
+  } catch (error) {
+    console.error("Error updating customer:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error",
+    });
+  }
+};

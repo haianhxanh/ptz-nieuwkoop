@@ -188,6 +188,27 @@ export class OffersService {
       order: [["created_at", "DESC"]],
     });
   }
+
+  async updateCustomer(id: string, data: Partial<any>): Promise<Customer | null> {
+    const customer = await Customer.findByPk(id);
+
+    if (!customer) {
+      return null;
+    }
+
+    await customer.update({
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      address: data.address,
+      city: data.city,
+      postal_code: data.postal_code,
+      country: data.country,
+      notes: data.notes,
+    });
+
+    return customer;
+  }
 }
 
 export const offersService = new OffersService();

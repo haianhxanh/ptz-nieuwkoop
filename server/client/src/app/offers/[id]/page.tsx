@@ -8,11 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { offersApi, type Offer, type LineItem, type OfferStatus } from "@/lib/api";
-import { ArrowLeft, GripVertical, Save } from "lucide-react";
+import { ArrowLeft, GripVertical, Save, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 const statusConfig = {
   draft: { label: "Koncept", variant: "secondary" as const },
@@ -31,6 +33,7 @@ export default function OfferDetailPage() {
   const [editedItems, setEditedItems] = useState<LineItem[]>([]);
   const [totalDiscount, setTotalDiscount] = useState<number>(0);
   const [status, setStatus] = useState<OfferStatus>("draft");
+  const [description, setDescription] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -50,6 +53,7 @@ export default function OfferDetailPage() {
         setEditedItems(data.data.items || []);
         setTotalDiscount(data.data.order_discount || 0);
         setStatus(data.data.status);
+        setDescription(data.data.description || "");
         setHasUnsavedChanges(false);
       }
     } catch (err) {
@@ -185,6 +189,7 @@ export default function OfferDetailPage() {
         items: sanitizedItems,
         discount: finalDiscount,
         status: status,
+        description: description,
       });
 
       console.log("Save result:", result);
@@ -273,7 +278,12 @@ export default function OfferDetailPage() {
             </Select>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={saveChanges} disabled={saving} className={hasUnsavedChanges ? "border-orange-500 text-orange-600" : ""}>
+            <Button
+              variant="outline"
+              onClick={saveChanges}
+              disabled={saving}
+              className={hasUnsavedChanges ? "border-amber-500 text-amber-600 hover:bg-amber-50" : ""}
+            >
               <Save className="mr-2 h-4 w-4" />
               {saving ? "Ukládání..." : hasUnsavedChanges ? "Uložit změny *" : "Uložit změny"}
             </Button>
@@ -361,16 +371,22 @@ export default function OfferDetailPage() {
             </Card>
 
             {/* Description */}
-            {offer.description && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Popis</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{offer.description}</p>
-                </CardContent>
-              </Card>
-            )}
+            <Card>
+              <CardHeader>
+                <CardTitle>Popis</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  value={description}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
+                  placeholder="Přidat popis nabídky..."
+                  rows={4}
+                />
+              </CardContent>
+            </Card>
 
             {/* Notes */}
             {offer.notes && (
@@ -389,8 +405,13 @@ export default function OfferDetailPage() {
           <div className="space-y-6">
             {/* Customer Info */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                 <CardTitle>Zákazník</CardTitle>
+                <Link href="/customers">
+                  <Button variant="ghost" size="sm" className="gap-1">
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </Link>
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="font-semibold">{offer.customer.name}</div>
