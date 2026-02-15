@@ -56,8 +56,6 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       console.log("Fetching fresh products from API");
       const [data, { rate: exchangeRate }] = await Promise.all([productsApi.list(), exchangeRateApi.get()]);
 
-      console.log(data.products[0]);
-
       if (data.products && Array.isArray(data.products)) {
         const rate = Number(exchangeRate) || 25;
         const mapped = data.products.map((product: any) => {

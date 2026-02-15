@@ -36,9 +36,7 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      console.log("Testing credentials against server...");
       const isValid = await authApi.testCredentials(data.username, data.password);
-      console.log("Credentials valid:", isValid);
 
       if (!isValid) {
         toast.error("Nesprávné přihlašovací údaje");
@@ -46,11 +44,9 @@ export function LoginForm() {
         return;
       }
 
-      console.log("Storing credentials in cookie...");
       authService.login(data.username, data.password);
 
       toast.success("Přihlášení úspěšné!");
-      console.log("Redirecting to /offers...");
       router.push("/offers");
     } catch (error) {
       console.error("Login error:", error);

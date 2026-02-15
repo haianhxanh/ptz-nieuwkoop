@@ -18,9 +18,6 @@ export const clientAuth = async (req: Request, res: Response, next: NextFunction
     const credentials = Buffer.from(base64Credentials, "base64").toString("ascii");
     const [username, password] = credentials.split(":");
 
-    console.log("Client Auth attempt:", { username, providedPassword: password ? "***" : "empty" });
-    console.log("Expected:", { username: CLIENT_USERNAME, expectedPassword: CLIENT_PASSWORD ? "***" : "empty" });
-
     if (username === CLIENT_USERNAME && password === CLIENT_PASSWORD) {
       next();
     } else {
