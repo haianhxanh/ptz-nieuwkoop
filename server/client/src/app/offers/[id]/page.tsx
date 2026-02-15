@@ -1,252 +1,59 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
-import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Nav } from "@/components/nav";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { offersApi, exchangeRateApi, type Offer, type LineItem, type OfferStatus, type AdditionalItem } from "@/lib/api";
-import { ArrowLeft, GripVertical, Save, ExternalLink, RefreshCw, Pencil, Plus, Trash2 } from "lucide-react";
-import { toast } from "sonner";
-import Link from "next/link";
-
-const DEFAULT_ADDITIONAL_ITEMS: AdditionalItem[] = [
-  { title: "Práce", price: 0 },
-  { title: "Substrát", price: 0 },
-];
-
-const statusConfig = {
-  draft: { label: "Koncept", variant: "secondary" as const },
-  sent: { label: "Odesláno", variant: "default" as const },
-  accepted: { label: "Přijato", variant: "success" as const },
-  rejected: { label: "Odmítnuto", variant: "destructive" as const },
-  expired: { label: "Vypršelo", variant: "outline" as const },
-};
+import { useOfferDetail } from "./use-offer-detail";
+import {
+  OfferDetailHeader,
+  OfferProductsTable,
+  OfferDescriptionCard,
+  OfferCustomerCard,
+  OfferSummaryCard,
+  OfferNotesCard,
+  OfferMetadataCard,
+} from "./components";
+import { ArrowLeft } from "lucide-react";
 
 export default function OfferDetailPage() {
   const router = useRouter();
-  const params = useParams();
-  const [offer, setOffer] = useState<Offer | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [editedItems, setEditedItems] = useState<LineItem[]>([]);
-  const [totalDiscount, setTotalDiscount] = useState<number>(0);
-  const [status, setStatus] = useState<OfferStatus>("draft");
-  const [description, setDescription] = useState<string>("");
-  const [saving, setSaving] = useState(false);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [updatingRate, setUpdatingRate] = useState(false);
-  const [additionalItems, setAdditionalItems] = useState<AdditionalItem[]>(DEFAULT_ADDITIONAL_ITEMS);
-  const [notesText, setNotesText] = useState<string>("");
-  const [editingOrderDiscount, setEditingOrderDiscount] = useState(false);
-  const [editingAdditionalIndex, setEditingAdditionalIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (params.id) {
-      loadOffer(params.id as string);
-    }
-  }, [params.id]);
-
-  const loadOffer = async (id: string) => {
-    try {
-      setLoading(true);
-      const data = await offersApi.getById(id);
-      if (data.success) {
-        setOffer(data.data);
-        setEditedItems(data.data.items || []);
-        setTotalDiscount(data.data.order_discount || 0);
-        setStatus(data.data.status);
-        setDescription(data.data.description || "");
-        setNotesText(data.data.notes || "");
-        setAdditionalItems(data.data.additional_items?.length ? data.data.additional_items : DEFAULT_ADDITIONAL_ITEMS);
-        setHasUnsavedChanges(false);
-      }
-    } catch (err) {
-      setError("Nabídka nebyla nalezena");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("cs-CZ", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatPrice = (amount: number, currency: string) => {
-    return new Intl.NumberFormat("cs-CZ", {
-      style: "currency",
-      currency: currency || "CZK",
-    }).format(amount);
-  };
-
-  const currencyLabel = (currency: string) => (currency === "CZK" ? "Kč" : currency || "Kč");
-
-  const updateItemQuantity = (index: number, quantity: number) => {
-    const newItems = [...editedItems];
-    const item = newItems[index];
-    item.quantity = quantity;
-    const subtotal = item.unit_price * quantity;
-    const itemDiscount = item.discount || 0;
-    item.total = subtotal - itemDiscount;
-    setEditedItems(newItems);
-    setHasUnsavedChanges(true);
-  };
-
-  const updateItemDiscount = (index: number, discount: number) => {
-    const newItems = [...editedItems];
-    const item = newItems[index];
-    item.discount = discount;
-    const subtotal = item.unit_price * item.quantity;
-    item.total = subtotal - discount;
-    setEditedItems(newItems);
-    setHasUnsavedChanges(true);
-  };
-
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === index) return;
-
-    const newItems = [...editedItems];
-    const draggedItem = newItems[draggedIndex];
-    newItems.splice(draggedIndex, 1);
-    newItems.splice(index, 0, draggedItem);
-
-    setEditedItems(newItems);
-    setDraggedIndex(index);
-    setHasUnsavedChanges(true);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-  };
-
-  const calculateTotals = () => {
-    const itemsSubtotal = editedItems.reduce((sum, item) => {
-      return sum + item.unit_price * item.quantity;
-    }, 0);
-
-    const itemsDiscount = editedItems.reduce((sum, item) => {
-      return sum + (Number(item.discount) || 0);
-    }, 0);
-
-    const orderDiscount = Number(totalDiscount) || 0;
-
-    const totalDiscountAmount = itemsDiscount + orderDiscount;
-
-    const tax = Number(offer?.tax) || 0;
-
-    const additionalTotal = additionalItems.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
-
-    const subtotalWithAdditional = itemsSubtotal + additionalTotal;
-
-    const total = itemsSubtotal - totalDiscountAmount + tax + additionalTotal;
-
-    return {
-      itemsSubtotal,
-      itemsDiscount,
-      orderDiscount,
-      totalDiscountAmount,
-      additionalTotal,
-      subtotal: itemsSubtotal,
-      subtotalWithAdditional,
-      total,
-    };
-  };
-
-  const displayExchangeRate = Number(offer?.exchange_rate) || 25;
-
-  const applyTodaysExchangeRate = async () => {
-    if (!offer) return;
-    try {
-      setUpdatingRate(true);
-      const { rate } = await exchangeRateApi.get();
-      await offersApi.update(offer.simple_id.toString(), { exchange_rate: rate });
-      toast.success(`Kurz nabídky aktualizován na ${rate.toFixed(2)} CZK`);
-      loadOffer(params.id as string);
-    } catch (err) {
-      console.error(err);
-      toast.error("Nepodařilo se aktualizovat kurz");
-    } finally {
-      setUpdatingRate(false);
-    }
-  };
-
-  const saveChanges = async () => {
-    if (!offer) return;
-
-    try {
-      setSaving(true);
-      const { subtotal, total } = calculateTotals();
-
-      const rate = Number(offer.exchange_rate) || 25;
-      const sanitizedItems = editedItems.map((item) => {
-        const unitPrice = Number(item.unit_price) || 0;
-        const unitPriceEur = item.unit_price_eur != null ? Number(item.unit_price_eur) : Math.round((unitPrice / rate) * 100) / 100;
-        return {
-          ...item,
-          quantity: Number(item.quantity) || 1,
-          unit_price: unitPrice,
-          unit_price_eur: unitPriceEur,
-          discount: Number(item.discount) || 0,
-          total: Number(item.total) || 0,
-        };
-      });
-
-      const finalSubtotal = Number(Number(subtotal).toFixed(2)) || 0;
-      const finalTotal = Number(Number(total).toFixed(2)) || 0;
-      const finalDiscount = Number(totalDiscount) || 0;
-
-      if (isNaN(finalSubtotal) || isNaN(finalTotal) || isNaN(finalDiscount)) {
-        toast.error("Chyba při výpočtu celkové částky");
-        setSaving(false);
-        return;
-      }
-
-      console.log("Saving offer with data:", {
-        items: sanitizedItems,
-        subtotal: finalSubtotal,
-        discount: finalDiscount,
-        total: finalTotal,
-      });
-
-      const result = await offersApi.update(offer.simple_id.toString(), {
-        items: sanitizedItems,
-        additional_items: additionalItems.map((a) => ({ title: a.title, price: Number(a.price) || 0 })),
-        discount: finalDiscount,
-        status: status,
-        description: description,
-        notes: notesText || undefined,
-      });
-
-      console.log("Save result:", result);
-      toast.success("Změny uloženy");
-      loadOffer(params.id as string);
-    } catch (err: any) {
-      console.error("Error saving changes:", err);
-      console.error("Error details:", err.response?.data);
-      toast.error(err.response?.data?.error || "Chyba při ukládání změn");
-    } finally {
-      setSaving(false);
-    }
-  };
+  const {
+    offer,
+    loading,
+    error,
+    editedItems,
+    totalDiscount,
+    setTotalDiscount,
+    status,
+    setStatus,
+    description,
+    setDescription,
+    saving,
+    draggedIndex,
+    hasUnsavedChanges,
+    additionalItems,
+    setAdditionalItems,
+    notesText,
+    setNotesText,
+    editingOrderDiscount,
+    setEditingOrderDiscount,
+    editingAdditionalIndex,
+    setEditingAdditionalIndex,
+    markUnsaved,
+    updatingRate,
+    loadOffer,
+    updateItemQuantity,
+    updateItemDiscount,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    calculateTotals,
+    displayExchangeRate,
+    applyTodaysExchangeRate,
+    exportToExcel,
+    saveChanges,
+    offerId,
+  } = useOfferDetail();
 
   if (loading) {
     return (
@@ -264,7 +71,9 @@ export default function OfferDetailPage() {
       <div className="min-h-screen bg-gray-50">
         <Nav />
         <div className="container mx-auto px-4 py-8">
-          <div className="rounded-md bg-destructive/10 p-4 text-destructive">{error || "Nabídka nebyla nalezena"}</div>
+          <div className="rounded-md bg-destructive/10 p-4 text-destructive">
+            {error || "Nabídka nebyla nalezena"}
+          </div>
           <Button variant="outline" className="mt-4" onClick={() => router.push("/offers")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Zpět na seznam
@@ -274,379 +83,66 @@ export default function OfferDetailPage() {
     );
   }
 
+  const totals = calculateTotals();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Nav />
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-4">
-          <Button variant="outline" onClick={() => router.push("/offers")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Zpět na seznam
-          </Button>
-        </div>
-
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold">
-              <span className="font-mono text-muted-foreground">#{offer.simple_id}</span> {offer.title}
-            </h1>
-            <Select
-              value={status}
-              onValueChange={(value) => {
-                setStatus(value as OfferStatus);
-                setHasUnsavedChanges(true);
-              }}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue>
-                  <Badge variant={statusConfig[status].variant}>{statusConfig[status].label}</Badge>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">
-                  <Badge variant={statusConfig.draft.variant}>{statusConfig.draft.label}</Badge>
-                </SelectItem>
-                <SelectItem value="sent">
-                  <Badge variant={statusConfig.sent.variant}>{statusConfig.sent.label}</Badge>
-                </SelectItem>
-                <SelectItem value="accepted">
-                  <Badge variant={statusConfig.accepted.variant}>{statusConfig.accepted.label}</Badge>
-                </SelectItem>
-                <SelectItem value="rejected">
-                  <Badge variant={statusConfig.rejected.variant}>{statusConfig.rejected.label}</Badge>
-                </SelectItem>
-                <SelectItem value="expired">
-                  <Badge variant={statusConfig.expired.variant}>{statusConfig.expired.label}</Badge>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={saveChanges}
-              disabled={saving}
-              className={hasUnsavedChanges ? "border-amber-500 text-amber-600 hover:bg-amber-50" : ""}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {saving ? "Ukládání..." : hasUnsavedChanges ? "Uložit změny *" : "Uložit změny"}
-            </Button>
-            <Button onClick={() => router.push(`/products?offer=${offer.simple_id}`)}>Přidat produkty</Button>
-          </div>
-        </div>
+        <OfferDetailHeader
+          offerId={offer.simple_id}
+          title={offer.title}
+          status={status}
+          onStatusChange={setStatus}
+          saving={saving}
+          hasUnsavedChanges={hasUnsavedChanges}
+          onSave={saveChanges}
+          onExportExcel={exportToExcel}
+          onBack={() => router.push("/offers")}
+          onAddProducts={() => router.push(`/products?offer=${offer.simple_id}`)}
+        />
 
         <div className="grid gap-6 md:grid-cols-3">
-          {/* Left Column - 2/3 width */}
           <div className="space-y-6 md:col-span-2">
-            {/* Products Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Produkty</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {editedItems && editedItems.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-8"></TableHead>
-                        <TableHead className="w-16"></TableHead>
-                        <TableHead>Produkt</TableHead>
-                        <TableHead className="w-24">Množství</TableHead>
-                        <TableHead>Cena/ks</TableHead>
-                        <TableHead className="w-28">Sleva</TableHead>
-                        <TableHead>Celkem</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {editedItems.map((item, index) => (
-                        <TableRow
-                          key={index}
-                          draggable
-                          onDragStart={() => handleDragStart(index)}
-                          onDragOver={(e) => handleDragOver(e, index)}
-                          onDragEnd={handleDragEnd}
-                          className={`cursor-move ${draggedIndex === index ? "opacity-50" : ""}`}
-                        >
-                          <TableCell>
-                            <GripVertical className="h-4 w-4 text-muted-foreground" />
-                          </TableCell>
-                          <TableCell>
-                            {item.image ? (
-                              <Image src={item.image} alt={item.name} width={50} height={50} className="rounded-md object-cover" />
-                            ) : (
-                              <div className="h-[50px] w-[50px] rounded-md bg-gray-200" />
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-semibold">{item.name}</div>
-                            {item.sku && <div className="text-sm text-muted-foreground">SKU: {item.sku}</div>}
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) => updateItemQuantity(index, parseInt(e.target.value) || 1)}
-                              onFocus={(e) => e.target.select()}
-                              className="w-20"
-                            />
-                          </TableCell>
-                          <TableCell>{formatPrice(item.unit_price, offer.currency)}</TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min="0"
-                              value={item.discount === 0 || !item.discount ? "" : item.discount}
-                              placeholder="0"
-                              onChange={(e) => updateItemDiscount(index, e.target.value === "" ? 0 : parseFloat(e.target.value))}
-                              onFocus={(e) => e.target.select()}
-                              className="w-24"
-                            />
-                          </TableCell>
-                          <TableCell className="font-semibold">{formatPrice(item.total, offer.currency)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="rounded-md bg-blue-50 p-4 text-blue-900">Zatím nebyly přidány žádné produkty.</div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Description */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Popis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={description}
-                  onChange={(e) => {
-                    setDescription(e.target.value);
-                    setHasUnsavedChanges(true);
-                  }}
-                  placeholder="Přidat popis nabídky..."
-                  rows={4}
-                />
-              </CardContent>
-            </Card>
+            <OfferProductsTable
+              items={editedItems}
+              currency={offer.currency}
+              draggedIndex={draggedIndex}
+              onQuantityChange={updateItemQuantity}
+              onDiscountChange={updateItemDiscount}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            />
+            <OfferDescriptionCard value={description} onChange={setDescription} />
           </div>
 
-          {/* Right Column - 1/3 width */}
           <div className="space-y-6">
-            {/* Customer Info */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                <CardTitle>Zákazník</CardTitle>
-                <Link href="/customers">
-                  <Button variant="ghost" size="sm" className="gap-1">
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="font-semibold">{offer.customer.name}</div>
-                <div className="text-sm">{offer.customer.email}</div>
-                {offer.customer.phone && <div className="text-sm">{offer.customer.phone}</div>}
-                {offer.customer.address && (
-                  <div className="mt-4 space-y-1 text-sm">
-                    <div>{offer.customer.address}</div>
-                    <div>
-                      {offer.customer.postal_code} {offer.customer.city}
-                    </div>
-                    {offer.customer.country && <div>{offer.customer.country}</div>}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Price Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Souhrn</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Additional items – fixed row with pencil to edit, or inline edit; included in Celkem */}
-                {additionalItems.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between gap-2">
-                    {editingAdditionalIndex === index ? (
-                      <>
-                        <Input
-                          type="text"
-                          className="flex-1 min-w-0 text-sm"
-                          value={item.title}
-                          onChange={(e) => {
-                            const next = [...additionalItems];
-                            next[index] = { ...next[index], title: e.target.value || "" };
-                            setAdditionalItems(next);
-                            setHasUnsavedChanges(true);
-                          }}
-                          placeholder="Název"
-                        />
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            className="w-24 text-right"
-                            value={item.price === 0 ? "" : item.price}
-                            onChange={(e) => {
-                              const next = [...additionalItems];
-                              next[index] = { ...next[index], price: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0 };
-                              setAdditionalItems(next);
-                              setHasUnsavedChanges(true);
-                            }}
-                            onBlur={() => setEditingAdditionalIndex(null)}
-                            onFocus={(e) => e.target.select()}
-                            placeholder="0"
-                          />
-                          <span className="text-sm text-muted-foreground w-10">{currencyLabel(offer.currency)}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                            onClick={() => {
-                              setAdditionalItems(additionalItems.filter((_, i) => i !== index));
-                              setEditingAdditionalIndex(null);
-                              setHasUnsavedChanges(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-sm font-medium">{item.title || "—"}</span>
-                        <button
-                          type="button"
-                          onClick={() => setEditingAdditionalIndex(index)}
-                          className="flex items-center gap-1.5 rounded px-2 py-1 text-right text-sm hover:bg-muted min-w-[5rem] justify-end"
-                        >
-                          <span>{item.price > 0 ? formatPrice(item.price, offer.currency) : "0"}</span>
-                          <span className="text-muted-foreground shrink-0">{currencyLabel(offer.currency)}</span>
-                          <Pencil className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-full gap-1.5 text-muted-foreground"
-                  onClick={() => {
-                    const next = [...additionalItems, { title: "Nová položka", price: 0 }];
-                    setAdditionalItems(next);
-                    setEditingAdditionalIndex(next.length - 1);
-                    setHasUnsavedChanges(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                  Přidat položku
-                </Button>
-
-                <hr className="my-2" />
-
-                {/* Item-level discounts */}
-                {calculateTotals().itemsDiscount > 0 && (
-                  <div className="flex justify-between text-sm text-red-600">
-                    <span>Sleva na položky</span>
-                    <span>-{formatPrice(calculateTotals().itemsDiscount, offer.currency)}</span>
-                  </div>
-                )}
-
-                {/* Order-level discount – fixed display with pencil to edit, included in Celkem */}
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-red-600"> Sleva na objednávku</span>
-                  {editingOrderDiscount ? (
-                    <div className="flex items-center gap-1">
-                      <span className="text-red-600 text-sm">−</span>
-                      <Input
-                        type="number"
-                        min="0"
-                        className="w-24 text-right text-red-600 border-red-300 focus-visible:ring-red-500"
-                        value={totalDiscount === 0 ? "" : totalDiscount}
-                        onChange={(e) => {
-                          setTotalDiscount(e.target.value === "" ? 0 : parseFloat(e.target.value));
-                          setHasUnsavedChanges(true);
-                        }}
-                        onBlur={() => setEditingOrderDiscount(false)}
-                        onFocus={(e) => e.target.select()}
-                        placeholder="0"
-                        autoFocus
-                      />
-                      <span className="text-sm text-muted-foreground">{currencyLabel(offer.currency)}</span>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setEditingOrderDiscount(true)}
-                      className="flex items-center gap-1.5 rounded px-2 py-1 text-right text-sm text-red-600 hover:bg-red-50 min-w-[6rem] justify-end"
-                    >
-                      <span>{totalDiscount > 0 ? `− ${formatPrice(totalDiscount, offer.currency)}` : "0"}</span>
-                      <Pencil className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                    </button>
-                  )}
-                </div>
-
-                {offer.tax && offer.tax > 0 && (
-                  <div className="flex justify-between">
-                    <span>DPH</span>
-                    <span>{formatPrice(offer.tax, offer.currency)}</span>
-                  </div>
-                )}
-                <div className="border-t pt-2">
-                  <div className="flex justify-between text-lg font-semibold">
-                    <span>Celkem</span>
-                    <span>{formatPrice(calculateTotals().total, offer.currency)}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Poznámka */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Poznámka</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={notesText}
-                  onChange={(e) => {
-                    setNotesText(e.target.value);
-                    setHasUnsavedChanges(true);
-                  }}
-                  placeholder="Poznámka k nabídce..."
-                  rows={3}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Metadata */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Informace</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <div>Vytvořeno: {formatDate(offer.created_at)}</div>
-                <div>Aktualizováno: {formatDate(offer.updated_at)}</div>
-                {offer.valid_until && <div>Platnost do: {formatDate(offer.valid_until)}</div>}
-                <div className="pt-2 border-t">
-                  <div className="font-medium text-foreground mb-1">Kurz (1 EUR)</div>
-                  <div className="flex items-center gap-2">
-                    <span>{displayExchangeRate.toFixed(2)} CZK</span>
-                    <Button variant="outline" size="sm" onClick={applyTodaysExchangeRate} disabled={updatingRate} className="gap-1">
-                      <RefreshCw className={`h-3 w-3 ${updatingRate ? "animate-spin" : ""}`} />
-                      {updatingRate ? "Aktualizace..." : "Použít dnešní kurz"}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <OfferCustomerCard customer={offer.customer} />
+            <OfferSummaryCard
+              additionalItems={additionalItems}
+              onAdditionalItemsChange={setAdditionalItems}
+              editingAdditionalIndex={editingAdditionalIndex}
+              onEditingAdditionalIndexChange={setEditingAdditionalIndex}
+              totalDiscount={totalDiscount}
+              onTotalDiscountChange={setTotalDiscount}
+              editingOrderDiscount={editingOrderDiscount}
+              onEditingOrderDiscountChange={setEditingOrderDiscount}
+              onUnsavedChange={markUnsaved}
+              currency={offer.currency}
+              tax={Number(offer.tax) || 0}
+              itemsDiscount={totals.itemsDiscount}
+              total={totals.total}
+            />
+            <OfferNotesCard value={notesText} onChange={setNotesText} />
+            <OfferMetadataCard
+              createdAt={offer.created_at}
+              updatedAt={offer.updated_at}
+              validUntil={offer.valid_until}
+              exchangeRate={displayExchangeRate}
+              updatingRate={updatingRate}
+              onApplyTodaysRate={applyTodaysExchangeRate}
+            />
           </div>
         </div>
       </div>
