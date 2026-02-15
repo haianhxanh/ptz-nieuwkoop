@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { offersApi, type LineItem } from "@/lib/api";
+import { offersApi, type LineItem, exchangeRateApi } from "@/lib/api";
 import { useProducts } from "@/contexts/products-context";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 
@@ -45,7 +45,14 @@ export default function ProductsPage() {
     let filtered = products;
 
     if (searchQuery) {
-      filtered = products.filter((p) => p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase()));
+      const q = searchQuery.toLowerCase();
+      filtered = products.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.sku.toLowerCase().includes(q) ||
+          (p.brand && p.brand.toLowerCase().includes(q)) ||
+          (p.collection && p.collection.toLowerCase().includes(q)),
+      );
     }
 
     setFilteredProducts(filtered);
@@ -62,17 +69,23 @@ export default function ProductsPage() {
     setSelectedProducts(newSelected);
   };
 
-  const getSelectedProductsData = (): LineItem[] => {
+  const getSelectedProductsData = (exchangeRate: number): LineItem[] => {
+    const rate = Number(exchangeRate) || 25;
     return products
       .filter((p) => selectedProducts.has(p.id))
-      .map((product) => ({
-        sku: product.sku,
-        name: product.title,
-        quantity: 1,
-        unit_price: parseFloat(product.price),
-        total: parseFloat(product.price),
-        image: product.image,
-      }));
+      .map((product) => {
+        const unitPrice = Number(product.unit_price) || 0;
+        const unitPriceEur = Number(product.unit_price_eur);
+        return {
+          sku: product.sku,
+          name: product.title,
+          quantity: 1,
+          unit_price: unitPrice,
+          unit_price_eur: Number.isNaN(unitPriceEur) ? Math.round((unitPrice / rate) * 100) / 100 : unitPriceEur,
+          total: unitPrice,
+          image: product.image,
+        };
+      });
   };
 
   const handleCreateNewOffer = async (e: React.FormEvent) => {
@@ -85,7 +98,8 @@ export default function ProductsPage() {
 
     try {
       setSubmitting(true);
-      const items = getSelectedProductsData();
+      const { rate: exchangeRate } = await exchangeRateApi.get();
+      const items = getSelectedProductsData(exchangeRate);
       const subtotal = items.reduce((sum, item) => sum + item.total, 0);
 
       const result = await offersApi.create({
@@ -100,6 +114,7 @@ export default function ProductsPage() {
         subtotal,
         total: subtotal,
         currency: "CZK",
+        exchange_rate: exchangeRate,
         status: "draft",
       });
 
@@ -124,7 +139,8 @@ export default function ProductsPage() {
 
     try {
       setSubmitting(true);
-      const items = getSelectedProductsData();
+      const { rate: exchangeRate } = await exchangeRateApi.get();
+      const items = getSelectedProductsData(exchangeRate);
 
       const result = await offersApi.addItems(targetOfferId, items);
 
@@ -179,7 +195,7 @@ export default function ProductsPage() {
         {/* Search */}
         <Card className="mb-6">
           <CardContent className="pt-6">
-            <Input placeholder="Hledat podle názvu nebo SKU..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            <Input placeholder="Hledat podle názvu, SKU, značky nebo kolekce..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </CardContent>
         </Card>
 
@@ -205,6 +221,7 @@ export default function ProductsPage() {
                       <TableHead>Produkt</TableHead>
                       <TableHead>Značka</TableHead>
                       <TableHead>Kolekce</TableHead>
+                      <TableHead>Rozměry</TableHead>
                       <TableHead>Cena</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -228,7 +245,18 @@ export default function ProductsPage() {
                         </TableCell>
                         <TableCell>{product.brand}</TableCell>
                         <TableCell>{product.collection}</TableCell>
-                        <TableCell className="font-semibold">{formatPrice(product.price)}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            {product.dimensions?.height > 0 && <span>Výška: {product.dimensions.height} cm</span>}
+                            {product.dimensions?.depth > 0 && <span>Hloubka: {product.dimensions.depth} cm</span>}
+                            {product.dimensions?.diameter > 0 && <span>Průměr: {product.dimensions.diameter} cm</span>}
+                            {product.dimensions?.opening > 0 && <span>Průměr vnitřní: {product.dimensions.opening} cm</span>}
+                            {product.dimensions?.length > 0 && <span>Délka: {product.dimensions.length} cm</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          {(Number(product.unit_price_eur) || 0).toFixed(2)} EUR / {formatPrice(product.price)}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

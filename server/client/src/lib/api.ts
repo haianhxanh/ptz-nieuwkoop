@@ -53,6 +53,7 @@ export interface LineItem {
   description?: string;
   quantity: number;
   unit_price: number;
+  unit_price_eur?: number;
   discount?: number;
   total: number;
   image?: string;
@@ -73,6 +74,7 @@ export interface Offer {
   tax?: number;
   total: number;
   currency: string;
+  exchange_rate?: number;
   status: OfferStatus;
   valid_until?: string;
   notes?: string;
@@ -85,6 +87,15 @@ export interface Product {
   sku: string;
   title: string;
   price: string;
+  unit_price: number;
+  unit_price_eur: number;
+  dimensions: {
+    height: number;
+    depth: number;
+    diameter: number;
+    opening: number;
+    length: number;
+  };
   image: string;
   brand: string;
   collection: string;
@@ -112,6 +123,7 @@ export const offersApi = {
     tax?: number;
     total: number;
     currency?: string;
+    exchange_rate?: number;
     status?: OfferStatus;
     notes?: string;
   }) => {
@@ -149,6 +161,22 @@ export const productsApi = {
   list: async () => {
     const response = await apiClient.get<{ products: any[] }>("/get-products");
     return response.data;
+  },
+};
+
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+let exchangeRateCache: { rate: number; date: string | null; fetchedAt: number } | null = null;
+
+export const exchangeRateApi = {
+  get: async (): Promise<{ rate: number; date: string | null }> => {
+    const now = Date.now();
+    if (exchangeRateCache && now - exchangeRateCache.fetchedAt < CACHE_TTL_MS) {
+      return { rate: exchangeRateCache.rate, date: exchangeRateCache.date };
+    }
+    const response = await apiClient.get<{ success: boolean; data: { rate: number; date: string | null } }>("/api/offers/exchange-rate");
+    const { rate, date } = response.data.data;
+    exchangeRateCache = { rate, date, fetchedAt: now };
+    return { rate, date };
   },
 };
 

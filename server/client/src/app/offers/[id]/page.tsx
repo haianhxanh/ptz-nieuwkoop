@@ -11,8 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { offersApi, type Offer, type LineItem, type OfferStatus } from "@/lib/api";
-import { ArrowLeft, GripVertical, Save, ExternalLink } from "lucide-react";
+import { offersApi, exchangeRateApi, type Offer, type LineItem, type OfferStatus } from "@/lib/api";
+import { ArrowLeft, GripVertical, Save, ExternalLink, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -37,6 +37,7 @@ export default function OfferDetailPage() {
   const [saving, setSaving] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [updatingRate, setUpdatingRate] = useState(false);
 
   useEffect(() => {
     if (params.id) {
@@ -153,6 +154,24 @@ export default function OfferDetailPage() {
     };
   };
 
+  const displayExchangeRate = Number(offer?.exchange_rate) || 25;
+
+  const applyTodaysExchangeRate = async () => {
+    if (!offer) return;
+    try {
+      setUpdatingRate(true);
+      const { rate } = await exchangeRateApi.get();
+      await offersApi.update(offer.simple_id.toString(), { exchange_rate: rate });
+      toast.success(`Kurz nabídky aktualizován na ${rate.toFixed(2)} CZK`);
+      loadOffer(params.id as string);
+    } catch (err) {
+      console.error(err);
+      toast.error("Nepodařilo se aktualizovat kurz");
+    } finally {
+      setUpdatingRate(false);
+    }
+  };
+
   const saveChanges = async () => {
     if (!offer) return;
 
@@ -160,13 +179,19 @@ export default function OfferDetailPage() {
       setSaving(true);
       const { subtotal, total } = calculateTotals();
 
-      const sanitizedItems = editedItems.map((item) => ({
-        ...item,
-        quantity: Number(item.quantity) || 1,
-        unit_price: Number(item.unit_price) || 0,
-        discount: Number(item.discount) || 0,
-        total: Number(item.total) || 0,
-      }));
+      const rate = Number(offer.exchange_rate) || 25;
+      const sanitizedItems = editedItems.map((item) => {
+        const unitPrice = Number(item.unit_price) || 0;
+        const unitPriceEur = item.unit_price_eur != null ? Number(item.unit_price_eur) : Math.round((unitPrice / rate) * 100) / 100;
+        return {
+          ...item,
+          quantity: Number(item.quantity) || 1,
+          unit_price: unitPrice,
+          unit_price_eur: unitPriceEur,
+          discount: Number(item.discount) || 0,
+          total: Number(item.total) || 0,
+        };
+      });
 
       const finalSubtotal = Number(Number(subtotal).toFixed(2)) || 0;
       const finalTotal = Number(Number(total).toFixed(2)) || 0;
@@ -498,10 +523,20 @@ export default function OfferDetailPage() {
               <CardHeader>
                 <CardTitle>Informace</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-1 text-sm text-muted-foreground">
+              <CardContent className="space-y-3 text-sm text-muted-foreground">
                 <div>Vytvořeno: {formatDate(offer.created_at)}</div>
                 <div>Aktualizováno: {formatDate(offer.updated_at)}</div>
                 {offer.valid_until && <div>Platnost do: {formatDate(offer.valid_until)}</div>}
+                <div className="pt-2 border-t">
+                  <div className="font-medium text-foreground mb-1">Kurz (1 EUR)</div>
+                  <div className="flex items-center gap-2">
+                    <span>{displayExchangeRate.toFixed(2)} CZK</span>
+                    <Button variant="outline" size="sm" onClick={applyTodaysExchangeRate} disabled={updatingRate} className="gap-1">
+                      <RefreshCw className={`h-3 w-3 ${updatingRate ? "animate-spin" : ""}`} />
+                      {updatingRate ? "Aktualizace..." : "Použít dnešní kurz"}
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>

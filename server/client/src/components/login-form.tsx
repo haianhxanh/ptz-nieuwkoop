@@ -33,7 +33,6 @@ export function LoginForm() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    console.log("Form submitted with:", { username: data.username, password: "***" });
     setIsLoading(true);
 
     try {

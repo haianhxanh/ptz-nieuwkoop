@@ -18,9 +18,19 @@ export const lineItemSchema = z.object({
   description: z.string().optional(),
   quantity: z.number().min(1, "Quantity must be at least 1"),
   unit_price: z.number().min(0, "Price must be positive"),
+  unit_price_eur: z.number().min(0, "Unit price EUR must be positive").optional(),
   discount: z.number().min(0, "Discount must be positive").optional(),
   total: z.number().min(0, "Total must be positive"),
   image: z.string().optional(),
+  dimensions: z
+    .object({
+      height: z.number().min(0, "Height must be positive").optional(),
+      depth: z.number().min(0, "Depth must be positive").optional(),
+      diameter: z.number().min(0, "Diameter must be positive").optional(),
+      opening: z.number().min(0, "Opening must be positive").optional(),
+      length: z.number().min(0, "Length must be positive").optional(),
+    })
+    .optional(),
 });
 
 export const createOfferSchema = z.object({
@@ -33,6 +43,7 @@ export const createOfferSchema = z.object({
   tax: z.number().min(0, "Tax must be positive").optional(),
   total: z.number().min(0, "Total must be positive"),
   currency: z.string().length(3, "Currency must be 3 characters").optional(),
+  exchange_rate: z.number().min(0, "Exchange rate must be positive").optional(),
   status: z.enum(["draft", "sent", "accepted", "rejected", "expired"]).optional(),
   valid_until: z.string().datetime().optional(),
   notes: z.string().optional(),
@@ -48,6 +59,7 @@ export const updateOfferSchema = z.object({
   tax: z.number().min(0, "Tax must be positive").optional(),
   total: z.number().min(0, "Total must be positive").optional(),
   currency: z.string().length(3, "Currency must be 3 characters").optional(),
+  exchange_rate: z.number().min(0, "Exchange rate must be positive").optional(),
   status: z.enum(["draft", "sent", "accepted", "rejected", "expired"]).optional(),
   valid_until: z.string().datetime().optional(),
   notes: z.string().optional(),

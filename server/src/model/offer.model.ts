@@ -18,6 +18,7 @@ export type OFFER = {
   tax?: number;
   total: number;
   currency?: string;
+  exchange_rate?: number;
   status: OFFER_STATUS;
   valid_until?: Date;
   notes?: string;
@@ -94,6 +95,11 @@ Offer.init(
       type: DataTypes.STRING(3),
       allowNull: false,
       defaultValue: "CZK",
+    },
+    exchange_rate: {
+      type: DataTypes.DECIMAL(10, 4),
+      allowNull: false,
+      defaultValue: 25.0,
     },
     status: {
       type: DataTypes.ENUM("draft", "sent", "accepted", "rejected", "expired"),

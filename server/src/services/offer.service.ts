@@ -1,5 +1,6 @@
 import Offer from "../model/offer.model";
 import Customer, { CUSTOMER } from "../model/customer.model";
+import { configService } from "./config.service";
 import { CreateOfferInput, UpdateOfferInput, ListOffersQuery, AddItemsToOfferInput } from "../schemas/offer.schema";
 
 export class OffersService {
@@ -28,6 +29,7 @@ export class OffersService {
 
   async createOffer(data: CreateOfferInput): Promise<Offer> {
     const customer = await this.findOrCreateCustomer(data.customer);
+    const exchangeRate = data.exchange_rate ?? (await configService.getExchangeRate());
 
     const offer = await Offer.create({
       customer_id: customer.get("id") as string,
@@ -39,6 +41,7 @@ export class OffersService {
       tax: data.tax || 0,
       total: data.total,
       currency: data.currency || "EUR",
+      exchange_rate: exchangeRate,
       status: data.status || "draft",
       valid_until: data.valid_until ? new Date(data.valid_until) : undefined,
       notes: data.notes,
@@ -112,7 +115,7 @@ export class OffersService {
 
     const total = itemsSubtotal - totalDiscount + tax;
 
-    await offer.update({
+    const updatePayload: Record<string, unknown> = {
       customer_id: data.customer_id,
       title: data.title,
       description: data.description,
@@ -124,7 +127,11 @@ export class OffersService {
       tax: tax,
       total: Number(total.toFixed(2)),
       status: data.status,
-    });
+    };
+    if (data.exchange_rate !== undefined) {
+      updatePayload.exchange_rate = data.exchange_rate;
+    }
+    await offer.update(updatePayload);
 
     return await Offer.findByPk(offer.get("id") as string, {
       include: [{ model: Customer, as: "customer" }],
