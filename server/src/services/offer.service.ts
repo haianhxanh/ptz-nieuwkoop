@@ -27,19 +27,28 @@ export class OffersService {
     return customer;
   }
 
+  private sumAdditionalItems(additionalItems: { title: string; price: number }[] | undefined): number {
+    if (!Array.isArray(additionalItems)) return 0;
+    return additionalItems.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+  }
+
   async createOffer(data: CreateOfferInput): Promise<Offer> {
     const customer = await this.findOrCreateCustomer(data.customer);
     const exchangeRate = data.exchange_rate ?? (await configService.getExchangeRate());
+    const additionalItems = data.additional_items || [];
+    const additionalTotal = this.sumAdditionalItems(additionalItems);
+    const total = data.total + additionalTotal;
 
     const offer = await Offer.create({
       customer_id: customer.get("id") as string,
       title: data.title,
       description: data.description,
       items: data.items || [],
+      additional_items: additionalItems,
       subtotal: data.subtotal,
       discount: data.discount || 0,
       tax: data.tax || 0,
-      total: data.total,
+      total,
       currency: data.currency || "EUR",
       exchange_rate: exchangeRate,
       status: data.status || "draft",
@@ -98,6 +107,8 @@ export class OffersService {
     }
 
     const items = data.items || (offer.get("items") as any[]) || [];
+    const additionalItems =
+      data.additional_items !== undefined ? data.additional_items : (offer.get("additional_items") as { title: string; price: number }[]) || [];
 
     const itemsSubtotal = items.reduce((sum: number, item: any) => {
       return sum + item.unit_price * item.quantity;
@@ -113,13 +124,15 @@ export class OffersService {
 
     const tax = data.tax !== undefined ? Number(data.tax) : Number(offer.get("tax")) || 0;
 
-    const total = itemsSubtotal - totalDiscount + tax;
+    const additionalTotal = this.sumAdditionalItems(additionalItems);
+    const total = itemsSubtotal - totalDiscount + tax + additionalTotal;
 
     const updatePayload: Record<string, unknown> = {
       customer_id: data.customer_id,
       title: data.title,
       description: data.description,
       items: data.items,
+      additional_items: additionalItems,
       subtotal: Number(itemsSubtotal.toFixed(2)),
       items_discount: Number(itemsDiscount.toFixed(2)),
       order_discount: Number(orderDiscount.toFixed(2)),
@@ -130,6 +143,9 @@ export class OffersService {
     };
     if (data.exchange_rate !== undefined) {
       updatePayload.exchange_rate = data.exchange_rate;
+    }
+    if (data.notes !== undefined) {
+      updatePayload.notes = data.notes;
     }
     await offer.update(updatePayload);
 
@@ -163,7 +179,9 @@ export class OffersService {
 
     const tax = Number(offer.get("tax")) || 0;
 
-    const total = itemsSubtotal - totalDiscount + tax;
+    const additionalItems = (offer.get("additional_items") as { title: string; price: number }[]) || [];
+    const additionalTotal = this.sumAdditionalItems(additionalItems);
+    const total = itemsSubtotal - totalDiscount + tax + additionalTotal;
 
     await offer.update({
       items: updatedItems,

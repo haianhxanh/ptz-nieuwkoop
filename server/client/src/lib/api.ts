@@ -59,6 +59,11 @@ export interface LineItem {
   image?: string;
 }
 
+export interface AdditionalItem {
+  title: string;
+  price: number;
+}
+
 export interface Offer {
   id: string;
   simple_id: number;
@@ -67,6 +72,7 @@ export interface Offer {
   title: string;
   description?: string;
   items?: LineItem[];
+  additional_items?: AdditionalItem[];
   subtotal: number;
   items_discount?: number;
   order_discount?: number;

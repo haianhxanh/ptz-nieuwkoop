@@ -4,6 +4,8 @@ import Customer from "./customer.model";
 
 export type OFFER_STATUS = "draft" | "sent" | "accepted" | "rejected" | "expired";
 
+export type AdditionalItem = { title: string; price: number };
+
 export type OFFER = {
   id?: string;
   simple_id?: number;
@@ -11,6 +13,7 @@ export type OFFER = {
   title: string;
   description?: string;
   items?: any;
+  additional_items?: AdditionalItem[];
   subtotal: number;
   items_discount?: number;
   order_discount?: number;
@@ -57,6 +60,11 @@ Offer.init(
       allowNull: true,
     },
     items: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: [],
+    },
+    additional_items: {
       type: DataTypes.JSONB,
       allowNull: true,
       defaultValue: [],

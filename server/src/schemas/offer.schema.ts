@@ -11,6 +11,11 @@ export const customerSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const additionalItemSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  price: z.number().min(0, "Price must be positive"),
+});
+
 export const lineItemSchema = z.object({
   product_id: z.string().optional(),
   sku: z.string().optional(),
@@ -38,6 +43,7 @@ export const createOfferSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   items: z.array(lineItemSchema).optional(),
+  additional_items: z.array(additionalItemSchema).optional(),
   subtotal: z.number().min(0, "Subtotal must be positive"),
   discount: z.number().min(0, "Discount must be positive").optional(),
   tax: z.number().min(0, "Tax must be positive").optional(),
@@ -54,6 +60,7 @@ export const updateOfferSchema = z.object({
   title: z.string().min(1, "Title is required").optional(),
   description: z.string().optional(),
   items: z.array(lineItemSchema).optional(),
+  additional_items: z.array(additionalItemSchema).optional(),
   subtotal: z.number().min(0, "Subtotal must be positive").optional(),
   discount: z.number().min(0, "Discount must be positive").optional(),
   tax: z.number().min(0, "Tax must be positive").optional(),

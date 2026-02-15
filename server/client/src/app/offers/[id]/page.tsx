@@ -11,10 +11,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { offersApi, exchangeRateApi, type Offer, type LineItem, type OfferStatus } from "@/lib/api";
-import { ArrowLeft, GripVertical, Save, ExternalLink, RefreshCw } from "lucide-react";
+import { offersApi, exchangeRateApi, type Offer, type LineItem, type OfferStatus, type AdditionalItem } from "@/lib/api";
+import { ArrowLeft, GripVertical, Save, ExternalLink, RefreshCw, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+
+const DEFAULT_ADDITIONAL_ITEMS: AdditionalItem[] = [
+  { title: "Práce", price: 0 },
+  { title: "Substrát", price: 0 },
+];
 
 const statusConfig = {
   draft: { label: "Koncept", variant: "secondary" as const },
@@ -38,6 +43,10 @@ export default function OfferDetailPage() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [updatingRate, setUpdatingRate] = useState(false);
+  const [additionalItems, setAdditionalItems] = useState<AdditionalItem[]>(DEFAULT_ADDITIONAL_ITEMS);
+  const [notesText, setNotesText] = useState<string>("");
+  const [editingOrderDiscount, setEditingOrderDiscount] = useState(false);
+  const [editingAdditionalIndex, setEditingAdditionalIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (params.id) {
@@ -55,6 +64,8 @@ export default function OfferDetailPage() {
         setTotalDiscount(data.data.order_discount || 0);
         setStatus(data.data.status);
         setDescription(data.data.description || "");
+        setNotesText(data.data.notes || "");
+        setAdditionalItems(data.data.additional_items?.length ? data.data.additional_items : DEFAULT_ADDITIONAL_ITEMS);
         setHasUnsavedChanges(false);
       }
     } catch (err) {
@@ -81,6 +92,8 @@ export default function OfferDetailPage() {
       currency: currency || "CZK",
     }).format(amount);
   };
+
+  const currencyLabel = (currency: string) => (currency === "CZK" ? "Kč" : currency || "Kč");
 
   const updateItemQuantity = (index: number, quantity: number) => {
     const newItems = [...editedItems];
@@ -134,22 +147,26 @@ export default function OfferDetailPage() {
       return sum + (Number(item.discount) || 0);
     }, 0);
 
-    const subtotalAfterItemDiscounts = itemsSubtotal - itemsDiscount;
-
     const orderDiscount = Number(totalDiscount) || 0;
 
     const totalDiscountAmount = itemsDiscount + orderDiscount;
 
     const tax = Number(offer?.tax) || 0;
 
-    const total = itemsSubtotal - totalDiscountAmount + tax;
+    const additionalTotal = additionalItems.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+
+    const subtotalWithAdditional = itemsSubtotal + additionalTotal;
+
+    const total = itemsSubtotal - totalDiscountAmount + tax + additionalTotal;
 
     return {
       itemsSubtotal,
       itemsDiscount,
       orderDiscount,
       totalDiscountAmount,
+      additionalTotal,
       subtotal: itemsSubtotal,
+      subtotalWithAdditional,
       total,
     };
   };
@@ -212,9 +229,11 @@ export default function OfferDetailPage() {
 
       const result = await offersApi.update(offer.simple_id.toString(), {
         items: sanitizedItems,
+        additional_items: additionalItems.map((a) => ({ title: a.title, price: Number(a.price) || 0 })),
         discount: finalDiscount,
         status: status,
         description: description,
+        notes: notesText || undefined,
       });
 
       console.log("Save result:", result);
@@ -412,18 +431,6 @@ export default function OfferDetailPage() {
                 />
               </CardContent>
             </Card>
-
-            {/* Notes */}
-            {offer.notes && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Poznámky</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{offer.notes}</p>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
           {/* Right Column - 1/3 width */}
@@ -460,10 +467,89 @@ export default function OfferDetailPage() {
                 <CardTitle>Souhrn</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-between">
-                  <span>Mezisoučet</span>
-                  <span>{formatPrice(calculateTotals().itemsSubtotal, offer.currency)}</span>
-                </div>
+                {/* Additional items – fixed row with pencil to edit, or inline edit; included in Celkem */}
+                {additionalItems.map((item, index) => (
+                  <div key={index} className="flex items-center justify-between gap-2">
+                    {editingAdditionalIndex === index ? (
+                      <>
+                        <Input
+                          type="text"
+                          className="flex-1 min-w-0 text-sm"
+                          value={item.title}
+                          onChange={(e) => {
+                            const next = [...additionalItems];
+                            next[index] = { ...next[index], title: e.target.value || "" };
+                            setAdditionalItems(next);
+                            setHasUnsavedChanges(true);
+                          }}
+                          placeholder="Název"
+                        />
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="w-24 text-right"
+                            value={item.price === 0 ? "" : item.price}
+                            onChange={(e) => {
+                              const next = [...additionalItems];
+                              next[index] = { ...next[index], price: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0 };
+                              setAdditionalItems(next);
+                              setHasUnsavedChanges(true);
+                            }}
+                            onBlur={() => setEditingAdditionalIndex(null)}
+                            onFocus={(e) => e.target.select()}
+                            placeholder="0"
+                          />
+                          <span className="text-sm text-muted-foreground w-10">{currencyLabel(offer.currency)}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => {
+                              setAdditionalItems(additionalItems.filter((_, i) => i !== index));
+                              setEditingAdditionalIndex(null);
+                              setHasUnsavedChanges(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm font-medium">{item.title || "—"}</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditingAdditionalIndex(index)}
+                          className="flex items-center gap-1.5 rounded px-2 py-1 text-right text-sm hover:bg-muted min-w-[5rem] justify-end"
+                        >
+                          <span>{item.price > 0 ? formatPrice(item.price, offer.currency) : "0"}</span>
+                          <span className="text-muted-foreground shrink-0">{currencyLabel(offer.currency)}</span>
+                          <Pencil className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1.5 text-muted-foreground"
+                  onClick={() => {
+                    const next = [...additionalItems, { title: "Nová položka", price: 0 }];
+                    setAdditionalItems(next);
+                    setEditingAdditionalIndex(next.length - 1);
+                    setHasUnsavedChanges(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Přidat položku
+                </Button>
+
+                <hr className="my-2" />
 
                 {/* Item-level discounts */}
                 {calculateTotals().itemsDiscount > 0 && (
@@ -473,35 +559,39 @@ export default function OfferDetailPage() {
                   </div>
                 )}
 
-                {/* Order-level discount */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Sleva na objednávku</label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={totalDiscount === 0 ? "" : totalDiscount}
-                    onChange={(e) => {
-                      setTotalDiscount(e.target.value === "" ? 0 : parseFloat(e.target.value));
-                      setHasUnsavedChanges(true);
-                    }}
-                    onFocus={(e) => e.target.select()}
-                    placeholder="0"
-                  />
-                  {totalDiscount > 0 && (
-                    <div className="flex justify-between text-sm text-red-600">
-                      <span>Sleva na objednávku</span>
-                      <span>-{formatPrice(totalDiscount, offer.currency)}</span>
+                {/* Order-level discount – fixed display with pencil to edit, included in Celkem */}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-red-600"> Sleva na objednávku</span>
+                  {editingOrderDiscount ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-red-600 text-sm">−</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        className="w-24 text-right text-red-600 border-red-300 focus-visible:ring-red-500"
+                        value={totalDiscount === 0 ? "" : totalDiscount}
+                        onChange={(e) => {
+                          setTotalDiscount(e.target.value === "" ? 0 : parseFloat(e.target.value));
+                          setHasUnsavedChanges(true);
+                        }}
+                        onBlur={() => setEditingOrderDiscount(false)}
+                        onFocus={(e) => e.target.select()}
+                        placeholder="0"
+                        autoFocus
+                      />
+                      <span className="text-sm text-muted-foreground">{currencyLabel(offer.currency)}</span>
                     </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setEditingOrderDiscount(true)}
+                      className="flex items-center gap-1.5 rounded px-2 py-1 text-right text-sm text-red-600 hover:bg-red-50 min-w-[6rem] justify-end"
+                    >
+                      <span>{totalDiscount > 0 ? `− ${formatPrice(totalDiscount, offer.currency)}` : "0"}</span>
+                      <Pencil className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                    </button>
                   )}
                 </div>
-
-                {/* Total discount */}
-                {calculateTotals().totalDiscountAmount > 0 && (
-                  <div className="flex justify-between font-medium text-red-600">
-                    <span>Celková sleva</span>
-                    <span>-{formatPrice(calculateTotals().totalDiscountAmount, offer.currency)}</span>
-                  </div>
-                )}
 
                 {offer.tax && offer.tax > 0 && (
                   <div className="flex justify-between">
@@ -515,6 +605,24 @@ export default function OfferDetailPage() {
                     <span>{formatPrice(calculateTotals().total, offer.currency)}</span>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Poznámka */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Poznámka</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  value={notesText}
+                  onChange={(e) => {
+                    setNotesText(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
+                  placeholder="Poznámka k nabídce..."
+                  rows={3}
+                />
               </CardContent>
             </Card>
 
