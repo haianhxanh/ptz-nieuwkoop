@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { products } from "../data_storage/sample_data";
 import axios from "axios";
 import dotenv from "dotenv";
 

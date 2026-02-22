@@ -1,21 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { authService } from "@/lib/auth";
 import { LogOut } from "lucide-react";
-import { toast } from "sonner";
+
+const CF_LOGOUT_URL = `https://${process.env.NEXT_PUBLIC_CF_TEAM_DOMAIN}/cdn-cgi/access/logout`;
 
 export function Nav() {
   const pathname = usePathname();
-  const router = useRouter();
 
   const handleLogout = () => {
-    authService.logout();
-    toast.success("Odhlášeno");
-    router.push("/auth/login");
+    window.location.href = CF_LOGOUT_URL;
   };
 
   return (

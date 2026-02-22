@@ -19,9 +19,7 @@ const allowedOrigins = [
   "https://admin.shopify.com/store/potzillas",
   "https://potzillas.myshopify.com",
   "potzillas.myshopify.com",
-  "https://disabilities-quiet-doll-accountability.trycloudflare.com",
   "https://extensions.shopifycdn.com",
-  "https://npclient.eu.ngrok.io",
   "http://localhost:3001",
 ];
 
@@ -35,7 +33,7 @@ var corsOptions = {
       return callback(null, true);
     }
 
-    if (origin.includes(".ngrok.io") || origin.includes(".ngrok-free.app")) {
+    if (origin.includes(".ngrok.io") || origin.includes(".ngrok-free.app") || origin.includes(".trycloudflare.com")) {
       return callback(null, true);
     }
 

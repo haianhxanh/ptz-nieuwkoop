@@ -1,30 +1,22 @@
 import axios from "axios";
-import { authService } from "./auth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
 
 export const apiClient = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
-});
-
-apiClient.interceptors.request.use((config) => {
-  const authHeader = authService.getAuthHeader();
-  if (authHeader) {
-    config.headers.Authorization = authHeader;
-  }
-  return config;
 });
 
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      authService.logout();
       if (typeof window !== "undefined") {
-        window.location.href = "/auth/login";
+        // Cloudflare Access will handle re-authentication
+        window.location.reload();
       }
     }
     return Promise.reject(error);
@@ -183,21 +175,5 @@ export const exchangeRateApi = {
     const { rate, date } = response.data.data;
     exchangeRateCache = { rate, date, fetchedAt: now };
     return { rate, date };
-  },
-};
-
-export const authApi = {
-  testCredentials: async (username: string, password: string): Promise<boolean> => {
-    try {
-      const auth = btoa(`${username}:${password}`);
-      const response = await axios.get(`${API_URL}/api/offers`, {
-        headers: {
-          Authorization: `Basic ${auth}`,
-        },
-      });
-      return response.status === 200;
-    } catch {
-      return false;
-    }
   },
 };
