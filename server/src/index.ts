@@ -68,6 +68,21 @@ db.sync({ alter: true })
     console.error("Unable to connect to the database:", error);
   });
 
-app.listen(PORT, () => {
-  console.log(`App is listening to PORT ${PORT}`);
-});
+if (process.env.NODE_ENV === "production") {
+  const next = require("next");
+  const nextApp = next({ dev: false, dir: path.join(__dirname, "../client") });
+  const handle = nextApp.getRequestHandler();
+  nextApp.prepare().then(() => {
+    app.use("/app", (req, res) => {
+      (req as express.Request & { url?: string }).url = req.originalUrl;
+      return handle(req, res);
+    });
+    app.listen(PORT, () => {
+      console.log(`App is listening to PORT ${PORT}`);
+    });
+  });
+} else {
+  app.listen(PORT, () => {
+    console.log(`App is listening to PORT ${PORT}`);
+  });
+}
