@@ -1,11 +1,9 @@
 import { Request, Response } from "express";
-import { products } from "../data_storage/sample_data";
 import axios from "axios";
 import dotenv from "dotenv";
 
 dotenv.config();
-const { NIEUWKOOP_API_ENDPOINT, NIEUWKOOP_USERNAME, NIEUWKOOP_PASSWORD } =
-  process.env;
+const { NIEUWKOOP_API_ENDPOINT, NIEUWKOOP_USERNAME, NIEUWKOOP_PASSWORD } = process.env;
 
 export const get_products = async (req: Request, res: Response) => {
   try {
@@ -14,9 +12,7 @@ export const get_products = async (req: Request, res: Response) => {
     // Get products from Nieuwkoop API
     console.log(req.headers.origin);
 
-    const auth = Buffer.from(
-      `${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`
-    ).toString("base64");
+    const auth = Buffer.from(`${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`).toString("base64");
 
     const api_products = await axios.get(NIEUWKOOP_API_ENDPOINT || "", {
       headers: {
@@ -30,17 +26,24 @@ export const get_products = async (req: Request, res: Response) => {
         product.IsStockItem == true &&
         product.ItemStatus != "E" &&
         product.DeliveryTimeInDays != 999 &&
-        product.ShowOnWebsite == true
+        product.ShowOnWebsite == true &&
+        product.IsOffer == true,
     );
 
     console.log(products.length);
 
     // map through all products and update all values of ProductGroupDescription_EN if contains "Artificial" to "Artificial"
     products = products.map((product: any) => {
-      if (product.ProductGroupDescription_EN.includes("Artificial")) {
+      if (product.ProductGroupDescription_EN?.includes("Artificial")) {
         product.ProductGroupDescription_EN = "Artificial";
       }
       return product;
+    });
+
+    products.sort((a: any, b: any) => {
+      const dateA = a.Sysmodified ? new Date(a.Sysmodified).getTime() : 0;
+      const dateB = b.Sysmodified ? new Date(b.Sysmodified).getTime() : 0;
+      return dateB - dateA;
     });
 
     return res.status(200).json({ products });
