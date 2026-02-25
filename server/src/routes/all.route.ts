@@ -75,13 +75,17 @@ const processQueueInventorySync = async (): Promise<any> => {
     await stores_inventory_sync_on_inventory_level_update(req, res);
   } catch (error) {
     console.error("Error processing request:", error);
-    return res.status(200).json({ message: "Internal server error" });
+    if (!res.headersSent) {
+      return res.status(200).json({ message: "Internal server error" });
+    }
   } finally {
     await delay(500);
     isProcessingInventorySync = false;
     processQueueInventorySync();
   }
-  return res.status(200).json({ message: "Inventory sync processed" });
+  if (!res.headersSent) {
+    res.status(200).json({ message: "Inventory sync processed" });
+  }
 };
 
 router.post("/stores/inventory-sync", (req: Request, res: Response) => {
