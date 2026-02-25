@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Nav } from "@/components/nav";
@@ -14,7 +14,7 @@ import { offersApi, type LineItem, exchangeRateApi } from "@/lib/api";
 import { useProducts } from "@/contexts/products-context";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const existingOfferId = searchParams?.get("offer");
@@ -359,5 +359,13 @@ export default function ProductsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">Načítání...</div>}>
+      <ProductsPageContent />
+    </Suspense>
   );
 }
