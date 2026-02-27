@@ -14,14 +14,10 @@ dotenv.config();
 const app = express();
 const { PORT } = process.env;
 
-const allowedOrigins = [
-  "https://ptz-nieuwkoop.onrender.com",
-  "https://admin.shopify.com/store/potzillas",
-  "https://potzillas.myshopify.com",
-  "potzillas.myshopify.com",
-  "https://extensions.shopifycdn.com",
-  "http://localhost:3001",
-];
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 var corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
