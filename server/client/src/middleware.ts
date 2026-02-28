@@ -19,8 +19,10 @@ export function middleware(request: NextRequest) {
     if (!teamDomain) {
       return new NextResponse("Auth misconfiguration: CF_TEAM_DOMAIN not set", { status: 500 });
     }
-    const loginUrl = new URL(`/cdn-cgi/access/login/${request.nextUrl.hostname}`, `https://${teamDomain}`);
-    loginUrl.searchParams.set("redirect_url", request.url);
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || request.nextUrl.hostname;
+    const protocol = request.headers.get("x-forwarded-proto") || "https";
+    const loginUrl = new URL(`/cdn-cgi/access/login/${host}`, `https://${teamDomain}`);
+    loginUrl.searchParams.set("redirect_url", `${protocol}://${host}${request.nextUrl.pathname}`);
     return NextResponse.redirect(loginUrl);
   }
 
