@@ -4,11 +4,9 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 
 dotenv.config();
 
-const { CF_TEAM_DOMAIN, CF_AUTH_ENABLED } = process.env;
+const { CF_TEAM_DOMAIN, CF_AUTH_ENABLED, CF_ACCESS_AUD } = process.env;
 
-const JWKS = CF_TEAM_DOMAIN
-  ? createRemoteJWKSet(new URL(`https://${CF_TEAM_DOMAIN}/cdn-cgi/access/certs`))
-  : null;
+const JWKS = CF_TEAM_DOMAIN ? createRemoteJWKSet(new URL(`https://${CF_TEAM_DOMAIN}/cdn-cgi/access/certs`)) : null;
 
 function getCFToken(req: Request): string | undefined {
   const cookieHeader = req.headers.cookie || "";
@@ -34,7 +32,11 @@ export const clientAuth = async (req: Request, res: Response, next: NextFunction
   }
 
   try {
-    await jwtVerify(token, JWKS, { algorithms: ["RS256"] });
+    const verifyOptions: { algorithms: string[]; audience?: string } = { algorithms: ["RS256"] };
+    if (CF_ACCESS_AUD) {
+      verifyOptions.audience = CF_ACCESS_AUD;
+    }
+    await jwtVerify(token, JWKS, verifyOptions);
     next();
   } catch (err) {
     console.error("CF JWT verification failed:", err);

@@ -15,7 +15,13 @@ export function middleware(request: NextRequest) {
   const cfToken = request.cookies.get("CF_Authorization");
 
   if (!cfToken) {
-    return new NextResponse("Unauthorized", { status: 401 });
+    const teamDomain = process.env.NEXT_PUBLIC_CF_TEAM_DOMAIN;
+    if (!teamDomain) {
+      return new NextResponse("Auth misconfiguration: CF_TEAM_DOMAIN not set", { status: 500 });
+    }
+    const loginUrl = new URL(`/cdn-cgi/access/login/${request.nextUrl.hostname}`, `https://${teamDomain}`);
+    loginUrl.searchParams.set("redirect_url", request.url);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
