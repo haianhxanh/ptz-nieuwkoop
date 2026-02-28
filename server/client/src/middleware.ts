@@ -15,15 +15,7 @@ export function middleware(request: NextRequest) {
   const cfToken = request.cookies.get("CF_Authorization");
 
   if (!cfToken) {
-    const teamDomain = process.env.NEXT_PUBLIC_CF_TEAM_DOMAIN;
-    if (!teamDomain) {
-      return new NextResponse("Auth misconfiguration: CF_TEAM_DOMAIN not set", { status: 500 });
-    }
-    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || request.nextUrl.hostname;
-    const protocol = request.headers.get("x-forwarded-proto") || "https";
-    const loginUrl = new URL(`/cdn-cgi/access/login/${host}`, `https://${teamDomain}`);
-    loginUrl.searchParams.set("redirect_url", `${protocol}://${host}${request.nextUrl.pathname}`);
-    return NextResponse.redirect(loginUrl);
+    return new NextResponse("Access denied. Please visit the application through Cloudflare Access.", { status: 403 });
   }
 
   return NextResponse.next();
