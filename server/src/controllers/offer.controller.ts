@@ -7,7 +7,7 @@ export const createOffer = async (req: Request, res: Response) => {
   try {
     const validatedData = createOfferSchema.parse(req.body);
 
-    const offer = await offersService.createOffer(validatedData);
+    const offer = await offersService.createOffer(validatedData, req.userEmail);
 
     return res.status(201).json({
       success: true,
@@ -99,11 +99,9 @@ export const updateOffer = async (req: Request, res: Response) => {
   try {
     const { id } = offerIdSchema.parse(req.params);
 
-    console.log("Update offer request body:", JSON.stringify(req.body, null, 2));
-
     const validatedData = updateOfferSchema.parse(req.body);
 
-    const offer = await offersService.updateOffer(id, validatedData);
+    const offer = await offersService.updateOffer(id, validatedData, req.userEmail);
 
     if (!offer) {
       return res.status(404).json({

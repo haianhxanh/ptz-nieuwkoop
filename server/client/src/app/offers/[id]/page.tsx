@@ -14,6 +14,7 @@ import {
   OfferMetadataCard,
 } from "./components";
 import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 
 export default function OfferDetailPage() {
   const router = useRouter();
@@ -21,29 +22,31 @@ export default function OfferDetailPage() {
     offer,
     loading,
     error,
-    editedItems,
-    totalDiscount,
-    setTotalDiscount,
+    editedGroups,
+    sellMultiplier,
+    setSellMultiplier,
     status,
     setStatus,
     description,
     setDescription,
     saving,
-    draggedIndex,
+    dragState,
     hasUnsavedChanges,
     additionalItems,
     setAdditionalItems,
     notesText,
     setNotesText,
-    editingOrderDiscount,
-    setEditingOrderDiscount,
     editingAdditionalIndex,
     setEditingAdditionalIndex,
     markUnsaved,
     updatingRate,
     loadOffer,
+    addGroup,
+    removeGroup,
+    renameGroup,
+    updateGroupDiscount,
+    removeItemFromGroup,
     updateItemQuantity,
-    updateItemDiscount,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
@@ -52,7 +55,6 @@ export default function OfferDetailPage() {
     applyTodaysExchangeRate,
     exportToExcel,
     saveChanges,
-    offerId,
   } = useOfferDetail();
 
   if (loading) {
@@ -71,9 +73,7 @@ export default function OfferDetailPage() {
       <div className="min-h-screen bg-gray-50">
         <Nav />
         <div className="container mx-auto px-4 py-8">
-          <div className="rounded-md bg-destructive/10 p-4 text-destructive">
-            {error || "Nabídka nebyla nalezena"}
-          </div>
+          <div className="rounded-md bg-destructive/10 p-4 text-destructive">{error || "Nabídka nebyla nalezena"}</div>
           <Button variant="outline" className="mt-4" onClick={() => router.push("/offers")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Zpět na seznam
@@ -84,6 +84,24 @@ export default function OfferDetailPage() {
   }
 
   const totals = calculateTotals();
+
+  const handleAddSection = async (name: string) => {
+    await addGroup(name);
+  };
+
+  const handleAddProductsToGroup = (groupId: string) => {
+    router.push(`/products?offer=${offer.simple_id}&group=${groupId}`);
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      const { downloadOfferPdf } = await import("./export-offer-pdf");
+      await downloadOfferPdf(offer, editedGroups, additionalItems, totals, sellMultiplier, notesText, () => toast.success("PDF exportováno"));
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      toast.error("Chyba při generování PDF");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -98,21 +116,27 @@ export default function OfferDetailPage() {
           hasUnsavedChanges={hasUnsavedChanges}
           onSave={saveChanges}
           onExportExcel={exportToExcel}
+          onExportPdf={handleExportPdf}
           onBack={() => router.push("/offers")}
-          onAddProducts={() => router.push(`/products?offer=${offer.simple_id}`)}
+          onAddSection={handleAddSection}
         />
 
         <div className="grid gap-6 md:grid-cols-3">
           <div className="space-y-6 md:col-span-2">
             <OfferProductsTable
-              items={editedItems}
+              groups={editedGroups}
               currency={offer.currency}
-              draggedIndex={draggedIndex}
+              sellMultiplier={sellMultiplier}
+              dragState={dragState}
               onQuantityChange={updateItemQuantity}
-              onDiscountChange={updateItemDiscount}
+              onGroupDiscountChange={updateGroupDiscount}
+              onGroupRename={renameGroup}
+              onGroupRemove={removeGroup}
+              onItemRemove={removeItemFromGroup}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
+              onAddProductsToGroup={handleAddProductsToGroup}
             />
             <OfferDescriptionCard value={description} onChange={setDescription} />
           </div>
@@ -124,15 +148,14 @@ export default function OfferDetailPage() {
               onAdditionalItemsChange={setAdditionalItems}
               editingAdditionalIndex={editingAdditionalIndex}
               onEditingAdditionalIndexChange={setEditingAdditionalIndex}
-              totalDiscount={totalDiscount}
-              onTotalDiscountChange={setTotalDiscount}
-              editingOrderDiscount={editingOrderDiscount}
-              onEditingOrderDiscountChange={setEditingOrderDiscount}
               onUnsavedChange={markUnsaved}
               currency={offer.currency}
               tax={Number(offer.tax) || 0}
-              itemsDiscount={totals.itemsDiscount}
+              groupsDiscount={totals.groupsDiscount}
               total={totals.total}
+              totalSell={totals.totalSell}
+              sellMultiplier={sellMultiplier}
+              onSellMultiplierChange={setSellMultiplier}
             />
             <OfferNotesCard value={notesText} onChange={setNotesText} />
             <OfferMetadataCard

@@ -1,10 +1,11 @@
 import { DataTypes, Model } from "sequelize";
 import { db } from "../database_connection/db_connect";
 import Customer from "./customer.model";
+import User from "./user.model";
 
 export type OFFER_STATUS = "draft" | "sent" | "accepted" | "rejected" | "expired";
 
-export type AdditionalItem = { title: string; price: number };
+export type AdditionalItem = { title: string; price: number; sell_price?: number };
 
 export type OFFER = {
   id?: string;
@@ -20,11 +21,14 @@ export type OFFER = {
   discount?: number;
   tax?: number;
   total: number;
+  total_sell?: number;
   currency?: string;
   exchange_rate?: number;
   status: OFFER_STATUS;
   valid_until?: Date;
+  sell_multiplier?: number;
   notes?: string;
+  user_id?: string;
   created_at?: Date;
   updated_at?: Date;
 };
@@ -99,6 +103,11 @@ Offer.init(
       allowNull: false,
       defaultValue: 0,
     },
+    total_sell: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      defaultValue: 0,
+    },
     currency: {
       type: DataTypes.STRING(3),
       allowNull: false,
@@ -121,6 +130,16 @@ Offer.init(
     notes: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    sell_multiplier: {
+      type: DataTypes.DECIMAL(10, 4),
+      allowNull: true,
+      defaultValue: 1.0,
+    },
+    user_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: { model: "Users", key: "id" },
     },
     created_at: {
       type: DataTypes.DATE,
@@ -152,5 +171,8 @@ Offer.init(
 
 Offer.belongsTo(Customer, { foreignKey: "customer_id", as: "customer" });
 Customer.hasMany(Offer, { foreignKey: "customer_id", as: "offers" });
+
+Offer.belongsTo(User, { foreignKey: "user_id", as: "user" });
+User.hasMany(Offer, { foreignKey: "user_id", as: "offers" });
 
 export default Offer;

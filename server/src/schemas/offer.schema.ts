@@ -9,11 +9,15 @@ export const customerSchema = z.object({
   postal_code: z.string().optional(),
   country: z.string().optional(),
   notes: z.string().optional(),
+  company_name: z.string().optional(),
+  company_ico: z.string().optional(),
+  company_dic: z.string().optional(),
 });
 
 export const additionalItemSchema = z.object({
   title: z.string().min(1, "Title is required"),
   price: z.number().min(0, "Price must be positive"),
+  sell_price: z.number().min(0, "Sell price must be positive").optional(),
 });
 
 export const lineItemSchema = z.object({
@@ -24,7 +28,6 @@ export const lineItemSchema = z.object({
   quantity: z.number().min(1, "Quantity must be at least 1"),
   unit_price: z.number().min(0, "Price must be positive"),
   unit_price_eur: z.number().min(0, "Unit price EUR must be positive").optional(),
-  discount: z.number().min(0, "Discount must be positive").optional(),
   total: z.number().min(0, "Total must be positive"),
   image: z.string().optional(),
   dimensions: z
@@ -38,11 +41,18 @@ export const lineItemSchema = z.object({
     .optional(),
 });
 
+export const itemGroupSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Group name is required"),
+  discount: z.number().min(0, "Discount must be positive").default(0),
+  items: z.array(lineItemSchema),
+});
+
 export const createOfferSchema = z.object({
   customer: customerSchema,
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  items: z.array(lineItemSchema).optional(),
+  items: z.array(itemGroupSchema).optional(),
   additional_items: z.array(additionalItemSchema).optional(),
   subtotal: z.number().min(0, "Subtotal must be positive"),
   discount: z.number().min(0, "Discount must be positive").optional(),
@@ -53,13 +63,14 @@ export const createOfferSchema = z.object({
   status: z.enum(["draft", "sent", "accepted", "rejected", "expired"]).optional(),
   valid_until: z.string().datetime().optional(),
   notes: z.string().optional(),
+  sell_multiplier: z.number().min(0).optional(),
 });
 
 export const updateOfferSchema = z.object({
   customer_id: z.string().uuid().optional(),
   title: z.string().min(1, "Title is required").optional(),
   description: z.string().optional(),
-  items: z.array(lineItemSchema).optional(),
+  items: z.array(itemGroupSchema).optional(),
   additional_items: z.array(additionalItemSchema).optional(),
   subtotal: z.number().min(0, "Subtotal must be positive").optional(),
   discount: z.number().min(0, "Discount must be positive").optional(),
@@ -70,10 +81,12 @@ export const updateOfferSchema = z.object({
   status: z.enum(["draft", "sent", "accepted", "rejected", "expired"]).optional(),
   valid_until: z.string().datetime().optional(),
   notes: z.string().optional(),
+  sell_multiplier: z.number().min(0).optional(),
 });
 
 export const addItemsToOfferSchema = z.object({
   items: z.array(lineItemSchema).min(1, "At least one item is required"),
+  group_id: z.string().optional(),
 });
 
 export const offerIdSchema = z.object({

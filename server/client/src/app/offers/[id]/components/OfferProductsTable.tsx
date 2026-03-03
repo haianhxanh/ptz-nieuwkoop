@@ -2,107 +2,233 @@
 
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { GripVertical } from "lucide-react";
-import type { LineItem } from "@/lib/api";
-import { formatPrice } from "../utils";
+import { GripVertical, Trash2, Plus, Pencil } from "lucide-react";
+import type { ItemGroup } from "@/lib/api";
+import { formatPrice, currencyLabel } from "../utils";
+import { useState } from "react";
+
 
 type OfferProductsTableProps = {
-  items: LineItem[];
+  groups: ItemGroup[];
   currency: string;
-  draggedIndex: number | null;
-  onQuantityChange: (index: number, quantity: number) => void;
-  onDiscountChange: (index: number, discount: number) => void;
-  onDragStart: (index: number) => void;
-  onDragOver: (e: React.DragEvent, index: number) => void;
+  sellMultiplier: number;
+  dragState: { groupIndex: number; itemIndex: number } | null;
+  onQuantityChange: (groupIndex: number, itemIndex: number, quantity: number) => void;
+  onGroupDiscountChange: (groupIndex: number, discount: number) => void;
+  onGroupRename: (groupIndex: number, name: string) => void;
+  onGroupRemove: (groupIndex: number) => void;
+  onItemRemove: (groupIndex: number, itemIndex: number) => void;
+  onDragStart: (groupIndex: number, itemIndex: number) => void;
+  onDragOver: (e: React.DragEvent, groupIndex: number, itemIndex: number) => void;
   onDragEnd: () => void;
+  onAddProductsToGroup: (groupId: string) => void;
 };
 
 export function OfferProductsTable({
-  items,
+  groups,
   currency,
-  draggedIndex,
+  sellMultiplier,
+  dragState,
   onQuantityChange,
-  onDiscountChange,
+  onGroupDiscountChange,
+  onGroupRename,
+  onGroupRemove,
+  onItemRemove,
   onDragStart,
   onDragOver,
   onDragEnd,
+  onAddProductsToGroup,
 }: OfferProductsTableProps) {
+  const [editingGroupIndex, setEditingGroupIndex] = useState<number | null>(null);
+  const [editingGroupName, setEditingGroupName] = useState("");
+  const [editingDiscountIndex, setEditingDiscountIndex] = useState<number | null>(null);
+
+  const startRename = (groupIndex: number, currentName: string) => {
+    setEditingGroupIndex(groupIndex);
+    setEditingGroupName(currentName);
+  };
+
+  const commitRename = (groupIndex: number) => {
+    if (editingGroupName.trim()) onGroupRename(groupIndex, editingGroupName.trim());
+    setEditingGroupIndex(null);
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Produkty</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {items?.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-8"></TableHead>
-                <TableHead className="w-16"></TableHead>
-                <TableHead>Produkt</TableHead>
-                <TableHead className="w-24">Množství</TableHead>
-                <TableHead>Cena/ks</TableHead>
-                <TableHead className="w-28">Sleva</TableHead>
-                <TableHead>Celkem</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item, index) => (
-                <TableRow
-                  key={index}
-                  draggable
-                  onDragStart={() => onDragStart(index)}
-                  onDragOver={(e) => onDragOver(e, index)}
-                  onDragEnd={onDragEnd}
-                  className={`cursor-move ${draggedIndex === index ? "opacity-50" : ""}`}
-                >
-                  <TableCell>
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                  </TableCell>
-                  <TableCell>
-                    {item.image ? (
-                      <Image src={item.image} alt={item.name} width={50} height={50} className="rounded-md object-cover" />
-                    ) : (
-                      <div className="h-[50px] w-[50px] rounded-md bg-gray-200" />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-semibold">{item.name}</div>
-                    {item.sku && <div className="text-sm text-muted-foreground">SKU: {item.sku}</div>}
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => onQuantityChange(index, parseInt(e.target.value) || 1)}
-                      onFocus={(e) => e.target.select()}
-                      className="w-20"
-                    />
-                  </TableCell>
-                  <TableCell>{formatPrice(item.unit_price, currency)}</TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={item.discount === 0 || !item.discount ? "" : item.discount}
-                      placeholder="0"
-                      onChange={(e) => onDiscountChange(index, e.target.value === "" ? 0 : parseFloat(e.target.value))}
-                      onFocus={(e) => e.target.select()}
-                      className="w-24"
-                    />
-                  </TableCell>
-                  <TableCell className="font-semibold">{formatPrice(item.total, currency)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <div className="rounded-md bg-blue-50 p-4 text-blue-900">Zatím nebyly přidány žádné produkty.</div>
-        )}
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      {groups.map((group, groupIndex) => {
+        const groupCostSubtotal = group.items.reduce((s, item) => s + item.unit_price * item.quantity, 0);
+        const groupSellSubtotal = groupCostSubtotal * (Number(sellMultiplier) || 1);
+
+        return (
+          <Card key={group.id}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2">
+                {editingGroupIndex === groupIndex ? (
+                  <Input
+                    autoFocus
+                    value={editingGroupName}
+                    onChange={(e) => setEditingGroupName(e.target.value)}
+                    onBlur={() => commitRename(groupIndex)}
+                    onKeyDown={(e) => { if (e.key === "Enter") commitRename(groupIndex); }}
+                    className="h-8 max-w-xs text-lg font-semibold"
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => startRename(groupIndex, group.name)}
+                    className="flex items-center gap-1.5 rounded px-1 hover:bg-muted"
+                  >
+                    <CardTitle>{group.name}</CardTitle>
+                    <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-60" />
+                  </button>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => onAddProductsToGroup(group.id)} className="gap-1">
+                    <Plus className="h-4 w-4" />
+                    Přidat produkt
+                  </Button>
+                  {groups.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => onGroupRemove(groupIndex)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent>
+              {group.items.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-8"></TableHead>
+                      <TableHead className="w-16"></TableHead>
+                      <TableHead>Produkt</TableHead>
+                      <TableHead className="w-20">Množství</TableHead>
+                      <TableHead>Cena/ks (N. / P.)</TableHead>
+                      <TableHead>Celkem (N. / P.)</TableHead>
+                      <TableHead className="w-8"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {group.items.map((item, itemIndex) => {
+                      const multiplier = Number(sellMultiplier) || 1;
+                      const costTotal = item.unit_price * item.quantity;
+                      const sellTotal = costTotal * multiplier;
+                      return (
+                        <TableRow
+                          key={itemIndex}
+                          draggable
+                          onDragStart={() => onDragStart(groupIndex, itemIndex)}
+                          onDragOver={(e) => onDragOver(e, groupIndex, itemIndex)}
+                          onDragEnd={onDragEnd}
+                          className={`cursor-move ${dragState?.groupIndex === groupIndex && dragState?.itemIndex === itemIndex ? "opacity-50" : ""}`}
+                        >
+                          <TableCell>
+                            <GripVertical className="h-4 w-4 text-muted-foreground" />
+                          </TableCell>
+                          <TableCell>
+                            {item.image ? (
+                              <Image src={item.image} alt={item.name} width={50} height={50} className="rounded-md object-cover" />
+                            ) : (
+                              <div className="h-[50px] w-[50px] rounded-md bg-gray-200" />
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-semibold">{item.name}</div>
+                            {item.sku && <div className="text-sm text-muted-foreground">SKU: {item.sku}</div>}
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => onQuantityChange(groupIndex, itemIndex, parseInt(e.target.value) || 1)}
+                              onFocus={(e) => e.target.select()}
+                              className="w-16"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-muted-foreground">{formatPrice(item.unit_price, currency)}</span>
+                            <span className="mx-1 text-muted-foreground">/</span>
+                            <span className="font-medium">{formatPrice(item.unit_price * multiplier, currency)}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-muted-foreground">{formatPrice(costTotal, currency)}</span>
+                            <span className="mx-1 text-muted-foreground">/</span>
+                            <span className="font-semibold">{formatPrice(sellTotal, currency)}</span>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => onItemRemove(groupIndex, itemIndex)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="rounded-md bg-blue-50 p-4 text-blue-900">Zatím nebyly přidány žádné produkty.</div>
+              )}
+
+              {/* Group subtotal + discount row */}
+              <div className="mt-3 flex items-center justify-end gap-4 border-t pt-3 text-sm">
+                <span className="text-muted-foreground">
+                  Mezisoučet (N.): <span className="font-medium text-foreground">{formatPrice(groupCostSubtotal, currency)}</span>
+                </span>
+                <div className="flex items-center gap-1.5 text-red-600">
+                  <span className="text-sm">Sleva:</span>
+                  {editingDiscountIndex === groupIndex ? (
+                    <>
+                      <span className="text-sm">−</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        autoFocus
+                        className="w-24 text-right text-red-600 border-red-300 focus-visible:ring-red-500"
+                        value={group.discount === 0 ? "" : group.discount}
+                        onChange={(e) => onGroupDiscountChange(groupIndex, e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                        onBlur={() => setEditingDiscountIndex(null)}
+                        onFocus={(e) => e.target.select()}
+                        placeholder="0"
+                      />
+                      <span className="text-sm text-muted-foreground">{currencyLabel(currency)}</span>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setEditingDiscountIndex(groupIndex)}
+                      className="flex items-center gap-1 rounded px-2 py-1 text-right text-sm text-red-600 hover:bg-red-50"
+                    >
+                      <span>{group.discount > 0 ? `− ${formatPrice(group.discount, currency)}` : "0"}</span>
+                      <Pencil className="h-3.5 w-3.5 opacity-70" />
+                    </button>
+                  )}
+                </div>
+                <span className="text-muted-foreground">
+                  (P.): <span className="font-semibold text-foreground">{formatPrice(Math.max(0, groupSellSubtotal - (group.discount || 0)), currency)}</span>
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+
+    </div>
   );
 }

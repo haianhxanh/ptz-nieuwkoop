@@ -23,6 +23,9 @@ interface Customer {
   postal_code?: string;
   country?: string;
   notes?: string;
+  company_name?: string;
+  company_ico?: string;
+  company_dic?: string;
   created_at: string;
 }
 
@@ -66,7 +69,7 @@ export default function CustomersPage() {
         setFilteredCustomers(data.data as Customer[]);
       }
     } catch (err) {
-      setError("Chyba při načítání zákazníků");
+      setError("Chyba při načítání klientů");
       console.error(err);
     } finally {
       setLoading(false);
@@ -100,10 +103,13 @@ export default function CustomersPage() {
         postal_code: editingCustomer.postal_code,
         country: editingCustomer.country,
         notes: editingCustomer.notes,
+        company_name: editingCustomer.company_name,
+        company_ico: editingCustomer.company_ico,
+        company_dic: editingCustomer.company_dic,
       });
 
       if (result.success) {
-        toast.success("Zákazník byl aktualizován");
+        toast.success("Klient byl aktualizován");
         setEditDialogOpen(false);
         loadCustomers();
       }
@@ -129,9 +135,9 @@ export default function CustomersPage() {
           <CardHeader className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Seznam zákazníků</CardTitle>
+                <CardTitle>Seznam klientů</CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Celkem {customers.length} {customers.length === 1 ? "zákazník" : customers.length < 5 ? "zákazníci" : "zákazníků"}
+                  Celkem {customers.length} {customers.length === 1 ? "klient" : customers.length < 5 ? "klienti" : "klientů"}
                 </p>
               </div>
             </div>
@@ -153,8 +159,8 @@ export default function CustomersPage() {
             {!loading && !error && customers.length === 0 && (
               <div className="py-12 text-center">
                 <User className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="mb-2 text-lg font-semibold">Zatím žádní zákazníci</h3>
-                <p className="text-muted-foreground">Zákazníci se vytvoří automaticky při vytvoření nabídky</p>
+                <h3 className="mb-2 text-lg font-semibold">Zatím žádní klienti</h3>
+                <p className="text-muted-foreground">Klienti se vytvoří automaticky při vytvoření nabídky</p>
               </div>
             )}
 
@@ -175,7 +181,13 @@ export default function CustomersPage() {
                         <div className="flex-1 space-y-3">
                           <div>
                             <h3 className="text-lg font-semibold">{customer.name}</h3>
-                            <p className="text-sm text-muted-foreground">Vytvořeno {formatDate(customer.created_at)}</p>
+                            {customer.company_name && (
+                              <p className="text-sm font-medium text-foreground/70">
+                                {customer.company_name}
+                                {customer.company_ico && <span className="ml-2 text-muted-foreground">IČO: {customer.company_ico}</span>}
+                                {customer.company_dic && <span className="ml-2 text-muted-foreground">DIČ: {customer.company_dic}</span>}
+                              </p>
+                            )}
                           </div>
 
                           <div className="flex flex-wrap gap-4 text-sm">
@@ -231,7 +243,7 @@ export default function CustomersPage() {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Upravit zákazníka</DialogTitle>
+            <DialogTitle>Upravit klienta</DialogTitle>
           </DialogHeader>
           {editingCustomer && (
             <div className="space-y-4">
@@ -273,13 +285,28 @@ export default function CustomersPage() {
                 </div>
               </div>
 
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <Label htmlFor="company_name">Firma</Label>
+                  <Input id="company_name" value={editingCustomer.company_name || ""} onChange={(e) => updateEditingCustomer("company_name", e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="company_ico">IČO</Label>
+                  <Input id="company_ico" value={editingCustomer.company_ico || ""} onChange={(e) => updateEditingCustomer("company_ico", e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="company_dic">DIČ</Label>
+                  <Input id="company_dic" value={editingCustomer.company_dic || ""} onChange={(e) => updateEditingCustomer("company_dic", e.target.value)} />
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="notes">Poznámky</Label>
                 <Textarea
                   id="notes"
                   value={editingCustomer.notes || ""}
                   onChange={(e) => updateEditingCustomer("notes", e.target.value)}
-                  placeholder="Poznámky k zákazníkovi..."
+                  placeholder="Poznámky"
                   rows={3}
                 />
               </div>

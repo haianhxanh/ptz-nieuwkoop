@@ -54,12 +54,13 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       }
 
       console.log("Fetching fresh products from API");
-      const [data, { rate: exchangeRate }] = await Promise.all([productsApi.list(), exchangeRateApi.get()]);
+      const [data, { rate: exchangeRate, nieuwkoop_discount }] = await Promise.all([productsApi.list(), exchangeRateApi.get()]);
 
       if (data.products && Array.isArray(data.products)) {
         const rate = Number(exchangeRate) || 25;
+        const discountMultiplier = 1 - (Number(nieuwkoop_discount) || 0) / 100;
         const mapped = data.products.map((product: any) => {
-          const unitPriceEur = parsePriceEur(product.Salesprice ?? product.salesprice);
+          const unitPriceEur = Math.round(parsePriceEur(product.Salesprice ?? product.salesprice) * discountMultiplier * 100) / 100;
           const unitPrice = Math.round(unitPriceEur * rate * 100) / 100;
           return {
             id: product.Itemcode,
@@ -70,6 +71,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
             unit_price: unitPrice,
             price: unitPrice.toFixed(2),
             collection: product.Tags.find((tag: any) => tag.Code === "Collection")?.Values[0]?.Description_EN || "",
+            substrate: product.Tags.find((tag: any) => tag.Code === "SubstrateType")?.Values[0]?.Description_EN ?? null,
             image: "https://images.nieuwkoop-europe.com/images/" + product.ItemPictureName,
             dimensions: {
               height: product.Height,

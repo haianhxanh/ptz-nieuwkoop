@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, FileDown, ArrowLeft } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Save, FileDown, FileText, ArrowLeft, Plus } from "lucide-react";
 import type { OfferStatus } from "@/lib/api";
 import { statusConfig } from "../constants";
 
@@ -16,8 +20,9 @@ type OfferDetailHeaderProps = {
   hasUnsavedChanges: boolean;
   onSave: () => void;
   onExportExcel: () => void;
+  onExportPdf: () => void;
   onBack: () => void;
-  onAddProducts: () => void;
+  onAddSection: (name: string) => void;
 };
 
 export function OfferDetailHeader({
@@ -29,9 +34,20 @@ export function OfferDetailHeader({
   hasUnsavedChanges,
   onSave,
   onExportExcel,
+  onExportPdf,
   onBack,
-  onAddProducts,
+  onAddSection,
 }: OfferDetailHeaderProps) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [sectionName, setSectionName] = useState("");
+
+  const handleConfirm = () => {
+    const name = sectionName.trim() || "Nová sekce";
+    onAddSection(name);
+    setSectionName("");
+    setDialogOpen(false);
+  };
+
   return (
     <>
       <div className="mb-4">
@@ -61,22 +77,51 @@ export function OfferDetailHeader({
           </Select>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={onSave}
-            disabled={saving}
-            className={hasUnsavedChanges ? "border-amber-500 text-amber-600 hover:bg-amber-50" : ""}
-          >
+          <Button variant="outline" onClick={onSave} disabled={saving} className={hasUnsavedChanges ? "border-amber-500 text-amber-600 hover:bg-amber-50" : ""}>
             <Save className="mr-2 h-4 w-4" />
             {saving ? "Ukládání..." : hasUnsavedChanges ? "Uložit změny *" : "Uložit změny"}
           </Button>
           <Button variant="outline" onClick={onExportExcel}>
             <FileDown className="mr-2 h-4 w-4" />
-            Export do Excelu
+            Excel
           </Button>
-          <Button onClick={onAddProducts}>Přidat produkty</Button>
+          <Button variant="outline" onClick={onExportPdf}>
+            <FileText className="mr-2 h-4 w-4" />
+            PDF
+          </Button>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Přidat sekci
+          </Button>
         </div>
       </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Přidat novou sekci</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <Label htmlFor="section-name">Název sekce</Label>
+            <Input
+              id="section-name"
+              autoFocus
+              placeholder="např. Pots, Accessories…"
+              value={sectionName}
+              onChange={(e) => setSectionName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleConfirm();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Zrušit
+            </Button>
+            <Button onClick={handleConfirm}>Přidat</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -43,11 +43,11 @@ export default function OffersPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("cs-CZ", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    const d = new Date(dateString);
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
   };
 
   const formatPrice = (amount: number, currency: string) => {
@@ -74,7 +74,7 @@ export default function OffersPage() {
             {!loading && !error && offers.length === 0 && (
               <div className="py-12 text-center">
                 <h3 className="mb-2 text-lg font-semibold">Zatím žádné nabídky</h3>
-                <p className="mb-4 text-muted-foreground">Začněte vytvořením nové nabídky pro zákazníka</p>
+                <p className="mb-4 text-muted-foreground">Začněte vytvořením nové nabídky pro klienta</p>
                 <Button onClick={() => router.push("/products")}>Vytvořit nabídku</Button>
               </div>
             )}
@@ -85,10 +85,10 @@ export default function OffersPage() {
                   <TableRow>
                     <TableHead className="w-16">ID</TableHead>
                     <TableHead>Název</TableHead>
-                    <TableHead>Zákazník</TableHead>
+                    <TableHead>Klient</TableHead>
                     <TableHead>Stav</TableHead>
                     <TableHead>Počet položek</TableHead>
-                    <TableHead>Celkem</TableHead>
+                    <TableHead>Celkem P.</TableHead>
                     <TableHead>Vytvořeno</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -105,7 +105,7 @@ export default function OffersPage() {
                         <Badge variant={statusConfig[offer.status].variant}>{statusConfig[offer.status].label}</Badge>
                       </TableCell>
                       <TableCell>{offer.items?.length || 0}</TableCell>
-                      <TableCell className="font-semibold">{formatPrice(offer.total, offer.currency)}</TableCell>
+                      <TableCell className="font-semibold">{formatPrice(Number(offer.total_sell) || offer.total, offer.currency)}</TableCell>
                       <TableCell className="text-muted-foreground">{formatDate(offer.created_at)}</TableCell>
                     </TableRow>
                   ))}

@@ -26,6 +26,13 @@ apiClient.interceptors.response.use(
 // Types
 export type OfferStatus = "draft" | "sent" | "accepted" | "rejected" | "expired";
 
+export interface User {
+  id?: string;
+  email: string;
+  name?: string;
+  phone?: string;
+}
+
 export interface Customer {
   id?: string;
   email: string;
@@ -36,6 +43,9 @@ export interface Customer {
   postal_code?: string;
   country?: string;
   notes?: string;
+  company_name?: string;
+  company_ico?: string;
+  company_dic?: string;
 }
 
 export interface LineItem {
@@ -46,14 +56,21 @@ export interface LineItem {
   quantity: number;
   unit_price: number;
   unit_price_eur?: number;
-  discount?: number;
   total: number;
   image?: string;
+}
+
+export interface ItemGroup {
+  id: string;
+  name: string;
+  discount: number;
+  items: LineItem[];
 }
 
 export interface AdditionalItem {
   title: string;
   price: number;
+  sell_price?: number;
 }
 
 export interface Offer {
@@ -63,7 +80,7 @@ export interface Offer {
   customer: Customer;
   title: string;
   description?: string;
-  items?: LineItem[];
+  items?: ItemGroup[];
   additional_items?: AdditionalItem[];
   subtotal: number;
   items_discount?: number;
@@ -71,11 +88,14 @@ export interface Offer {
   discount?: number;
   tax?: number;
   total: number;
+  total_sell?: number;
   currency: string;
   exchange_rate?: number;
   status: OfferStatus;
   valid_until?: string;
   notes?: string;
+  sell_multiplier?: number;
+  user?: User;
   created_at: string;
   updated_at: string;
 }
@@ -97,6 +117,7 @@ export interface Product {
   image: string;
   brand: string;
   collection: string;
+  substrate: string | null;
 }
 
 // API functions
@@ -115,7 +136,7 @@ export const offersApi = {
     customer: Customer;
     title: string;
     description?: string;
-    items?: LineItem[];
+    items?: ItemGroup[];
     subtotal: number;
     discount?: number;
     tax?: number;
@@ -129,8 +150,8 @@ export const offersApi = {
     return response.data;
   },
 
-  addItems: async (id: string, items: LineItem[]) => {
-    const response = await apiClient.post<{ success: boolean; data: Offer }>(`/api/offers/${id}/items`, { items });
+  addItems: async (id: string, items: LineItem[], group_id?: string) => {
+    const response = await apiClient.post<{ success: boolean; data: Offer }>(`/api/offers/${id}/items`, { items, group_id });
     return response.data;
   },
 
@@ -155,6 +176,13 @@ export const offersApi = {
   },
 };
 
+export const usersApi = {
+  getMe: async () => {
+    const response = await apiClient.get<{ success: boolean; data: User }>("/api/offers/me");
+    return response.data;
+  },
+};
+
 export const productsApi = {
   list: async () => {
     const response = await apiClient.get<{ products: any[] }>("/get-products");
@@ -163,17 +191,17 @@ export const productsApi = {
 };
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-let exchangeRateCache: { rate: number; date: string | null; fetchedAt: number } | null = null;
+let exchangeRateCache: { rate: number; nieuwkoop_discount: number; company?: { name: string; ico: string; dic: string }; date: string | null; fetchedAt: number } | null = null;
 
 export const exchangeRateApi = {
-  get: async (): Promise<{ rate: number; date: string | null }> => {
+  get: async (): Promise<{ rate: number; nieuwkoop_discount: number; date: string | null; company: { name: string; ico: string; dic: string } }> => {
     const now = Date.now();
     if (exchangeRateCache && now - exchangeRateCache.fetchedAt < CACHE_TTL_MS) {
-      return { rate: exchangeRateCache.rate, date: exchangeRateCache.date };
+      return { rate: exchangeRateCache.rate, nieuwkoop_discount: exchangeRateCache.nieuwkoop_discount, date: exchangeRateCache.date, company: exchangeRateCache.company ?? { name: "", ico: "", dic: "" } };
     }
-    const response = await apiClient.get<{ success: boolean; data: { rate: number; date: string | null } }>("/api/offers/exchange-rate");
-    const { rate, date } = response.data.data;
-    exchangeRateCache = { rate, date, fetchedAt: now };
-    return { rate, date };
+    const response = await apiClient.get<{ success: boolean; data: { rate: number; nieuwkoop_discount: number; company: { name: string; ico: string; dic: string }; date: string | null } }>("/api/offers/exchange-rate");
+    const { rate, nieuwkoop_discount, company, date } = response.data.data;
+    exchangeRateCache = { rate, nieuwkoop_discount: nieuwkoop_discount ?? 0, company: company ?? { name: "", ico: "", dic: "" }, date, fetchedAt: now };
+    return { rate, nieuwkoop_discount: nieuwkoop_discount ?? 0, company: company ?? { name: "", ico: "", dic: "" }, date };
   },
 };

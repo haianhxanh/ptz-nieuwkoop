@@ -14,7 +14,7 @@ export function OfferCustomerCard({ customer }: OfferCustomerCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle>Zákazník</CardTitle>
+        <CardTitle>Klient</CardTitle>
         <Link href="/customers">
           <Button variant="ghost" size="sm" className="gap-1">
             <ExternalLink className="h-4 w-4" />
@@ -23,6 +23,13 @@ export function OfferCustomerCard({ customer }: OfferCustomerCardProps) {
       </CardHeader>
       <CardContent className="space-y-2">
         <div className="font-semibold">{customer.name}</div>
+        {customer.company_name && (
+          <div className="text-sm text-muted-foreground">
+            {customer.company_name}
+            {customer.company_ico && <span className="ml-2">IČO: {customer.company_ico}</span>}
+            {customer.company_dic && <span className="ml-2">DIČ: {customer.company_dic}</span>}
+          </div>
+        )}
         <div className="text-sm">{customer.email}</div>
         {customer.phone && <div className="text-sm">{customer.phone}</div>}
         {customer.address && (
