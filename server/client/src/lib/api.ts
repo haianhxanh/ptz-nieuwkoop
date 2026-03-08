@@ -90,6 +90,7 @@ export interface Offer {
   tax?: number;
   total: number;
   total_sell?: number;
+  total_rounded?: number | null;
   currency: string;
   exchange_rate?: number;
   status: OfferStatus;

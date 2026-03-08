@@ -83,6 +83,7 @@ export const updateOfferSchema = z.object({
   valid_until: z.string().datetime().optional(),
   notes: z.string().optional(),
   sell_multiplier: z.number().min(0).optional(),
+  total_rounded: z.number().min(0).nullable().optional(),
 });
 
 export const addItemsToOfferSchema = z.object({

@@ -50,6 +50,8 @@ export default function OfferDetailPage() {
     handleDragStart,
     handleDragOver,
     handleDragEnd,
+    totalRounded,
+    setTotalRounded,
     calculateTotals,
     displayExchangeRate,
     applyTodaysExchangeRate,
@@ -155,6 +157,8 @@ export default function OfferDetailPage() {
               total={totals.total}
               totalSell={totals.totalSell}
               totalSellExclVat={totals.totalSellExclVat}
+              totalRounded={totalRounded}
+              onTotalRoundedChange={setTotalRounded}
               sellMultiplier={sellMultiplier}
               onSellMultiplierChange={setSellMultiplier}
             />

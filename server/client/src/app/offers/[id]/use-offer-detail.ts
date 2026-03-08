@@ -33,6 +33,7 @@ export function useOfferDetail() {
   const [additionalItems, setAdditionalItems] = useState<AdditionalItem[]>(DEFAULT_ADDITIONAL_ITEMS);
   const [notesText, setNotesText] = useState<string>("");
   const [editingAdditionalIndex, setEditingAdditionalIndex] = useState<number | null>(null);
+  const [totalRounded, setTotalRounded] = useState<number | null>(null);
 
   useEffect(() => {
     if (params.id) loadOffer(params.id as string);
@@ -50,6 +51,7 @@ export function useOfferDetail() {
         setDescription(data.data.description || "");
         setNotesText(data.data.notes || "");
         setAdditionalItems(data.data.additional_items?.length ? data.data.additional_items : DEFAULT_ADDITIONAL_ITEMS);
+        setTotalRounded(data.data.total_rounded ? Number(data.data.total_rounded) : null);
         setHasUnsavedChanges(false);
       }
     } catch (err) {
@@ -78,6 +80,7 @@ export function useOfferDetail() {
 
   const removeGroup = (groupIndex: number) => {
     setEditedGroups((prev) => prev.filter((_, i) => i !== groupIndex));
+    setTotalRounded(null);
     setHasUnsavedChanges(true);
   };
 
@@ -88,11 +91,13 @@ export function useOfferDetail() {
 
   const updateGroupDiscount = (groupIndex: number, discount: number) => {
     setEditedGroups((prev) => prev.map((g, i) => (i === groupIndex ? { ...g, discount } : g)));
+    setTotalRounded(null);
     setHasUnsavedChanges(true);
   };
 
   const removeItemFromGroup = (groupIndex: number, itemIndex: number) => {
     setEditedGroups((prev) => prev.map((g, i) => (i === groupIndex ? { ...g, items: g.items.filter((_, j) => j !== itemIndex) } : g)));
+    setTotalRounded(null);
     setHasUnsavedChanges(true);
   };
 
@@ -110,6 +115,7 @@ export function useOfferDetail() {
         return { ...g, items: newItems };
       }),
     );
+    setTotalRounded(null);
     setHasUnsavedChanges(true);
   };
 
@@ -274,6 +280,7 @@ export function useOfferDetail() {
         items: sanitizedGroups,
         additional_items: additionalItems.map((a) => ({ title: a.title, price: Number(a.price) || 0, sell_price: Number(a.sell_price) || 0 })),
         sell_multiplier: finalSellMultiplier,
+        total_rounded: totalRounded,
         status,
         description,
         notes: notesText || undefined,
@@ -294,6 +301,7 @@ export function useOfferDetail() {
 
   const setAdditionalItemsState = (items: AdditionalItem[] | ((prev: AdditionalItem[]) => AdditionalItem[])) => {
     setAdditionalItems(typeof items === "function" ? items(additionalItems) : items);
+    setTotalRounded(null);
     setHasUnsavedChanges(true);
   };
 
@@ -312,6 +320,7 @@ export function useOfferDetail() {
   const markUnsaved = () => setHasUnsavedChanges(true);
   const setSellMultiplierWithDirty = (v: number) => {
     setSellMultiplier(v);
+    setTotalRounded(null);
     setHasUnsavedChanges(true);
   };
 
@@ -345,6 +354,8 @@ export function useOfferDetail() {
     handleDragStart,
     handleDragOver,
     handleDragEnd,
+    totalRounded,
+    setTotalRounded: (v: number | null) => { setTotalRounded(v); setHasUnsavedChanges(true); },
     calculateTotals,
     displayExchangeRate,
     applyTodaysExchangeRate,

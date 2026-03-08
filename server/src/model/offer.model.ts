@@ -22,6 +22,7 @@ export type OFFER = {
   tax?: number;
   total: number;
   total_sell?: number;
+  total_rounded?: number;
   currency?: string;
   exchange_rate?: number;
   status: OFFER_STATUS;
@@ -107,6 +108,10 @@ Offer.init(
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
       defaultValue: 0,
+    },
+    total_rounded: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
     },
     currency: {
       type: DataTypes.STRING(3),

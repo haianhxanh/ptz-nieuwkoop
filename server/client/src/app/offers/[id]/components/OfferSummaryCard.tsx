@@ -20,6 +20,8 @@ type OfferSummaryCardProps = {
   total: number;
   totalSell: number;
   totalSellExclVat: number;
+  totalRounded: number | null;
+  onTotalRoundedChange: (v: number | null) => void;
   sellMultiplier: number;
   onSellMultiplierChange: (v: number) => void;
 };
@@ -36,6 +38,8 @@ export function OfferSummaryCard({
   total,
   totalSell,
   totalSellExclVat,
+  totalRounded,
+  onTotalRoundedChange,
   sellMultiplier,
   onSellMultiplierChange,
 }: OfferSummaryCardProps) {
@@ -185,6 +189,19 @@ export function OfferSummaryCard({
           <div className="flex justify-between text-lg font-semibold">
             <span>Celkem prodej</span>
             <span>{formatPrice(totalSell, currency)}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm gap-2">
+            <span className="text-muted-foreground shrink-0">Celkem prodej - zaokrouhleno</span>
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                className="w-32 h-7 text-right text-sm"
+                value={totalRounded ?? ""}
+                placeholder={String(Math.round(totalSell))}
+                onChange={(e) => onTotalRoundedChange(e.target.value === "" ? null : Number(e.target.value))}
+              />
+              <span className="text-xs text-muted-foreground">{currencyLabel(currency)}</span>
+            </div>
           </div>
           {groupsDiscount > 0 && (
             <div className="flex justify-between text-sm text-muted-foreground text-red-600">
