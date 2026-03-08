@@ -58,6 +58,7 @@ export interface LineItem {
   unit_price_eur?: number;
   total: number;
   image?: string;
+  vat_rate?: number;
 }
 
 export interface ItemGroup {
@@ -118,6 +119,7 @@ export interface Product {
   brand: string;
   collection: string;
   substrate: string | null;
+  vat_rate: number;
 }
 
 // API functions

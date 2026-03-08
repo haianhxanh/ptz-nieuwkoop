@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { offersApi, exchangeRateApi, type Offer, type ItemGroup, type LineItem, type OfferStatus, type AdditionalItem } from "@/lib/api";
+import { useProducts } from "@/contexts/products-context";
 import { DEFAULT_ADDITIONAL_ITEMS } from "./constants";
 import { buildAndDownloadOfferExcel, type OfferTotals } from "./export-offer-excel";
 
@@ -18,6 +19,7 @@ function normalizeGroups(raw: any[]): ItemGroup[] {
 
 export function useOfferDetail() {
   const params = useParams();
+  const { products } = useProducts();
   const [offer, setOffer] = useState<Offer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -142,12 +144,25 @@ export function useOfferDetail() {
     const itemsSubtotal = editedGroups.reduce((sum, g) => sum + g.items.reduce((s, item) => s + item.unit_price * item.quantity, 0), 0);
     const groupsDiscount = editedGroups.reduce((sum, g) => sum + (Number(g.discount) || 0), 0);
     const totalDiscountAmount = groupsDiscount;
-    const tax = Number(offer?.tax) || 0;
     const additionalCostTotal = additionalItems.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
     const additionalSellTotal = additionalItems.reduce((sum, a) => sum + (Number(a.sell_price) || 0), 0);
     const multiplier = Number(sellMultiplier) || 1;
-    const total = itemsSubtotal - totalDiscountAmount + additionalCostTotal + tax;
-    const totalSell = itemsSubtotal * multiplier - totalDiscountAmount + additionalSellTotal + tax;
+    const total = itemsSubtotal - totalDiscountAmount + additionalCostTotal;
+    const itemsSellSubtotal = editedGroups.reduce(
+      (sum, g) =>
+        sum +
+        g.items.reduce((s, item) => {
+          const vat = (item.vat_rate ?? 21) / 100;
+          return s + item.unit_price * (1 + vat) * multiplier * item.quantity;
+        }, 0),
+      0,
+    );
+    const itemsSellExclVat = editedGroups.reduce(
+      (sum, g) => sum + g.items.reduce((s, item) => s + item.unit_price * multiplier * item.quantity, 0),
+      0,
+    );
+    const totalSell = itemsSellSubtotal - totalDiscountAmount + additionalSellTotal;
+    const totalSellExclVat = itemsSellExclVat - totalDiscountAmount + additionalSellTotal;
     return {
       itemsSubtotal,
       groupsDiscount,
@@ -157,6 +172,7 @@ export function useOfferDetail() {
       subtotal: itemsSubtotal,
       total,
       totalSell,
+      totalSellExclVat,
     };
   };
 
@@ -169,8 +185,29 @@ export function useOfferDetail() {
     try {
       setUpdatingRate(true);
       const { rate } = await exchangeRateApi.get();
-      await offersApi.update(offer.simple_id.toString(), { exchange_rate: rate });
-      toast.success(`Kurz nabídky aktualizován na ${rate.toFixed(2)} CZK`);
+
+      const recalculatedGroups = editedGroups.map((g) => ({
+        ...g,
+        items: g.items.map((item) => {
+          const eurPrice = Number(item.unit_price_eur) || 0;
+          const newCzk = eurPrice > 0 ? Math.round(eurPrice * rate * 100) / 100 : item.unit_price;
+          return {
+            ...item,
+            unit_price: newCzk,
+            unit_price_eur: eurPrice || item.unit_price_eur,
+            vat_rate: item.vat_rate ?? 21,
+            total: newCzk * item.quantity,
+          };
+        }),
+      }));
+
+      setEditedGroups(recalculatedGroups);
+
+      await offersApi.update(offer.simple_id.toString(), {
+        exchange_rate: rate,
+        items: recalculatedGroups,
+      });
+      toast.success(`Kurz aktualizován na ${rate.toFixed(2)} CZK, ceny přepočítány`);
       loadOffer(params.id as string);
     } catch (err) {
       console.error(err);
@@ -218,6 +255,7 @@ export function useOfferDetail() {
             quantity: Number(item.quantity) || 1,
             unit_price: unitPrice,
             unit_price_eur: unitPriceEur,
+            vat_rate: item.vat_rate ?? 21,
             total: unitPrice * (Number(item.quantity) || 1),
           };
         }),

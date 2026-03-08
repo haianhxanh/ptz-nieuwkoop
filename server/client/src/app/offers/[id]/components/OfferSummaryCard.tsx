@@ -19,6 +19,7 @@ type OfferSummaryCardProps = {
   groupsDiscount: number;
   total: number;
   totalSell: number;
+  totalSellExclVat: number;
   sellMultiplier: number;
   onSellMultiplierChange: (v: number) => void;
 };
@@ -34,6 +35,7 @@ export function OfferSummaryCard({
   groupsDiscount,
   total,
   totalSell,
+  totalSellExclVat,
   sellMultiplier,
   onSellMultiplierChange,
 }: OfferSummaryCardProps) {
@@ -190,12 +192,12 @@ export function OfferSummaryCard({
               <span>-{formatPrice(groupsDiscount, currency)}</span>
             </div>
           )}
-          {totalSell > 0 && total > 0 && (
+          {totalSellExclVat > 0 && total > 0 && (
             <div className="flex justify-between text-sm text-green-700 font-medium">
               <span>Marže</span>
               <span>
-                {formatPrice(totalSell - total, currency)}{" "}
-                <span className="text-green-600 font-normal">({(((totalSell - total) / total) * 100).toFixed(1)} %)</span>
+                {formatPrice(totalSellExclVat - total, currency)}{" "}
+                <span className="text-green-600 font-normal">({(((totalSellExclVat - total) / total) * 100).toFixed(1)} %)</span>
               </span>
             </div>
           )}

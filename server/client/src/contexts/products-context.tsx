@@ -62,6 +62,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
         const mapped = data.products.map((product: any) => {
           const unitPriceEur = Math.round(parsePriceEur(product.Salesprice ?? product.salesprice) * discountMultiplier * 100) / 100;
           const unitPrice = Math.round(unitPriceEur * rate * 100) / 100;
+          const vatRate = product.MainGroupDescription_EN === "Planten" ? 12 : 21;
           return {
             id: product.Itemcode,
             title: product.Description,
@@ -73,6 +74,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
             collection: product.Tags.find((tag: any) => tag.Code === "Collection")?.Values[0]?.Description_EN || "",
             substrate: product.Tags.find((tag: any) => tag.Code === "SubstrateType")?.Values[0]?.Description_EN ?? null,
             image: "https://images.nieuwkoop-europe.com/images/" + product.ItemPictureName,
+            vat_rate: vatRate,
             dimensions: {
               height: product.Height,
               depth: product.Depth,

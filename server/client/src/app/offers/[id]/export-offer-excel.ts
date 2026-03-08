@@ -10,6 +10,7 @@ export type OfferTotals = {
   subtotal: number;
   total: number;
   totalSell: number;
+  totalSellExclVat: number;
 };
 
 type StyleRecord = { r: number; c: number; style: object };

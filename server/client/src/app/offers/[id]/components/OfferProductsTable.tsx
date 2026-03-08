@@ -10,7 +10,6 @@ import type { ItemGroup } from "@/lib/api";
 import { formatPrice, currencyLabel } from "../utils";
 import { useState } from "react";
 
-
 type OfferProductsTableProps = {
   groups: ItemGroup[];
   currency: string;
@@ -59,8 +58,12 @@ export function OfferProductsTable({
   return (
     <div className="space-y-4">
       {groups.map((group, groupIndex) => {
+        const multiplier = Number(sellMultiplier) || 1;
         const groupCostSubtotal = group.items.reduce((s, item) => s + item.unit_price * item.quantity, 0);
-        const groupSellSubtotal = groupCostSubtotal * (Number(sellMultiplier) || 1);
+        const groupSellSubtotal = group.items.reduce((s, item) => {
+          const vat = (item.vat_rate ?? 21) / 100;
+          return s + item.unit_price * (1 + vat) * multiplier * item.quantity;
+        }, 0);
 
         return (
           <Card key={group.id}>
@@ -72,15 +75,13 @@ export function OfferProductsTable({
                     value={editingGroupName}
                     onChange={(e) => setEditingGroupName(e.target.value)}
                     onBlur={() => commitRename(groupIndex)}
-                    onKeyDown={(e) => { if (e.key === "Enter") commitRename(groupIndex); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitRename(groupIndex);
+                    }}
                     className="h-8 max-w-xs text-lg font-semibold"
                   />
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => startRename(groupIndex, group.name)}
-                    className="flex items-center gap-1.5 rounded px-1 hover:bg-muted"
-                  >
+                  <button type="button" onClick={() => startRename(groupIndex, group.name)} className="flex items-center gap-1.5 rounded px-1 hover:bg-muted">
                     <CardTitle>{group.name}</CardTitle>
                     <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-60" />
                   </button>
@@ -114,7 +115,7 @@ export function OfferProductsTable({
                       <TableHead className="w-16"></TableHead>
                       <TableHead>Produkt</TableHead>
                       <TableHead className="w-20">Množství</TableHead>
-                      <TableHead>Cena/ks (N. / P.)</TableHead>
+                      <TableHead className="w-16">DPH</TableHead>
                       <TableHead>Celkem (N. / P.)</TableHead>
                       <TableHead className="w-8"></TableHead>
                     </TableRow>
@@ -122,18 +123,18 @@ export function OfferProductsTable({
                   <TableBody>
                     {group.items.map((item, itemIndex) => {
                       const multiplier = Number(sellMultiplier) || 1;
+                      const vat = (item.vat_rate ?? 21) / 100;
                       const costTotal = item.unit_price * item.quantity;
-                      const sellTotal = costTotal * multiplier;
+                      const sellUnitPrice = item.unit_price * (1 + vat) * multiplier;
+                      const sellTotal = sellUnitPrice * item.quantity;
                       return (
                         <TableRow
                           key={itemIndex}
-                          draggable
-                          onDragStart={() => onDragStart(groupIndex, itemIndex)}
                           onDragOver={(e) => onDragOver(e, groupIndex, itemIndex)}
                           onDragEnd={onDragEnd}
-                          className={`cursor-move ${dragState?.groupIndex === groupIndex && dragState?.itemIndex === itemIndex ? "opacity-50" : ""}`}
+                          className={dragState?.groupIndex === groupIndex && dragState?.itemIndex === itemIndex ? "opacity-50" : ""}
                         >
-                          <TableCell>
+                          <TableCell draggable onDragStart={() => onDragStart(groupIndex, itemIndex)} className="cursor-grab active:cursor-grabbing">
                             <GripVertical className="h-4 w-4 text-muted-foreground" />
                           </TableCell>
                           <TableCell>
@@ -146,6 +147,10 @@ export function OfferProductsTable({
                           <TableCell>
                             <div className="font-semibold">{item.name}</div>
                             {item.sku && <div className="text-sm text-muted-foreground">SKU: {item.sku}</div>}
+                            <div className="mt-0.5 text-xs text-muted-foreground">
+                              <div>N.: {formatPrice(item.unit_price, currency)}</div>
+                              <div className="font-medium text-foreground">P.: {formatPrice(sellUnitPrice, currency)}</div>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Input
@@ -157,11 +162,7 @@ export function OfferProductsTable({
                               className="w-16"
                             />
                           </TableCell>
-                          <TableCell>
-                            <span className="text-muted-foreground">{formatPrice(item.unit_price, currency)}</span>
-                            <span className="mx-1 text-muted-foreground">/</span>
-                            <span className="font-medium">{formatPrice(item.unit_price * multiplier, currency)}</span>
-                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{item.vat_rate ?? 21} %</TableCell>
                           <TableCell>
                             <span className="text-muted-foreground">{formatPrice(costTotal, currency)}</span>
                             <span className="mx-1 text-muted-foreground">/</span>
@@ -228,7 +229,6 @@ export function OfferProductsTable({
           </Card>
         );
       })}
-
     </div>
   );
 }

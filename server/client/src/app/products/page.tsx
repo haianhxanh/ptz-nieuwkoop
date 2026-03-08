@@ -10,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { offersApi, type LineItem, type ItemGroup, exchangeRateApi } from "@/lib/api";
+import { offersApi, type LineItem, type ItemGroup, type Customer, exchangeRateApi } from "@/lib/api";
 import { useProducts } from "@/contexts/products-context";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 function ProductsPageContent() {
   const router = useRouter();
@@ -41,6 +42,8 @@ function ProductsPageContent() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [targetOfferId, setTargetOfferId] = useState(existingOfferId || "");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     let filtered = products;
@@ -59,6 +62,34 @@ function ProductsPageContent() {
     setFilteredProducts(filtered);
     setCurrentPage(1);
   }, [products, searchQuery]);
+
+  const [clientSearch, setClientSearch] = useState("");
+
+  // Load customers once for client search
+  useEffect(() => {
+    offersApi
+      .listCustomers()
+      .then((res) => setCustomers(res.data))
+      .catch(() => {});
+  }, []);
+
+  const clientSearchResults =
+    clientSearch.length > 0
+      ? customers
+          .filter((c) => {
+            const q = clientSearch.toLowerCase();
+            return c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
+          })
+          .slice(0, 6)
+      : [];
+
+  const selectCustomerSuggestion = (c: Customer) => {
+    setCustomerEmail(c.email);
+    setCustomerName(c.name);
+    setCustomerPhone(c.phone || "");
+    setClientSearch("");
+    setShowSuggestions(false);
+  };
 
   const toggleProduct = (productId: string) => {
     const newSelected = new Set(selectedProducts);
@@ -85,6 +116,7 @@ function ProductsPageContent() {
           unit_price_eur: Number.isNaN(unitPriceEur) ? Math.round((unitPrice / rate) * 100) / 100 : unitPriceEur,
           total: unitPrice,
           image: product.image,
+          vat_rate: product.vat_rate ?? 21,
         };
       });
   };
@@ -237,7 +269,21 @@ function ProductsPageContent() {
                       <TableHead>Kolekce</TableHead>
                       <TableHead>Substrát</TableHead>
                       <TableHead>Rozměry</TableHead>
-                      <TableHead>Cena</TableHead>
+                      <TableHead>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="flex cursor-default items-center gap-1">
+                                Cena
+                                <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Cena bez DPH, po slevě 5 %</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -314,6 +360,30 @@ function ProductsPageContent() {
               <div>
                 <Label htmlFor="offer-description">Popis (volitelné)</Label>
                 <Input id="offer-description" value={offerDescription} onChange={(e) => setOfferDescription(e.target.value)} />
+              </div>
+              <div className="relative">
+                <Label htmlFor="client-search">Vyhledat klienta</Label>
+                <Input
+                  id="client-search"
+                  placeholder="Hledat podle jména nebo emailu..."
+                  value={clientSearch}
+                  onChange={(e) => {
+                    setClientSearch(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  autoComplete="off"
+                />
+                {showSuggestions && clientSearchResults.length > 0 && (
+                  <ul className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-lg">
+                    {clientSearchResults.map((c) => (
+                      <li key={c.id} className="cursor-pointer px-3 py-2 hover:bg-muted" onMouseDown={() => selectCustomerSuggestion(c)}>
+                        <div className="text-sm font-medium">{c.name}</div>
+                        <div className="text-xs text-muted-foreground">{c.email}</div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               <div>
                 <Label htmlFor="customer-name">Jméno klienta *</Label>

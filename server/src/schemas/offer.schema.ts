@@ -30,6 +30,7 @@ export const lineItemSchema = z.object({
   unit_price_eur: z.number().min(0, "Unit price EUR must be positive").optional(),
   total: z.number().min(0, "Total must be positive"),
   image: z.string().optional(),
+  vat_rate: z.number().min(0).max(100).optional(),
   dimensions: z
     .object({
       height: z.number().min(0, "Height must be positive").optional(),

@@ -154,6 +154,7 @@ export default function OfferDetailPage() {
               groupsDiscount={totals.groupsDiscount}
               total={totals.total}
               totalSell={totals.totalSell}
+              totalSellExclVat={totals.totalSellExclVat}
               sellMultiplier={sellMultiplier}
               onSellMultiplierChange={setSellMultiplier}
             />
