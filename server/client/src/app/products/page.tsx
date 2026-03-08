@@ -268,6 +268,7 @@ function ProductsPageContent() {
                       <TableHead>Značka</TableHead>
                       <TableHead>Kolekce</TableHead>
                       <TableHead>Substrát</TableHead>
+                      <TableHead>Dodání (dny)</TableHead>
                       <TableHead>Rozměry</TableHead>
                       <TableHead>
                         <TooltipProvider>
@@ -307,6 +308,7 @@ function ProductsPageContent() {
                         <TableCell>{product.brand}</TableCell>
                         <TableCell>{product.collection}</TableCell>
                         <TableCell>{product.substrate ?? "—"}</TableCell>
+                        <TableCell className="text-center">{product.delivery_time ?? "—"}</TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
                             {product.dimensions?.height > 0 && <span>Výška: {product.dimensions.height} cm</span>}

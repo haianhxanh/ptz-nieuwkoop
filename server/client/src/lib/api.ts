@@ -121,6 +121,7 @@ export interface Product {
   collection: string;
   substrate: string | null;
   vat_rate: number;
+  delivery_time?: number;
 }
 
 // API functions
@@ -199,15 +200,29 @@ export const productsApi = {
 };
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-let exchangeRateCache: { rate: number; nieuwkoop_discount: number; company?: { name: string; ico: string; dic: string }; date: string | null; fetchedAt: number } | null = null;
+let exchangeRateCache: {
+  rate: number;
+  nieuwkoop_discount: number;
+  company?: { name: string; ico: string; dic: string };
+  date: string | null;
+  fetchedAt: number;
+} | null = null;
 
 export const exchangeRateApi = {
   get: async (): Promise<{ rate: number; nieuwkoop_discount: number; date: string | null; company: { name: string; ico: string; dic: string } }> => {
     const now = Date.now();
     if (exchangeRateCache && now - exchangeRateCache.fetchedAt < CACHE_TTL_MS) {
-      return { rate: exchangeRateCache.rate, nieuwkoop_discount: exchangeRateCache.nieuwkoop_discount, date: exchangeRateCache.date, company: exchangeRateCache.company ?? { name: "", ico: "", dic: "" } };
+      return {
+        rate: exchangeRateCache.rate,
+        nieuwkoop_discount: exchangeRateCache.nieuwkoop_discount,
+        date: exchangeRateCache.date,
+        company: exchangeRateCache.company ?? { name: "", ico: "", dic: "" },
+      };
     }
-    const response = await apiClient.get<{ success: boolean; data: { rate: number; nieuwkoop_discount: number; company: { name: string; ico: string; dic: string }; date: string | null } }>("/api/offers/exchange-rate");
+    const response = await apiClient.get<{
+      success: boolean;
+      data: { rate: number; nieuwkoop_discount: number; company: { name: string; ico: string; dic: string }; date: string | null };
+    }>("/api/offers/exchange-rate");
     const { rate, nieuwkoop_discount, company, date } = response.data.data;
     exchangeRateCache = { rate, nieuwkoop_discount: nieuwkoop_discount ?? 0, company: company ?? { name: "", ico: "", dic: "" }, date, fetchedAt: now };
     return { rate, nieuwkoop_discount: nieuwkoop_discount ?? 0, company: company ?? { name: "", ico: "", dic: "" }, date };

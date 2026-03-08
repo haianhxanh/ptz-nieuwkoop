@@ -82,6 +82,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
               opening: product.Opening,
               length: product.Length,
             },
+            delivery_time: product.DeliveryTimeInDays,
           };
         });
 
