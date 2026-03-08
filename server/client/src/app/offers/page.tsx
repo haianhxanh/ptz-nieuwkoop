@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { offersApi, type Offer } from "@/lib/api";
+import { Copy, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const statusConfig = {
   draft: { label: "Koncept", variant: "secondary" as const },
@@ -22,6 +25,7 @@ export default function OffersPage() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     loadOffers();
@@ -39,6 +43,34 @@ export default function OffersPage() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDuplicate = async (offer: Offer, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await offersApi.duplicate(offer.simple_id.toString());
+      toast.success("Nabídka duplikována");
+      loadOffers();
+    } catch {
+      toast.error("Nepodařilo se duplikovat nabídku");
+    }
+  };
+
+  const handleDelete = async (offer: Offer, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmDeleteId(offer.simple_id.toString());
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteId) return;
+    try {
+      await offersApi.delete(confirmDeleteId);
+      toast.success("Nabídka smazána");
+      setConfirmDeleteId(null);
+      loadOffers();
+    } catch {
+      toast.error("Nepodařilo se smazat nabídku");
     }
   };
 
@@ -90,6 +122,7 @@ export default function OffersPage() {
                     <TableHead>Počet položek</TableHead>
                     <TableHead>Celkem P.</TableHead>
                     <TableHead>Vytvořeno</TableHead>
+                    <TableHead className="w-20"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -107,6 +140,28 @@ export default function OffersPage() {
                       <TableCell>{offer.items?.length || 0}</TableCell>
                       <TableCell className="font-semibold">{formatPrice(Number(offer.total_sell) || offer.total, offer.currency)}</TableCell>
                       <TableCell className="text-muted-foreground">{formatDate(offer.created_at)}</TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                            title="Duplikovat"
+                            onClick={(e) => handleDuplicate(offer, e)}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            title="Smazat"
+                            onClick={(e) => handleDelete(offer, e)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -115,6 +170,28 @@ export default function OffersPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        open={!!confirmDeleteId}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDeleteId(null);
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Smazat nabídku?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Tato akce je nevratná. Nabídka bude trvale odstraněna.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>
+              Zrušit
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Smazat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

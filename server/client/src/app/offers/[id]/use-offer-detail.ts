@@ -26,6 +26,7 @@ export function useOfferDetail() {
   const [editedGroups, setEditedGroups] = useState<ItemGroup[]>([]);
   const [sellMultiplier, setSellMultiplier] = useState<number>(1);
   const [status, setStatus] = useState<OfferStatus>("draft");
+  const [offerTitle, setOfferTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -48,6 +49,7 @@ export function useOfferDetail() {
         setEditedGroups(normalizeGroups(data.data.items || []));
         setSellMultiplier(Number(data.data.sell_multiplier) || 1);
         setStatus(data.data.status);
+        setOfferTitle(data.data.title || "");
         setDescription(data.data.description || "");
         setNotesText(data.data.notes || "");
         setAdditionalItems(data.data.additional_items?.length ? data.data.additional_items : DEFAULT_ADDITIONAL_ITEMS);
@@ -122,6 +124,7 @@ export function useOfferDetail() {
   // ── Drag & drop (within a group) ────────────────────────────────────────────
 
   const [dragState, setDragState] = useState<{ groupIndex: number; itemIndex: number } | null>(null);
+  const [groupDragIndex, setGroupDragIndex] = useState<number | null>(null);
 
   const handleDragStart = (groupIndex: number, itemIndex: number) => setDragState({ groupIndex, itemIndex });
 
@@ -144,6 +147,24 @@ export function useOfferDetail() {
 
   const handleDragEnd = () => setDragState(null);
 
+  const handleGroupDragStart = (groupIndex: number) => setGroupDragIndex(groupIndex);
+
+  const handleGroupDragOver = (e: React.DragEvent, groupIndex: number) => {
+    e.preventDefault();
+    if (groupDragIndex === null || groupDragIndex === groupIndex) return;
+    setEditedGroups((prev) => {
+      const newGroups = [...prev];
+      const dragged = newGroups[groupDragIndex];
+      newGroups.splice(groupDragIndex, 1);
+      newGroups.splice(groupIndex, 0, dragged);
+      return newGroups;
+    });
+    setGroupDragIndex(groupIndex);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleGroupDragEnd = () => setGroupDragIndex(null);
+
   // ── Totals ──────────────────────────────────────────────────────────────────
 
   const calculateTotals = (): OfferTotals => {
@@ -163,10 +184,7 @@ export function useOfferDetail() {
         }, 0),
       0,
     );
-    const itemsSellExclVat = editedGroups.reduce(
-      (sum, g) => sum + g.items.reduce((s, item) => s + item.unit_price * multiplier * item.quantity, 0),
-      0,
-    );
+    const itemsSellExclVat = editedGroups.reduce((sum, g) => sum + g.items.reduce((s, item) => s + item.unit_price * multiplier * item.quantity, 0), 0);
     const totalSell = itemsSellSubtotal - totalDiscountAmount + additionalSellTotal;
     const totalSellExclVat = itemsSellExclVat - totalDiscountAmount + additionalSellTotal;
     return {
@@ -277,6 +295,7 @@ export function useOfferDetail() {
       }
 
       await offersApi.update(offer.simple_id.toString(), {
+        title: offerTitle.trim() || offer.title,
         items: sanitizedGroups,
         additional_items: additionalItems.map((a) => ({ title: a.title, price: Number(a.price) || 0, sell_price: Number(a.sell_price) || 0 })),
         sell_multiplier: finalSellMultiplier,
@@ -305,6 +324,10 @@ export function useOfferDetail() {
     setHasUnsavedChanges(true);
   };
 
+  const setOfferTitleWithDirty = (v: string) => {
+    setOfferTitle(v);
+    setHasUnsavedChanges(true);
+  };
   const setStatusWithDirty = (v: OfferStatus) => {
     setStatus(v);
     setHasUnsavedChanges(true);
@@ -333,6 +356,8 @@ export function useOfferDetail() {
     setSellMultiplier: setSellMultiplierWithDirty,
     status,
     setStatus: setStatusWithDirty,
+    offerTitle,
+    setOfferTitle: setOfferTitleWithDirty,
     description,
     setDescription: setDescriptionWithDirty,
     saving,
@@ -354,8 +379,15 @@ export function useOfferDetail() {
     handleDragStart,
     handleDragOver,
     handleDragEnd,
+    groupDragIndex,
+    handleGroupDragStart,
+    handleGroupDragOver,
+    handleGroupDragEnd,
     totalRounded,
-    setTotalRounded: (v: number | null) => { setTotalRounded(v); setHasUnsavedChanges(true); },
+    setTotalRounded: (v: number | null) => {
+      setTotalRounded(v);
+      setHasUnsavedChanges(true);
+    },
     calculateTotals,
     displayExchangeRate,
     applyTodaysExchangeRate,

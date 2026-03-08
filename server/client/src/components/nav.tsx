@@ -66,7 +66,7 @@ export function Nav() {
                   pathname === "/customers" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
                 )}
               >
-                Klient
+                Klienti
               </Link>
             </nav>
             <Link

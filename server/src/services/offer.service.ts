@@ -245,6 +245,29 @@ export class OffersService {
     });
   }
 
+  async duplicateOffer(id: string): Promise<Offer> {
+    const original = await this.findOffer(id);
+    if (!original) throw new Error("Offer not found");
+
+    const d = original.get({ plain: true }) as any;
+    return await Offer.create({
+      customer_id: d.customer_id,
+      title: `Kopie – ${d.title}`,
+      description: d.description,
+      items: d.items,
+      additional_items: d.additional_items,
+      subtotal: d.subtotal,
+      total: d.total,
+      total_sell: d.total_sell,
+      currency: d.currency,
+      exchange_rate: d.exchange_rate,
+      status: "draft",
+      notes: d.notes,
+      sell_multiplier: d.sell_multiplier,
+      user_id: d.user_id,
+    } as any);
+  }
+
   async deleteOffer(id: string): Promise<boolean> {
     const offer = await this.findOffer(id);
 

@@ -15,6 +15,7 @@ type OfferProductsTableProps = {
   currency: string;
   sellMultiplier: number;
   dragState: { groupIndex: number; itemIndex: number } | null;
+  groupDragIndex: number | null;
   onQuantityChange: (groupIndex: number, itemIndex: number, quantity: number) => void;
   onGroupDiscountChange: (groupIndex: number, discount: number) => void;
   onGroupRename: (groupIndex: number, name: string) => void;
@@ -23,6 +24,9 @@ type OfferProductsTableProps = {
   onDragStart: (groupIndex: number, itemIndex: number) => void;
   onDragOver: (e: React.DragEvent, groupIndex: number, itemIndex: number) => void;
   onDragEnd: () => void;
+  onGroupDragStart: (groupIndex: number) => void;
+  onGroupDragOver: (e: React.DragEvent, groupIndex: number) => void;
+  onGroupDragEnd: () => void;
   onAddProductsToGroup: (groupId: string) => void;
 };
 
@@ -31,6 +35,7 @@ export function OfferProductsTable({
   currency,
   sellMultiplier,
   dragState,
+  groupDragIndex,
   onQuantityChange,
   onGroupDiscountChange,
   onGroupRename,
@@ -39,6 +44,9 @@ export function OfferProductsTable({
   onDragStart,
   onDragOver,
   onDragEnd,
+  onGroupDragStart,
+  onGroupDragOver,
+  onGroupDragEnd,
   onAddProductsToGroup,
 }: OfferProductsTableProps) {
   const [editingGroupIndex, setEditingGroupIndex] = useState<number | null>(null);
@@ -66,9 +74,22 @@ export function OfferProductsTable({
         }, 0);
 
         return (
-          <Card key={group.id}>
+          <Card
+            key={group.id}
+            onDragOver={(e) => onGroupDragOver(e, groupIndex)}
+            onDragEnd={onGroupDragEnd}
+            className={groupDragIndex === groupIndex ? "opacity-50" : ""}
+          >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-2">
+                <div
+                  draggable
+                  onDragStart={() => onGroupDragStart(groupIndex)}
+                  className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground shrink-0"
+                  title="Přetáhněte pro změnu pořadí"
+                >
+                  <GripVertical className="h-5 w-5" />
+                </div>
                 {editingGroupIndex === groupIndex ? (
                   <Input
                     autoFocus

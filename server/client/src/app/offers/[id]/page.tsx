@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Nav } from "@/components/nav";
 import { Button } from "@/components/ui/button";
 import { useOfferDetail } from "./use-offer-detail";
+import { offersApi } from "@/lib/api";
 import {
   OfferDetailHeader,
   OfferProductsTable,
@@ -27,6 +28,8 @@ export default function OfferDetailPage() {
     setSellMultiplier,
     status,
     setStatus,
+    offerTitle,
+    setOfferTitle,
     description,
     setDescription,
     saving,
@@ -50,6 +53,10 @@ export default function OfferDetailPage() {
     handleDragStart,
     handleDragOver,
     handleDragEnd,
+    groupDragIndex,
+    handleGroupDragStart,
+    handleGroupDragOver,
+    handleGroupDragEnd,
     totalRounded,
     setTotalRounded,
     calculateTotals,
@@ -91,6 +98,26 @@ export default function OfferDetailPage() {
     await addGroup(name);
   };
 
+  const handleDuplicate = async () => {
+    try {
+      const result = await offersApi.duplicate(offer.simple_id.toString());
+      toast.success("Nabídka duplikována");
+      router.push(`/offers/${result.data.simple_id}`);
+    } catch {
+      toast.error("Nepodařilo se duplikovat nabídku");
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await offersApi.delete(offer.simple_id.toString());
+      toast.success("Nabídka smazána");
+      router.push("/offers");
+    } catch {
+      toast.error("Nepodařilo se smazat nabídku");
+    }
+  };
+
   const handleAddProductsToGroup = (groupId: string) => {
     router.push(`/products?offer=${offer.simple_id}&group=${groupId}`);
   };
@@ -111,7 +138,8 @@ export default function OfferDetailPage() {
       <div className="container mx-auto px-4 py-8">
         <OfferDetailHeader
           offerId={offer.simple_id}
-          title={offer.title}
+          title={offerTitle}
+          onTitleChange={setOfferTitle}
           status={status}
           onStatusChange={setStatus}
           saving={saving}
@@ -121,6 +149,8 @@ export default function OfferDetailPage() {
           onExportPdf={handleExportPdf}
           onBack={() => router.push("/offers")}
           onAddSection={handleAddSection}
+          onDuplicate={handleDuplicate}
+          onDelete={handleDelete}
         />
 
         <div className="grid gap-6 md:grid-cols-3">
@@ -130,6 +160,7 @@ export default function OfferDetailPage() {
               currency={offer.currency}
               sellMultiplier={sellMultiplier}
               dragState={dragState}
+              groupDragIndex={groupDragIndex}
               onQuantityChange={updateItemQuantity}
               onGroupDiscountChange={updateGroupDiscount}
               onGroupRename={renameGroup}
@@ -138,6 +169,9 @@ export default function OfferDetailPage() {
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
+              onGroupDragStart={handleGroupDragStart}
+              onGroupDragOver={handleGroupDragOver}
+              onGroupDragEnd={handleGroupDragEnd}
               onAddProductsToGroup={handleAddProductsToGroup}
             />
             <OfferDescriptionCard value={description} onChange={setDescription} />

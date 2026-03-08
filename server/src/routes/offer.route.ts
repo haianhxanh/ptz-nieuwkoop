@@ -1,6 +1,6 @@
 import express from "express";
 import { clientAuth } from "../utilities/clientAuth";
-import { createOffer, listOffers, getOffer, updateOffer, deleteOffer, listCustomers, addItemsToOffer, updateCustomer } from "../controllers/offer.controller";
+import { createOffer, listOffers, getOffer, updateOffer, deleteOffer, duplicateOffer, listCustomers, addItemsToOffer, updateCustomer } from "../controllers/offer.controller";
 import { exchangeRate } from "../controllers/exchange_rate.controller";
 import { getMe } from "../controllers/user.controller";
 import { imageProxy } from "../controllers/image_proxy.controller";
@@ -18,6 +18,7 @@ router.get("/exchange-rate", exchangeRate);
 router.get("/:id", clientAuth, getOffer);
 router.put("/:id", clientAuth, updateOffer);
 router.post("/:id/items", clientAuth, addItemsToOffer);
+router.post("/:id/duplicate", clientAuth, duplicateOffer);
 router.delete("/:id", clientAuth, deleteOffer);
 
 export default router;

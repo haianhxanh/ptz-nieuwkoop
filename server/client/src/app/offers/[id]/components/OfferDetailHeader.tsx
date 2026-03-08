@@ -7,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, FileDown, FileText, ArrowLeft, Plus } from "lucide-react";
+import { Save, FileDown, FileText, ArrowLeft, Plus, Copy, Trash2, Pencil } from "lucide-react";
 import type { OfferStatus } from "@/lib/api";
 import { statusConfig } from "../constants";
 
 type OfferDetailHeaderProps = {
   offerId: number;
   title: string;
+  onTitleChange: (v: string) => void;
   status: OfferStatus;
   onStatusChange: (value: OfferStatus) => void;
   saving: boolean;
@@ -23,11 +24,14 @@ type OfferDetailHeaderProps = {
   onExportPdf: () => void;
   onBack: () => void;
   onAddSection: (name: string) => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
 };
 
 export function OfferDetailHeader({
   offerId,
   title,
+  onTitleChange,
   status,
   onStatusChange,
   saving,
@@ -37,9 +41,14 @@ export function OfferDetailHeader({
   onExportPdf,
   onBack,
   onAddSection,
+  onDuplicate,
+  onDelete,
 }: OfferDetailHeaderProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [sectionName, setSectionName] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
 
   const handleConfirm = () => {
     const name = sectionName.trim() || "Nová sekce";
@@ -58,8 +67,39 @@ export function OfferDetailHeader({
       </div>
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold">
-            <span className="font-mono text-muted-foreground">#{offerId}</span> {title}
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <span className="font-mono text-muted-foreground shrink-0">#{offerId}</span>
+            {editingTitle ? (
+              <Input
+                autoFocus
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={() => {
+                  onTitleChange(titleDraft.trim() || title);
+                  setEditingTitle(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    onTitleChange(titleDraft.trim() || title);
+                    setEditingTitle(false);
+                  }
+                  if (e.key === "Escape") setEditingTitle(false);
+                }}
+                className="h-9 text-2xl font-bold min-w-[280px]"
+              />
+            ) : (
+              <button
+                type="button"
+                className="flex items-center gap-1.5 rounded px-1 hover:bg-muted"
+                onClick={() => {
+                  setTitleDraft(title);
+                  setEditingTitle(true);
+                }}
+              >
+                {title}
+                <Pencil className="h-4 w-4 text-muted-foreground opacity-60" />
+              </button>
+            )}
           </h1>
           <Select value={status} onValueChange={(v) => onStatusChange(v as OfferStatus)}>
             <SelectTrigger className="w-[180px]">
@@ -88,6 +128,19 @@ export function OfferDetailHeader({
           <Button variant="outline" onClick={onExportPdf}>
             <FileText className="mr-2 h-4 w-4" />
             PDF
+          </Button>
+          <Button variant="outline" onClick={onDuplicate} title="Duplikovat nabídku">
+            <Copy className="mr-2 h-4 w-4" />
+            Duplikovat
+          </Button>
+          <Button
+            variant="outline"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setDeleteDialogOpen(true)}
+            title="Smazat nabídku"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Smazat
           </Button>
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -119,6 +172,29 @@ export function OfferDetailHeader({
               Zrušit
             </Button>
             <Button onClick={handleConfirm}>Přidat</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Smazat nabídku?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">Tato akce je nevratná. Nabídka #{offerId} bude trvale odstraněna.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Zrušit
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                onDelete();
+              }}
+            >
+              Smazat
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

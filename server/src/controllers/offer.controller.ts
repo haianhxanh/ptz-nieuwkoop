@@ -169,6 +169,17 @@ export const addItemsToOffer = async (req: Request, res: Response) => {
   }
 };
 
+export const duplicateOffer = async (req: Request, res: Response) => {
+  try {
+    const { id } = offerIdSchema.parse(req.params);
+    const offer = await offersService.duplicateOffer(id);
+    return res.status(201).json({ success: true, data: offer });
+  } catch (error) {
+    console.error("Error duplicating offer:", error);
+    return res.status(500).json({ success: false, error: "Failed to duplicate offer" });
+  }
+};
+
 export const deleteOffer = async (req: Request, res: Response) => {
   try {
     const { id } = offerIdSchema.parse(req.params);

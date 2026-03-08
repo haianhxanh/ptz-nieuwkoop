@@ -168,6 +168,11 @@ export const offersApi = {
     return response.data;
   },
 
+  duplicate: async (id: string) => {
+    const response = await apiClient.post<{ success: boolean; data: Offer }>(`/api/offers/${id}/duplicate`);
+    return response.data;
+  },
+
   listCustomers: async () => {
     const response = await apiClient.get<{ success: boolean; data: Customer[] }>("/api/offers/customers");
     return response.data;
