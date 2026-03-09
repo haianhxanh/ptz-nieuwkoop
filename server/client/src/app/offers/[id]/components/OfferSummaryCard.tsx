@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Pencil, Plus, Save, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import type { AdditionalItem } from "@/lib/api";
 import { formatPrice, currencyLabel } from "../utils";
 
@@ -24,9 +24,6 @@ type OfferSummaryCardProps = {
   onTotalRoundedChange: (v: number | null) => void;
   sellMultiplier: number;
   onSellMultiplierChange: (v: number) => void;
-  saving?: boolean;
-  hasUnsavedChanges?: boolean;
-  onSave?: () => void;
 };
 
 export function OfferSummaryCard({
@@ -45,9 +42,6 @@ export function OfferSummaryCard({
   onTotalRoundedChange,
   sellMultiplier,
   onSellMultiplierChange,
-  saving,
-  hasUnsavedChanges,
-  onSave,
 }: OfferSummaryCardProps) {
   return (
     <Card>
@@ -225,22 +219,6 @@ export function OfferSummaryCard({
             </div>
           )}
         </div>
-
-        {onSave && (
-          <>
-            <hr className="my-2" />
-            <Button
-              type="button"
-              variant="outline"
-              className={`w-full ${hasUnsavedChanges ? "border-amber-500 text-amber-600 hover:bg-amber-50" : ""}`}
-              disabled={saving}
-              onClick={onSave}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {saving ? "Ukládání..." : hasUnsavedChanges ? "Uložit změny *" : "Uložit změny"}
-            </Button>
-          </>
-        )}
       </CardContent>
     </Card>
   );

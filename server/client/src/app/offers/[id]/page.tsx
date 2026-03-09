@@ -15,7 +15,7 @@ import {
   OfferMetadataCard,
   OfferCompanyCard,
 } from "./components";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Save, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function OfferDetailPage() {
@@ -142,7 +142,7 @@ export default function OfferDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Nav />
-      <div className="container mx-auto px-4 py-8">
+      <div className={`container mx-auto px-4 py-8 ${hasUnsavedChanges ? "pb-24" : ""}`}>
         <OfferDetailHeader
           offerId={offer.simple_id}
           title={offerTitle}
@@ -155,6 +155,7 @@ export default function OfferDetailPage() {
           onExportExcel={exportToExcel}
           onExportPdf={handleExportPdf}
           onBack={() => router.push("/offers")}
+          onDiscard={() => loadOffer(offer.simple_id.toString())}
           onAddSection={handleAddSection}
           onDuplicate={handleDuplicate}
           onDelete={handleDelete}
@@ -186,7 +187,12 @@ export default function OfferDetailPage() {
 
           <div className="space-y-6">
             <OfferCompanyCard companyProfile={companyProfile} availableCompanies={availableCompanies} onChange={setCompanyProfile} />
-            <OfferCustomerCard customer={offer.customer} allCustomers={allCustomers} selectedCustomerId={selectedCustomerId} onCustomerChange={setSelectedCustomerId} />
+            <OfferCustomerCard
+              customer={offer.customer}
+              allCustomers={allCustomers}
+              selectedCustomerId={selectedCustomerId}
+              onCustomerChange={setSelectedCustomerId}
+            />
             <OfferSummaryCard
               additionalItems={additionalItems}
               onAdditionalItemsChange={setAdditionalItems}
@@ -203,9 +209,6 @@ export default function OfferDetailPage() {
               onTotalRoundedChange={setTotalRounded}
               sellMultiplier={sellMultiplier}
               onSellMultiplierChange={setSellMultiplier}
-              saving={saving}
-              hasUnsavedChanges={hasUnsavedChanges}
-              onSave={saveChanges}
             />
             <OfferNotesCard value={notesText} onChange={setNotesText} />
             <OfferMetadataCard
@@ -219,6 +222,27 @@ export default function OfferDetailPage() {
           </div>
         </div>
       </div>
+
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-0 inset-x-0 z-50 border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
+          <div className="container mx-auto flex items-center justify-end gap-3 px-4 py-3">
+            <span className="mr-auto text-sm text-amber-600 font-medium">Máte neuložené změny</span>
+            <Button
+              variant="ghost"
+              onClick={() => loadOffer(offer.simple_id.toString())}
+              disabled={saving}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Undo2 className="mr-2 h-4 w-4" />
+              Zrušit změny
+            </Button>
+            <Button onClick={saveChanges} disabled={saving} className="bg-amber-500 text-white hover:bg-amber-600">
+              <Save className="mr-2 h-4 w-4" />
+              {saving ? "Ukládání..." : "Uložit změny"}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

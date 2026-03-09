@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, FileDown, FileText, ArrowLeft, Plus, Copy, Trash2, Pencil } from "lucide-react";
+import { Save, FileDown, FileText, ArrowLeft, Plus, Copy, Trash2, Pencil, Undo2 } from "lucide-react";
 import type { OfferStatus } from "@/lib/api";
 import { statusConfig } from "../constants";
 
@@ -23,6 +23,7 @@ type OfferDetailHeaderProps = {
   onExportExcel: () => void;
   onExportPdf: () => void;
   onBack: () => void;
+  onDiscard: () => void;
   onAddSection: (name: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -40,6 +41,7 @@ export function OfferDetailHeader({
   onExportExcel,
   onExportPdf,
   onBack,
+  onDiscard,
   onAddSection,
   onDuplicate,
   onDelete,
@@ -117,6 +119,12 @@ export function OfferDetailHeader({
           </Select>
         </div>
         <div className="flex gap-2">
+          {hasUnsavedChanges && (
+            <Button variant="ghost" onClick={onDiscard} disabled={saving} className="text-muted-foreground hover:text-foreground">
+              <Undo2 className="mr-2 h-4 w-4" />
+              Zrušit změny
+            </Button>
+          )}
           <Button variant="outline" onClick={onSave} disabled={saving} className={hasUnsavedChanges ? "border-amber-500 text-amber-600 hover:bg-amber-50" : ""}>
             <Save className="mr-2 h-4 w-4" />
             {saving ? "Ukládání..." : hasUnsavedChanges ? "Uložit změny *" : "Uložit změny"}
