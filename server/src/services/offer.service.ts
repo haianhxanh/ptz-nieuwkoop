@@ -153,7 +153,11 @@ export class OffersService {
 
     const sellMultiplier = data.sell_multiplier !== undefined ? Number(data.sell_multiplier) : Number(offer.get("sell_multiplier")) || 1;
     const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.sell_price) || 0), 0);
-    const totalSell = itemsSubtotal * sellMultiplier - totalDiscount + additionalSellTotal + tax;
+    const itemsSellSubtotal = allItems.reduce((sum: number, item: any) => {
+      const vat = (item.vat_rate ?? 21) / 100;
+      return sum + item.unit_price * (1 + vat) * sellMultiplier * item.quantity;
+    }, 0);
+    const totalSell = itemsSellSubtotal - totalDiscount + additionalSellTotal;
 
     const updatePayload: Record<string, unknown> = {
       customer_id: data.customer_id,
@@ -178,6 +182,12 @@ export class OffersService {
     }
     if (data.sell_multiplier !== undefined) {
       updatePayload.sell_multiplier = data.sell_multiplier;
+    }
+    if (data.total_rounded !== undefined) {
+      updatePayload.total_rounded = data.total_rounded ?? Math.round(totalSell);
+    }
+    if (data.company_profile !== undefined) {
+      updatePayload.company_profile = data.company_profile;
     }
     await offer.update(updatePayload);
 
@@ -224,9 +234,17 @@ export class OffersService {
     const orderDiscount = Number(offer.get("order_discount")) || 0;
     const totalDiscount = groupsDiscount + orderDiscount;
     const tax = Number(offer.get("tax")) || 0;
-    const additionalItems = (offer.get("additional_items") as { title: string; price: number }[]) || [];
+    const additionalItems = (offer.get("additional_items") as { title: string; price: number; sell_price?: number }[]) || [];
     const additionalTotal = this.sumAdditionalItems(additionalItems);
     const total = itemsSubtotal - totalDiscount + tax + additionalTotal;
+
+    const sellMultiplier = Number(offer.get("sell_multiplier")) || 1;
+    const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.sell_price) || 0), 0);
+    const itemsSellSubtotal = allItems.reduce((sum: number, item: any) => {
+      const vat = (item.vat_rate ?? 21) / 100;
+      return sum + item.unit_price * (1 + vat) * sellMultiplier * item.quantity;
+    }, 0);
+    const totalSell = itemsSellSubtotal - totalDiscount + additionalSellTotal;
 
     await offer.update({
       items: updatedGroups,
@@ -235,6 +253,8 @@ export class OffersService {
       order_discount: Number(orderDiscount.toFixed(2)),
       discount: Number(totalDiscount.toFixed(2)),
       total: Number(total.toFixed(2)),
+      total_sell: Number(totalSell.toFixed(2)),
+      total_rounded: null as any,
     });
 
     return await Offer.findByPk(offer.get("id") as string, {

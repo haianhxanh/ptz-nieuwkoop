@@ -16,6 +16,7 @@ export async function downloadOfferPdf(
   totals: OfferTotals,
   sellMultiplier: number,
   notesText: string,
+  totalRounded: number | null,
   onSuccess: () => void,
 ) {
   let companyData: { name: string; ico: string; dic: string; logo_url?: string };
@@ -43,6 +44,7 @@ export async function downloadOfferPdf(
       totals,
       sellMultiplier,
       notesText,
+      totalRounded,
       company: companyData,
     }),
   });

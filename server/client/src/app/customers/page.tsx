@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { offersApi } from "@/lib/api";
-import { Search, Mail, Phone, MapPin, User, Edit } from "lucide-react";
+import { Search, Mail, Phone, MapPin, User, Edit, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 interface Customer {
@@ -38,6 +38,7 @@ export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -86,6 +87,13 @@ export default function CustomersPage() {
 
   const handleEditClick = (customer: Customer) => {
     setEditingCustomer({ ...customer });
+    setIsCreating(false);
+    setEditDialogOpen(true);
+  };
+
+  const handleNewClick = () => {
+    setEditingCustomer({ id: "", name: "", email: "", created_at: "" });
+    setIsCreating(true);
     setEditDialogOpen(true);
   };
 
@@ -94,7 +102,7 @@ export default function CustomersPage() {
 
     try {
       setSaving(true);
-      const result = await offersApi.updateCustomer(editingCustomer.id, {
+      const payload = {
         name: editingCustomer.name,
         email: editingCustomer.email,
         phone: editingCustomer.phone,
@@ -106,16 +114,23 @@ export default function CustomersPage() {
         company_name: editingCustomer.company_name,
         company_ico: editingCustomer.company_ico,
         company_dic: editingCustomer.company_dic,
-      });
+      };
+
+      let result;
+      if (isCreating) {
+        result = await offersApi.createCustomer(payload);
+      } else {
+        result = await offersApi.updateCustomer(editingCustomer.id, payload);
+      }
 
       if (result.success) {
-        toast.success("Klient byl aktualizován");
+        toast.success(isCreating ? "Klient byl vytvořen" : "Klient byl aktualizován");
         setEditDialogOpen(false);
         loadCustomers();
       }
     } catch (err: any) {
-      console.error("Error updating customer:", err);
-      toast.error(err.response?.data?.error || "Chyba při ukládání změn");
+      console.error("Error saving customer:", err);
+      toast.error(err.response?.data?.error || "Chyba při ukládání");
     } finally {
       setSaving(false);
     }
@@ -140,6 +155,10 @@ export default function CustomersPage() {
                   Celkem {customers.length} {customers.length === 1 ? "klient" : customers.length < 5 ? "klienti" : "klientů"}
                 </p>
               </div>
+              <Button onClick={handleNewClick} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Nový klient
+              </Button>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -243,7 +262,7 @@ export default function CustomersPage() {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Upravit klienta</DialogTitle>
+            <DialogTitle>{isCreating ? "Nový klient" : "Upravit klienta"}</DialogTitle>
           </DialogHeader>
           {editingCustomer && (
             <div className="space-y-4">

@@ -231,6 +231,23 @@ export const listCustomers = async (req: Request, res: Response) => {
   }
 };
 
+export const createCustomer = async (req: Request, res: Response) => {
+  try {
+    const customer = await offersService.findOrCreateCustomer(req.body);
+
+    return res.status(201).json({
+      success: true,
+      data: customer,
+    });
+  } catch (error: any) {
+    console.error("Error creating customer:", error);
+    return res.status(400).json({
+      success: false,
+      error: error.message || "Internal server error",
+    });
+  }
+};
+
 export const updateCustomer = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

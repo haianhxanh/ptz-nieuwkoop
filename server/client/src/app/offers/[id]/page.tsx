@@ -63,6 +63,9 @@ export default function OfferDetailPage() {
     companyProfile,
     setCompanyProfile,
     availableCompanies,
+    allCustomers,
+    selectedCustomerId,
+    setSelectedCustomerId,
     calculateTotals,
     displayExchangeRate,
     applyTodaysExchangeRate,
@@ -129,7 +132,7 @@ export default function OfferDetailPage() {
   const handleExportPdf = async () => {
     try {
       const { downloadOfferPdf } = await import("./export-offer-pdf");
-      await downloadOfferPdf(offer, editedGroups, additionalItems, totals, sellMultiplier, notesText, () => toast.success("PDF exportováno"));
+      await downloadOfferPdf(offer, editedGroups, additionalItems, totals, sellMultiplier, notesText, totalRounded, () => toast.success("PDF exportováno"));
     } catch (err) {
       console.error("PDF generation error:", err);
       toast.error("Chyba při generování PDF");
@@ -182,12 +185,8 @@ export default function OfferDetailPage() {
           </div>
 
           <div className="space-y-6">
-            <OfferCompanyCard
-              companyProfile={companyProfile}
-              availableCompanies={availableCompanies}
-              onChange={setCompanyProfile}
-            />
-            <OfferCustomerCard customer={offer.customer} />
+            <OfferCompanyCard companyProfile={companyProfile} availableCompanies={availableCompanies} onChange={setCompanyProfile} />
+            <OfferCustomerCard customer={offer.customer} allCustomers={allCustomers} selectedCustomerId={selectedCustomerId} onCustomerChange={setSelectedCustomerId} />
             <OfferSummaryCard
               additionalItems={additionalItems}
               onAdditionalItemsChange={setAdditionalItems}
@@ -204,6 +203,9 @@ export default function OfferDetailPage() {
               onTotalRoundedChange={setTotalRounded}
               sellMultiplier={sellMultiplier}
               onSellMultiplierChange={setSellMultiplier}
+              saving={saving}
+              hasUnsavedChanges={hasUnsavedChanges}
+              onSave={saveChanges}
             />
             <OfferNotesCard value={notesText} onChange={setNotesText} />
             <OfferMetadataCard

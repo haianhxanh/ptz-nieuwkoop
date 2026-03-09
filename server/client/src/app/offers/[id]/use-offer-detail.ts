@@ -3,7 +3,17 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import { offersApi, exchangeRateApi, type Offer, type ItemGroup, type LineItem, type OfferStatus, type AdditionalItem, type CompanyProfile } from "@/lib/api";
+import {
+  offersApi,
+  exchangeRateApi,
+  type Offer,
+  type ItemGroup,
+  type LineItem,
+  type OfferStatus,
+  type AdditionalItem,
+  type CompanyProfile,
+  type Customer,
+} from "@/lib/api";
 import { useProducts } from "@/contexts/products-context";
 import { DEFAULT_ADDITIONAL_ITEMS } from "./constants";
 import { buildAndDownloadOfferExcel, type OfferTotals } from "./export-offer-excel";
@@ -37,13 +47,24 @@ export function useOfferDetail() {
   const [totalRounded, setTotalRounded] = useState<number | null>(null);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   const [availableCompanies, setAvailableCompanies] = useState<CompanyProfile[]>([]);
+  const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (params.id) loadOffer(params.id as string);
   }, [params.id]);
 
   useEffect(() => {
-    exchangeRateApi.get().then(({ companies }) => setAvailableCompanies(companies)).catch(() => {});
+    exchangeRateApi
+      .get()
+      .then(({ companies }) => setAvailableCompanies(companies))
+      .catch(() => {});
+    offersApi
+      .listCustomers()
+      .then((res) => {
+        if (res.success) setAllCustomers(res.data);
+      })
+      .catch(() => {});
   }, []);
 
   const loadOffer = async (id: string) => {
@@ -59,8 +80,9 @@ export function useOfferDetail() {
         setDescription(data.data.description || "");
         setNotesText(data.data.notes || "");
         setAdditionalItems(data.data.additional_items?.length ? data.data.additional_items : DEFAULT_ADDITIONAL_ITEMS);
-        setTotalRounded(data.data.total_rounded ? Number(data.data.total_rounded) : null);
+        setTotalRounded(data.data.total_rounded != null ? Number(data.data.total_rounded) : null);
         setCompanyProfile(data.data.company_profile ?? null);
+        setSelectedCustomerId(data.data.customer_id ?? data.data.customer?.id ?? null);
         setHasUnsavedChanges(false);
       }
     } catch (err) {
@@ -302,6 +324,7 @@ export function useOfferDetail() {
       }
 
       await offersApi.update(offer.simple_id.toString(), {
+        customer_id: selectedCustomerId || undefined,
         title: offerTitle.trim() || offer.title,
         items: sanitizedGroups,
         additional_items: additionalItems.map((a) => ({ title: a.title, price: Number(a.price) || 0, sell_price: Number(a.sell_price) || 0 })),
@@ -402,6 +425,12 @@ export function useOfferDetail() {
       setHasUnsavedChanges(true);
     },
     availableCompanies,
+    allCustomers,
+    selectedCustomerId,
+    setSelectedCustomerId: (id: string) => {
+      setSelectedCustomerId(id);
+      setHasUnsavedChanges(true);
+    },
     calculateTotals,
     displayExchangeRate,
     applyTodaysExchangeRate,

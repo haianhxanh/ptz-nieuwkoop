@@ -187,6 +187,11 @@ export const offersApi = {
     return response.data;
   },
 
+  createCustomer: async (data: Partial<Customer>) => {
+    const response = await apiClient.post<{ success: boolean; data: Customer }>("/api/offers/customers", data);
+    return response.data;
+  },
+
   updateCustomer: async (id: string, data: Partial<Customer>) => {
     const response = await apiClient.put<{ success: boolean; data: Customer }>(`/api/offers/customers/${id}`, data);
     return response.data;

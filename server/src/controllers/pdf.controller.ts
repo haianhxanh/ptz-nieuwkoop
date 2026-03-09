@@ -15,6 +15,7 @@ interface LineItem {
   quantity: number;
   unit_price: number;
   image?: string;
+  vat_rate?: number;
 }
 
 interface ItemGroup {
@@ -39,6 +40,7 @@ interface OfferTotals {
   subtotal: number;
   total: number;
   totalSell: number;
+  totalRounded?: number | null;
   totalSellExclVat: number;
 }
 
@@ -69,6 +71,7 @@ interface PdfRequestBody {
   totals: OfferTotals;
   sellMultiplier: number;
   notesText: string;
+  totalRounded?: number | null;
   company: { name: string; ico: string; dic: string; logo_url?: string };
 }
 
@@ -81,7 +84,7 @@ function fmtCurrency(value: number, currency: string): string {
   return new Intl.NumberFormat("cs-CZ", {
     style: "currency",
     currency: currency || "CZK",
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(value);
 }
 
@@ -91,7 +94,7 @@ function todayStr(): string {
 }
 
 function renderOfferHtml(data: PdfRequestBody): string {
-  const { offer, editedGroups, additionalItems, totals, sellMultiplier, notesText, company } = data;
+  const { offer, editedGroups, additionalItems, totals, sellMultiplier, notesText, totalRounded, company } = data;
   const currency = offer.currency || "CZK";
   const fmt = (v: number) => fmtCurrency(v, currency);
   const customer = offer.customer;
@@ -100,12 +103,16 @@ function renderOfferHtml(data: PdfRequestBody): string {
 
   const groupsHtml = editedGroups
     .map((group) => {
-      const sectionSell = group.items.reduce((sum, i) => sum + i.unit_price * i.quantity * sellMultiplier, 0);
+      const sectionSell = group.items.reduce((sum, i) => {
+        const vat = (i.vat_rate ?? 21) / 100;
+        return sum + i.unit_price * (1 + vat) * sellMultiplier * i.quantity;
+      }, 0);
       const netSell = sectionSell - (group.discount || 0);
 
       const rowsHtml = group.items
         .map((item) => {
-          const sellUnit = item.unit_price * sellMultiplier;
+          const vat = (item.vat_rate ?? 21) / 100;
+          const sellUnit = item.unit_price * (1 + vat) * sellMultiplier;
           const sellTotal = sellUnit * item.quantity;
           const imgHtml = item.image ? `<img src="${escHtml(item.image)}" class="product-img" />` : `<div class="product-img-placeholder"></div>`;
           return `
@@ -251,6 +258,8 @@ function renderOfferHtml(data: PdfRequestBody): string {
     align-items: baseline;
     margin-top: 20px;
     margin-bottom: 6px;
+    background-color: #f2f2f2;
+    padding: 6px 8px;
   }
   .section-title {
     font-size: 11px;
@@ -309,7 +318,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
   .product-sku { font-size: 10.5px; color: #6b7280; margin-top: 1px; }
 
   /* Discount row */
-  .discount-row td { border: none; padding: 4px 0; }
+  .discount-row td { border: none; padding: 4px 0; color:rgb(220, 68, 68);}
   .discount-label { text-align: right; font-size: 11px; padding-right: 8px !important; }
   .discount-value { text-align: right; font-size: 11px; width: 78px; }
 
@@ -374,7 +383,6 @@ function renderOfferHtml(data: PdfRequestBody): string {
   <div class="header-row">
     <div>${logoHtml}</div>
     <div class="offer-right">
-      <div class="offer-title">${escHtml(offer.title)}</div>
       <div class="offer-date">Datum: ${todayStr()}</div>
       ${offer.valid_until ? `<div class="offer-date">Platná do: ${new Date(offer.valid_until).toLocaleDateString("cs-CZ")}</div>` : ""}
     </div>
@@ -406,12 +414,12 @@ function renderOfferHtml(data: PdfRequestBody): string {
       ${customer.company_ico ? `<div class="info-muted">IČO: ${escHtml(customer.company_ico)}</div>` : ""}
       ${customer.company_dic ? `<div class="info-muted">DIČ: ${escHtml(customer.company_dic)}</div>` : ""}
       ${customer.email ? `<div class="info-muted">${escHtml(customer.email)}</div>` : ""}
-      ${customer.phone ? `<div class="info-muted">${escHtml(customer.phone)}</div>` : ""}
       ${
         customer.address
           ? `<div class="info-muted">${escHtml(customer.address)}${customer.postal_code ? `, ${escHtml(customer.postal_code)}` : ""}${customer.city ? ` ${escHtml(customer.city)}` : ""}</div>`
           : ""
       }
+      ${customer.phone ? `<div class="info-muted">${escHtml(customer.phone)}</div>` : ""}
     </div>
   </div>
 
@@ -426,7 +434,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
     ${summaryRows.join("")}
     <div class="total-row">
       <span class="total-label">Celkem</span>
-      <span class="total-value">${fmt(totals.totalSell)}</span>
+      <span class="total-value">${fmt(totalRounded != null ? Number(totalRounded) : Math.round(Number(totals.totalSell)))}</span>
     </div>
   </div>
 
@@ -460,8 +468,7 @@ export const exportOfferPdf = async (req: Request, res: Response) => {
     await page.setContent(html, { waitUntil: "networkidle" });
 
     const footerHtml = `
-      <div style="width:100%;padding:6px 52px 0;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-family:'Poppins',sans-serif;font-size:9px;color:#6b7280;">
-        <span>${escHtml(body.offer.title)}</span>
+      <div style="width:100%;padding:6px 52px 0;display:flex;justify-content:center;font-family:'Poppins',sans-serif;font-size:9px;color:#6b7280;">
         <span>Strana <span class="pageNumber"></span> z <span class="totalPages"></span></span>
       </div>`;
 

@@ -20,6 +20,21 @@ const statusConfig = {
   expired: { label: "Vypršelo", variant: "outline" as const },
 };
 
+function computeSellTotal(offer: Offer): number {
+  const multiplier = Number(offer.sell_multiplier) || 1;
+  const groups = (offer.items as any[]) || [];
+  let subtotal = 0;
+  for (const g of groups) {
+    for (const item of g.items || []) {
+      const vat = (item.vat_rate ?? 21) / 100;
+      subtotal += item.unit_price * (1 + vat) * multiplier * item.quantity;
+    }
+  }
+  const additionalSell = ((offer as any).additional_items || []).reduce((s: number, a: any) => s + (Number(a.sell_price) || 0), 0);
+  const discount = Number(offer.discount) || 0;
+  return subtotal - discount + additionalSell;
+}
+
 export default function OffersPage() {
   const router = useRouter();
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -138,7 +153,9 @@ export default function OffersPage() {
                         <Badge variant={statusConfig[offer.status].variant}>{statusConfig[offer.status].label}</Badge>
                       </TableCell>
                       <TableCell>{offer.items?.length || 0}</TableCell>
-                      <TableCell className="font-semibold">{formatPrice(Number(offer.total_sell) || offer.total, offer.currency)}</TableCell>
+                      <TableCell className="font-semibold">
+                        {formatPrice(offer.total_rounded != null ? Number(offer.total_rounded) : Math.round(computeSellTotal(offer)), offer.currency)}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{formatDate(offer.created_at)}</TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1">
