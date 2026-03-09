@@ -46,7 +46,7 @@ export function buildAndDownloadOfferExcel(
   // ── Offer header ─────────────────────────────────────────────────────────────
 
   styleCell(0, 0, BOLD_TITLE);
-  pushRow([`Nabídka #${offer.simple_id} - ${offer.title}`]);
+  pushRow([`${offer.title}`]);
   pushRow([]);
   pushRow(["Klient:", offer.customer.name]);
   pushRow(["Email:", offer.customer.email]);

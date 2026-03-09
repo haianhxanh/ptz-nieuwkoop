@@ -1,0 +1,486 @@
+import { Request, Response } from "express";
+import { chromium, type Browser } from "playwright";
+
+let browserInstance: Browser | null = null;
+
+async function getBrowser(): Promise<Browser> {
+  if (browserInstance && browserInstance.isConnected()) return browserInstance;
+  browserInstance = await chromium.launch({ headless: true });
+  return browserInstance;
+}
+
+interface LineItem {
+  name: string;
+  sku?: string;
+  quantity: number;
+  unit_price: number;
+  image?: string;
+}
+
+interface ItemGroup {
+  id: string;
+  name: string;
+  discount: number;
+  items: LineItem[];
+}
+
+interface AdditionalItem {
+  title: string;
+  price: number;
+  sell_price?: number;
+}
+
+interface OfferTotals {
+  itemsSubtotal: number;
+  groupsDiscount: number;
+  totalDiscountAmount: number;
+  additionalCostTotal: number;
+  additionalSellTotal: number;
+  subtotal: number;
+  total: number;
+  totalSell: number;
+  totalSellExclVat: number;
+}
+
+interface PdfRequestBody {
+  offer: {
+    id: string;
+    simple_id: number;
+    title: string;
+    currency: string;
+    valid_until?: string;
+    tax?: number;
+    notes?: string;
+    user?: { name?: string; email?: string; phone?: string };
+    customer: {
+      name: string;
+      email?: string;
+      phone?: string;
+      address?: string;
+      city?: string;
+      postal_code?: string;
+      company_name?: string;
+      company_ico?: string;
+      company_dic?: string;
+    };
+  };
+  editedGroups: ItemGroup[];
+  additionalItems: AdditionalItem[];
+  totals: OfferTotals;
+  sellMultiplier: number;
+  notesText: string;
+  company: { name: string; ico: string; dic: string; logo_url?: string };
+}
+
+function escHtml(str: string | undefined | null): string {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function fmtCurrency(value: number, currency: string): string {
+  return new Intl.NumberFormat("cs-CZ", {
+    style: "currency",
+    currency: currency || "CZK",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function todayStr(): string {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+}
+
+function renderOfferHtml(data: PdfRequestBody): string {
+  const { offer, editedGroups, additionalItems, totals, sellMultiplier, notesText, company } = data;
+  const currency = offer.currency || "CZK";
+  const fmt = (v: number) => fmtCurrency(v, currency);
+  const customer = offer.customer;
+  const user = offer.user;
+  const hasAdditional = additionalItems.some((a) => (Number(a.sell_price) || 0) > 0);
+
+  const groupsHtml = editedGroups
+    .map((group) => {
+      const sectionSell = group.items.reduce((sum, i) => sum + i.unit_price * i.quantity * sellMultiplier, 0);
+      const netSell = sectionSell - (group.discount || 0);
+
+      const rowsHtml = group.items
+        .map((item) => {
+          const sellUnit = item.unit_price * sellMultiplier;
+          const sellTotal = sellUnit * item.quantity;
+          const imgHtml = item.image ? `<img src="${escHtml(item.image)}" class="product-img" />` : `<div class="product-img-placeholder"></div>`;
+          return `
+          <tr class="table-row">
+            <td class="col-img">${imgHtml}</td>
+            <td class="col-name">
+              <div class="product-name">${escHtml(item.name)}</div>
+              ${item.sku ? `<div class="product-sku">${escHtml(item.sku)}</div>` : ""}
+            </td>
+            <td class="col-qty">${item.quantity}</td>
+            <td class="col-unit">${fmt(sellUnit)}</td>
+            <td class="col-total">${fmt(sellTotal)}</td>
+          </tr>`;
+        })
+        .join("");
+
+      const discountHtml =
+        group.discount > 0
+          ? `<tr class="discount-row"><td colspan="4" class="discount-label">Sleva</td><td class="discount-value">−${fmt(group.discount)}</td></tr>`
+          : "";
+
+      return `
+      <div class="section-header">
+        <span class="section-title">${escHtml(group.name)}</span>
+        <span class="section-total">${fmt(netSell)}</span>
+      </div>
+      <table class="product-table">
+        <thead>
+          <tr>
+            <th class="col-img"></th>
+            <th class="col-name th-label">Produkt</th>
+            <th class="col-qty th-label">Mn.</th>
+            <th class="col-unit th-label">Cena/ks</th>
+            <th class="col-total th-label">Celkem</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+          ${discountHtml}
+        </tbody>
+      </table>`;
+    })
+    .join("");
+
+  const additionalHtml = hasAdditional
+    ? `<div class="add-section-title">Další položky</div>
+       ${additionalItems
+         .filter((a) => (Number(a.sell_price) || 0) > 0)
+         .map(
+           (item) => `
+         <div class="add-row">
+           <span class="add-label">${escHtml(item.title)}</span>
+           <span class="add-value">${fmt(Number(item.sell_price))}</span>
+         </div>`,
+         )
+         .join("")}`
+    : "";
+
+  const summaryRows: string[] = [];
+  if (totals.groupsDiscount > 0) {
+    summaryRows.push(`<div class="summary-row"><span>Sleva celkem</span><span>−${fmt(totals.groupsDiscount)}</span></div>`);
+  }
+  if (offer.tax && Number(offer.tax) > 0) {
+    summaryRows.push(`<div class="summary-row"><span>DPH</span><span>${fmt(Number(offer.tax))}</span></div>`);
+  }
+
+  const logoHtml = company.logo_url
+    ? `<img src="${escHtml(company.logo_url)}" class="company-logo" />`
+    : `<div class="company-name">${escHtml(company.name || "Dodavatel")}</div>`;
+
+  return `<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    color: #111111;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    max-width: 1024px;
+    margin: 0 auto;
+    padding: 56px 52px 80px;
+    position: relative;
+  }
+
+  /* Header */
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+  }
+  .company-name { font-size: 17px; font-weight: 700; }
+  .company-logo { height: 40px; max-width: 200px; margin-bottom: 4px; object-fit: contain; }
+  .offer-right { text-align: right; }
+  .offer-title { font-size: 12px; color: #6b7280; margin-top: 1px; }
+  .offer-date { font-size: 11px; color: #6b7280; margin-top: 1px; }
+
+  /* Info grid */
+  .info-grid {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 32px;
+  }
+  .info-block { flex: 1; }
+  .info-accent { width: 20px; height: 2px; background-color: #00582b; margin-bottom: 5px; }
+  .info-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+  }
+  .info-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .info-line { font-size: 12px; margin-bottom: 1px; }
+  .info-muted { font-size: 11px; color: #6b7280; margin-bottom: 1px; }
+  .info-separator { border-top: 1px solid #e5e7eb; margin-top: 8px; margin-bottom: 6px; }
+  .info-sub-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 4px;
+  }
+
+  /* Sections */
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 20px;
+    margin-bottom: 6px;
+  }
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #00582b;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .section-total { font-size: 11px; font-weight: 700; color: #00582b; }
+
+  /* Product table */
+  .product-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .product-table thead tr {
+    border-bottom: 0.5px solid #9ca3af;
+  }
+  .th-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding-bottom: 4px;
+    text-align: left;
+  }
+  .col-img { width: 40px; }
+  .col-name { padding: 0 6px; }
+  .col-qty { width: 38px; text-align: right; font-size: 11px; }
+  .col-unit { width: 72px; text-align: right; font-size: 11px; }
+  .col-total { width: 78px; text-align: right; font-size: 11px; }
+  .th-label.col-qty, .th-label.col-unit, .th-label.col-total { text-align: right; }
+
+  .table-row td {
+    padding: 5px 0;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+  }
+  .table-row .col-name { padding: 5px 6px; }
+  .table-row .col-total { font-weight: 500; }
+
+  .product-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 2px;
+    object-fit: contain;
+  }
+  .product-img-placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 2px;
+    background-color: #e5e7eb;
+  }
+  .product-name { font-size: 12px; font-weight: 500; }
+  .product-sku { font-size: 10.5px; color: #6b7280; margin-top: 1px; }
+
+  /* Discount row */
+  .discount-row td { border: none; padding: 4px 0; }
+  .discount-label { text-align: right; font-size: 11px; padding-right: 8px !important; }
+  .discount-value { text-align: right; font-size: 11px; width: 78px; }
+
+  /* Additional items */
+  .add-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #00582b;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 20px;
+    margin-bottom: 6px;
+  }
+  .add-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .add-label { font-size: 12px; }
+  .add-value { font-size: 12px; font-weight: 500; }
+
+  /* Summary */
+  .summary-area { margin-top: 24px; padding-top: 12px; }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    font-size: 12px;
+  }
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1.5px solid #00582b;
+  }
+  .total-label, .total-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #00582b;
+  }
+
+  /* Notes */
+  .notes-area { margin-top: 24px; }
+  .notes-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 5px;
+  }
+  .notes-text { font-size: 12px; line-height: 1.6; }
+
+  /* Footer is handled by Playwright's displayHeaderFooter for pagination */
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- Header -->
+  <div class="header-row">
+    <div>${logoHtml}</div>
+    <div class="offer-right">
+      <div class="offer-title">${escHtml(offer.title)}</div>
+      <div class="offer-date">Datum: ${todayStr()}</div>
+      ${offer.valid_until ? `<div class="offer-date">Platná do: ${new Date(offer.valid_until).toLocaleDateString("cs-CZ")}</div>` : ""}
+    </div>
+  </div>
+
+  <!-- Info grid -->
+  <div class="info-grid">
+    <div class="info-block">
+      <div class="info-accent"></div>
+      <div class="info-label">Dodavatel</div>
+      ${company.name ? `<div class="info-name">${escHtml(company.name)}</div>` : ""}
+      ${company.ico ? `<div class="info-muted">IČO: ${escHtml(company.ico)}</div>` : ""}
+      ${company.dic ? `<div class="info-muted">DIČ: ${escHtml(company.dic)}</div>` : ""}
+      ${
+        user?.name || user?.email || user?.phone
+          ? `<div class="info-separator"></div>
+             <div class="info-sub-label">Nabídku připravil/a</div>
+             ${user.name ? `<div class="info-line">${escHtml(user.name)}</div>` : ""}
+             ${user.email ? `<div class="info-muted">${escHtml(user.email)}</div>` : ""}
+             ${user.phone ? `<div class="info-muted">${escHtml(user.phone)}</div>` : ""}`
+          : ""
+      }
+    </div>
+    <div class="info-block">
+      <div class="info-accent"></div>
+      <div class="info-label">Odběratel</div>
+      <div class="info-name">${escHtml(customer.name)}</div>
+      ${customer.company_name ? `<div class="info-line">${escHtml(customer.company_name)}</div>` : ""}
+      ${customer.company_ico ? `<div class="info-muted">IČO: ${escHtml(customer.company_ico)}</div>` : ""}
+      ${customer.company_dic ? `<div class="info-muted">DIČ: ${escHtml(customer.company_dic)}</div>` : ""}
+      ${customer.email ? `<div class="info-muted">${escHtml(customer.email)}</div>` : ""}
+      ${customer.phone ? `<div class="info-muted">${escHtml(customer.phone)}</div>` : ""}
+      ${
+        customer.address
+          ? `<div class="info-muted">${escHtml(customer.address)}${customer.postal_code ? `, ${escHtml(customer.postal_code)}` : ""}${customer.city ? ` ${escHtml(customer.city)}` : ""}</div>`
+          : ""
+      }
+    </div>
+  </div>
+
+  <!-- Product sections -->
+  ${groupsHtml}
+
+  <!-- Additional items -->
+  ${additionalHtml}
+
+  <!-- Summary -->
+  <div class="summary-area">
+    ${summaryRows.join("")}
+    <div class="total-row">
+      <span class="total-label">Celkem</span>
+      <span class="total-value">${fmt(totals.totalSell)}</span>
+    </div>
+  </div>
+
+  <!-- Notes -->
+  ${
+    notesText
+      ? `<div class="notes-area">
+           <div class="notes-label">Poznámka</div>
+           <div class="notes-text">${escHtml(notesText)}</div>
+         </div>`
+      : ""
+  }
+
+</div>
+</body>
+</html>`;
+}
+
+export const exportOfferPdf = async (req: Request, res: Response) => {
+  try {
+    const body = req.body as PdfRequestBody;
+    if (!body.offer || !body.editedGroups || !body.totals) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const html = renderOfferHtml(body);
+    const browser = await getBrowser();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    await page.setContent(html, { waitUntil: "networkidle" });
+
+    const footerHtml = `
+      <div style="width:100%;padding:6px 52px 0;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-family:'Poppins',sans-serif;font-size:9px;color:#6b7280;">
+        <span>${escHtml(body.offer.title)}</span>
+        <span>Strana <span class="pageNumber"></span> z <span class="totalPages"></span></span>
+      </div>`;
+
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      displayHeaderFooter: true,
+      headerTemplate: "<span></span>",
+      footerTemplate: footerHtml,
+      margin: { top: "40px", bottom: "60px", left: "0px", right: "0px" },
+    });
+
+    await context.close();
+
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", `attachment; filename="nabidka-${body.offer.simple_id}.pdf"`);
+    return res.send(Buffer.from(pdfBuffer));
+  } catch (error) {
+    console.error("PDF generation error:", error);
+    return res.status(500).json({ error: "Failed to generate PDF" });
+  }
+};
