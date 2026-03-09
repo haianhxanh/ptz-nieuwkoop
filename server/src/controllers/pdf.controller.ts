@@ -485,7 +485,7 @@ export const exportOfferPdf = async (req: Request, res: Response) => {
 
     res.set("Content-Type", "application/pdf");
     res.set("Content-Disposition", `attachment; filename="nabidka-${body.offer.simple_id}.pdf"`);
-    return res.send(Buffer.from(pdfBuffer));
+    return res.send(pdfBuffer);
   } catch (error) {
     console.error("PDF generation error:", error);
     return res.status(500).json({ error: "Failed to generate PDF" });
