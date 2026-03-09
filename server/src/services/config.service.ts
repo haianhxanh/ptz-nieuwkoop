@@ -32,6 +32,17 @@ export class ConfigService {
     return new Date(updatedAt).toISOString().split("T")[0];
   }
 
+  async getCompanyProfiles(): Promise<Array<{ company_name: string; company_ico: string; company_dic: string; logo_url?: string }>> {
+    const raw = await this.get("COMPANY_PROFILES");
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
   async listAll(): Promise<Config[]> {
     return await Config.findAll({
       order: [["key", "ASC"]],

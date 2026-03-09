@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import { offersApi, exchangeRateApi, type Offer, type ItemGroup, type LineItem, type OfferStatus, type AdditionalItem } from "@/lib/api";
+import { offersApi, exchangeRateApi, type Offer, type ItemGroup, type LineItem, type OfferStatus, type AdditionalItem, type CompanyProfile } from "@/lib/api";
 import { useProducts } from "@/contexts/products-context";
 import { DEFAULT_ADDITIONAL_ITEMS } from "./constants";
 import { buildAndDownloadOfferExcel, type OfferTotals } from "./export-offer-excel";
@@ -35,10 +35,16 @@ export function useOfferDetail() {
   const [notesText, setNotesText] = useState<string>("");
   const [editingAdditionalIndex, setEditingAdditionalIndex] = useState<number | null>(null);
   const [totalRounded, setTotalRounded] = useState<number | null>(null);
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+  const [availableCompanies, setAvailableCompanies] = useState<CompanyProfile[]>([]);
 
   useEffect(() => {
     if (params.id) loadOffer(params.id as string);
   }, [params.id]);
+
+  useEffect(() => {
+    exchangeRateApi.get().then(({ companies }) => setAvailableCompanies(companies)).catch(() => {});
+  }, []);
 
   const loadOffer = async (id: string) => {
     try {
@@ -54,6 +60,7 @@ export function useOfferDetail() {
         setNotesText(data.data.notes || "");
         setAdditionalItems(data.data.additional_items?.length ? data.data.additional_items : DEFAULT_ADDITIONAL_ITEMS);
         setTotalRounded(data.data.total_rounded ? Number(data.data.total_rounded) : null);
+        setCompanyProfile(data.data.company_profile ?? null);
         setHasUnsavedChanges(false);
       }
     } catch (err) {
@@ -300,6 +307,7 @@ export function useOfferDetail() {
         additional_items: additionalItems.map((a) => ({ title: a.title, price: Number(a.price) || 0, sell_price: Number(a.sell_price) || 0 })),
         sell_multiplier: finalSellMultiplier,
         total_rounded: totalRounded,
+        company_profile: companyProfile,
         status,
         description,
         notes: notesText || undefined,
@@ -388,6 +396,12 @@ export function useOfferDetail() {
       setTotalRounded(v);
       setHasUnsavedChanges(true);
     },
+    companyProfile,
+    setCompanyProfile: (v: CompanyProfile | null) => {
+      setCompanyProfile(v);
+      setHasUnsavedChanges(true);
+    },
+    availableCompanies,
     calculateTotals,
     displayExchangeRate,
     applyTodaysExchangeRate,

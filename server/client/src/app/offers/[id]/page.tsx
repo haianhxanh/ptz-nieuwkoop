@@ -13,6 +13,7 @@ import {
   OfferSummaryCard,
   OfferNotesCard,
   OfferMetadataCard,
+  OfferCompanyCard,
 } from "./components";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -59,6 +60,9 @@ export default function OfferDetailPage() {
     handleGroupDragEnd,
     totalRounded,
     setTotalRounded,
+    companyProfile,
+    setCompanyProfile,
+    availableCompanies,
     calculateTotals,
     displayExchangeRate,
     applyTodaysExchangeRate,
@@ -178,6 +182,11 @@ export default function OfferDetailPage() {
           </div>
 
           <div className="space-y-6">
+            <OfferCompanyCard
+              companyProfile={companyProfile}
+              availableCompanies={availableCompanies}
+              onChange={setCompanyProfile}
+            />
             <OfferCustomerCard customer={offer.customer} />
             <OfferSummaryCard
               additionalItems={additionalItems}

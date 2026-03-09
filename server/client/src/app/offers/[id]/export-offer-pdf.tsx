@@ -155,7 +155,7 @@ type Props = {
   totals: OfferTotals;
   sellMultiplier: number;
   notesText: string;
-  company: { name: string; ico: string; dic: string };
+  company: { name: string; ico: string; dic: string; logo_url?: string };
 };
 
 function OfferPdfDocument({ offer, editedGroups, additionalItems, totals, sellMultiplier, notesText, company }: Props) {
@@ -335,7 +335,19 @@ export async function downloadOfferPdf(
   notesText: string,
   onSuccess: () => void,
 ) {
-  const { company } = await exchangeRateApi.get();
+  // Use snapshotted company profile from the offer; fall back to API config
+  let companyData: { name: string; ico: string; dic: string; logo_url?: string };
+  if (offer.company_profile) {
+    companyData = {
+      name: offer.company_profile.company_name,
+      ico: offer.company_profile.company_ico,
+      dic: offer.company_profile.company_dic,
+      logo_url: offer.company_profile.logo_url,
+    };
+  } else {
+    const { company } = await exchangeRateApi.get();
+    companyData = { name: company.name, ico: company.ico, dic: company.dic ?? "" };
+  }
 
   const blob = await pdf(
     <OfferPdfDocument
@@ -345,7 +357,7 @@ export async function downloadOfferPdf(
       totals={totals}
       sellMultiplier={sellMultiplier}
       notesText={notesText}
-      company={{ name: company.name, ico: company.ico, dic: company.dic ?? "" }}
+      company={companyData}
     />,
   ).toBlob();
 

@@ -29,6 +29,7 @@ export type OFFER = {
   valid_until?: Date;
   sell_multiplier?: number;
   notes?: string;
+  company_profile?: any;
   user_id?: string;
   created_at?: Date;
   updated_at?: Date;
@@ -134,6 +135,10 @@ Offer.init(
     },
     notes: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    company_profile: {
+      type: DataTypes.JSONB,
       allowNull: true,
     },
     sell_multiplier: {
