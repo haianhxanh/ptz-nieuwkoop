@@ -7,7 +7,7 @@ export const createOffer = async (req: Request, res: Response) => {
   try {
     const validatedData = createOfferSchema.parse(req.body);
 
-    const offer = await offersService.createOffer(validatedData);
+    const offer = await offersService.createOffer(validatedData, req.userEmail);
 
     return res.status(201).json({
       success: true,
@@ -99,11 +99,9 @@ export const updateOffer = async (req: Request, res: Response) => {
   try {
     const { id } = offerIdSchema.parse(req.params);
 
-    console.log("Update offer request body:", JSON.stringify(req.body, null, 2));
-
     const validatedData = updateOfferSchema.parse(req.body);
 
-    const offer = await offersService.updateOffer(id, validatedData);
+    const offer = await offersService.updateOffer(id, validatedData, req.userEmail);
 
     if (!offer) {
       return res.status(404).json({
@@ -171,6 +169,17 @@ export const addItemsToOffer = async (req: Request, res: Response) => {
   }
 };
 
+export const duplicateOffer = async (req: Request, res: Response) => {
+  try {
+    const { id } = offerIdSchema.parse(req.params);
+    const offer = await offersService.duplicateOffer(id);
+    return res.status(201).json({ success: true, data: offer });
+  } catch (error) {
+    console.error("Error duplicating offer:", error);
+    return res.status(500).json({ success: false, error: "Failed to duplicate offer" });
+  }
+};
+
 export const deleteOffer = async (req: Request, res: Response) => {
   try {
     const { id } = offerIdSchema.parse(req.params);
@@ -218,6 +227,23 @@ export const listCustomers = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       error: "Internal server error",
+    });
+  }
+};
+
+export const createCustomer = async (req: Request, res: Response) => {
+  try {
+    const customer = await offersService.findOrCreateCustomer(req.body);
+
+    return res.status(201).json({
+      success: true,
+      data: customer,
+    });
+  } catch (error: any) {
+    console.error("Error creating customer:", error);
+    return res.status(400).json({
+      success: false,
+      error: error.message || "Internal server error",
     });
   }
 };

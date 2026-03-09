@@ -26,8 +26,8 @@ export const get_products = async (req: Request, res: Response) => {
         product.IsStockItem == true &&
         product.ItemStatus != "E" &&
         product.DeliveryTimeInDays != 999 &&
-        product.ShowOnWebsite == true &&
-        product.IsOffer == true,
+        product.IsStockItem == true &&
+        product.ShowOnWebsite == true,
     );
 
     console.log(products.length);

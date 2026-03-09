@@ -10,14 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { offersApi, type LineItem, exchangeRateApi } from "@/lib/api";
+import { offersApi, type LineItem, type ItemGroup, type Customer, exchangeRateApi } from "@/lib/api";
 import { useProducts } from "@/contexts/products-context";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 function ProductsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const existingOfferId = searchParams?.get("offer");
+  const targetGroupId = searchParams?.get("group");
 
   // Use cached products from context
   const { products, loading, refreshProducts } = useProducts();
@@ -40,6 +42,8 @@ function ProductsPageContent() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [targetOfferId, setTargetOfferId] = useState(existingOfferId || "");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     let filtered = products;
@@ -58,6 +62,34 @@ function ProductsPageContent() {
     setFilteredProducts(filtered);
     setCurrentPage(1);
   }, [products, searchQuery]);
+
+  const [clientSearch, setClientSearch] = useState("");
+
+  // Load customers once for client search
+  useEffect(() => {
+    offersApi
+      .listCustomers()
+      .then((res) => setCustomers(res.data))
+      .catch(() => {});
+  }, []);
+
+  const clientSearchResults =
+    clientSearch.length > 0
+      ? customers
+          .filter((c) => {
+            const q = clientSearch.toLowerCase();
+            return c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
+          })
+          .slice(0, 6)
+      : [];
+
+  const selectCustomerSuggestion = (c: Customer) => {
+    setCustomerEmail(c.email);
+    setCustomerName(c.name);
+    setCustomerPhone(c.phone || "");
+    setClientSearch("");
+    setShowSuggestions(false);
+  };
 
   const toggleProduct = (productId: string) => {
     const newSelected = new Set(selectedProducts);
@@ -84,6 +116,7 @@ function ProductsPageContent() {
           unit_price_eur: Number.isNaN(unitPriceEur) ? Math.round((unitPrice / rate) * 100) / 100 : unitPriceEur,
           total: unitPrice,
           image: product.image,
+          vat_rate: product.vat_rate ?? 21,
         };
       });
   };
@@ -99,8 +132,15 @@ function ProductsPageContent() {
     try {
       setSubmitting(true);
       const { rate: exchangeRate } = await exchangeRateApi.get();
-      const items = getSelectedProductsData(exchangeRate);
-      const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+      const lineItems = getSelectedProductsData(exchangeRate);
+      const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
+
+      const group: ItemGroup = {
+        id: crypto.randomUUID(),
+        name: "Produkty",
+        discount: 0,
+        items: lineItems,
+      };
 
       const result = await offersApi.create({
         customer: {
@@ -110,7 +150,7 @@ function ProductsPageContent() {
         },
         title: offerTitle,
         description: offerDescription,
-        items,
+        items: [group],
         subtotal,
         total: subtotal,
         currency: "CZK",
@@ -142,7 +182,7 @@ function ProductsPageContent() {
       const { rate: exchangeRate } = await exchangeRateApi.get();
       const items = getSelectedProductsData(exchangeRate);
 
-      const result = await offersApi.addItems(targetOfferId, items);
+      const result = await offersApi.addItems(targetOfferId, items, targetGroupId || undefined);
 
       if (result.success) {
         router.push(`/offers/${targetOfferId}`);
@@ -183,10 +223,16 @@ function ProductsPageContent() {
             <CardContent className="flex items-center justify-between py-4">
               <span className="font-medium">Vybráno {selectedProducts.size}</span>
               <div className="flex gap-2">
-                <Button onClick={() => setShowNewOfferModal(true)}>Vytvořit novou nabídku</Button>
-                <Button variant="secondary" onClick={() => setShowExistingOfferModal(true)}>
-                  Přidat k existující nabídce
-                </Button>
+                {existingOfferId && targetGroupId ? (
+                  <Button onClick={() => setShowExistingOfferModal(true)}>Přidat do nabídky #{existingOfferId}</Button>
+                ) : (
+                  <>
+                    <Button onClick={() => setShowNewOfferModal(true)}>Vytvořit novou nabídku</Button>
+                    <Button variant="secondary" onClick={() => setShowExistingOfferModal(true)}>
+                      Přidat k existující nabídce
+                    </Button>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -221,8 +267,24 @@ function ProductsPageContent() {
                       <TableHead>Produkt</TableHead>
                       <TableHead>Značka</TableHead>
                       <TableHead>Kolekce</TableHead>
+                      <TableHead>Substrát</TableHead>
+                      <TableHead>Dodání (dny)</TableHead>
                       <TableHead>Rozměry</TableHead>
-                      <TableHead>Cena</TableHead>
+                      <TableHead>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="flex cursor-default items-center gap-1">
+                                Cena
+                                <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Cena bez DPH, po slevě 5 %</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -245,6 +307,8 @@ function ProductsPageContent() {
                         </TableCell>
                         <TableCell>{product.brand}</TableCell>
                         <TableCell>{product.collection}</TableCell>
+                        <TableCell>{product.substrate ?? "—"}</TableCell>
+                        <TableCell className="text-center">{product.delivery_time ?? "—"}</TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
                             {product.dimensions?.height > 0 && <span>Výška: {product.dimensions.height} cm</span>}
@@ -288,7 +352,7 @@ function ProductsPageContent() {
           <form onSubmit={handleCreateNewOffer}>
             <DialogHeader>
               <DialogTitle>Vytvořit novou nabídku</DialogTitle>
-              <DialogDescription>Vyplňte údaje o nabídce a zákazníkovi</DialogDescription>
+              <DialogDescription>Vyplňte údaje o nabídce a klientovi</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div>
@@ -299,12 +363,36 @@ function ProductsPageContent() {
                 <Label htmlFor="offer-description">Popis (volitelné)</Label>
                 <Input id="offer-description" value={offerDescription} onChange={(e) => setOfferDescription(e.target.value)} />
               </div>
+              <div className="relative">
+                <Label htmlFor="client-search">Vyhledat klienta</Label>
+                <Input
+                  id="client-search"
+                  placeholder="Hledat podle jména nebo emailu..."
+                  value={clientSearch}
+                  onChange={(e) => {
+                    setClientSearch(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  autoComplete="off"
+                />
+                {showSuggestions && clientSearchResults.length > 0 && (
+                  <ul className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-lg">
+                    {clientSearchResults.map((c) => (
+                      <li key={c.id} className="cursor-pointer px-3 py-2 hover:bg-muted" onMouseDown={() => selectCustomerSuggestion(c)}>
+                        <div className="text-sm font-medium">{c.name}</div>
+                        <div className="text-xs text-muted-foreground">{c.email}</div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               <div>
-                <Label htmlFor="customer-name">Jméno zákazníka *</Label>
+                <Label htmlFor="customer-name">Jméno klienta *</Label>
                 <Input id="customer-name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
               </div>
               <div>
-                <Label htmlFor="customer-email">Email zákazníka *</Label>
+                <Label htmlFor="customer-email">Email klienta *</Label>
                 <Input id="customer-email" type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} required />
               </div>
               <div>

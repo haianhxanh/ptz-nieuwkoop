@@ -1,8 +1,8 @@
 import type { AdditionalItem, OfferStatus } from "@/lib/api";
 
 export const DEFAULT_ADDITIONAL_ITEMS: AdditionalItem[] = [
-  { title: "Práce", price: 0 },
-  { title: "Substrát", price: 0 },
+  { title: "Práce", price: 0, sell_price: 0 },
+  { title: "Substrát", price: 0, sell_price: 0 },
 ];
 
 export const statusConfig: Record<

@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { offersApi } from "@/lib/api";
-import { Search, Mail, Phone, MapPin, User, Edit } from "lucide-react";
+import { Search, Mail, Phone, MapPin, User, Edit, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 interface Customer {
@@ -23,6 +23,9 @@ interface Customer {
   postal_code?: string;
   country?: string;
   notes?: string;
+  company_name?: string;
+  company_ico?: string;
+  company_dic?: string;
   created_at: string;
 }
 
@@ -35,6 +38,7 @@ export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -66,7 +70,7 @@ export default function CustomersPage() {
         setFilteredCustomers(data.data as Customer[]);
       }
     } catch (err) {
-      setError("Chyba při načítání zákazníků");
+      setError("Chyba při načítání klientů");
       console.error(err);
     } finally {
       setLoading(false);
@@ -83,6 +87,13 @@ export default function CustomersPage() {
 
   const handleEditClick = (customer: Customer) => {
     setEditingCustomer({ ...customer });
+    setIsCreating(false);
+    setEditDialogOpen(true);
+  };
+
+  const handleNewClick = () => {
+    setEditingCustomer({ id: "", name: "", email: "", created_at: "" });
+    setIsCreating(true);
     setEditDialogOpen(true);
   };
 
@@ -91,7 +102,7 @@ export default function CustomersPage() {
 
     try {
       setSaving(true);
-      const result = await offersApi.updateCustomer(editingCustomer.id, {
+      const payload = {
         name: editingCustomer.name,
         email: editingCustomer.email,
         phone: editingCustomer.phone,
@@ -100,16 +111,26 @@ export default function CustomersPage() {
         postal_code: editingCustomer.postal_code,
         country: editingCustomer.country,
         notes: editingCustomer.notes,
-      });
+        company_name: editingCustomer.company_name,
+        company_ico: editingCustomer.company_ico,
+        company_dic: editingCustomer.company_dic,
+      };
+
+      let result;
+      if (isCreating) {
+        result = await offersApi.createCustomer(payload);
+      } else {
+        result = await offersApi.updateCustomer(editingCustomer.id, payload);
+      }
 
       if (result.success) {
-        toast.success("Zákazník byl aktualizován");
+        toast.success(isCreating ? "Klient byl vytvořen" : "Klient byl aktualizován");
         setEditDialogOpen(false);
         loadCustomers();
       }
     } catch (err: any) {
-      console.error("Error updating customer:", err);
-      toast.error(err.response?.data?.error || "Chyba při ukládání změn");
+      console.error("Error saving customer:", err);
+      toast.error(err.response?.data?.error || "Chyba při ukládání");
     } finally {
       setSaving(false);
     }
@@ -129,11 +150,15 @@ export default function CustomersPage() {
           <CardHeader className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Seznam zákazníků</CardTitle>
+                <CardTitle>Seznam klientů</CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Celkem {customers.length} {customers.length === 1 ? "zákazník" : customers.length < 5 ? "zákazníci" : "zákazníků"}
+                  Celkem {customers.length} {customers.length === 1 ? "klient" : customers.length < 5 ? "klienti" : "klientů"}
                 </p>
               </div>
+              <Button onClick={handleNewClick} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Nový klient
+              </Button>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -153,8 +178,8 @@ export default function CustomersPage() {
             {!loading && !error && customers.length === 0 && (
               <div className="py-12 text-center">
                 <User className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="mb-2 text-lg font-semibold">Zatím žádní zákazníci</h3>
-                <p className="text-muted-foreground">Zákazníci se vytvoří automaticky při vytvoření nabídky</p>
+                <h3 className="mb-2 text-lg font-semibold">Zatím žádní klienti</h3>
+                <p className="text-muted-foreground">Klienti se vytvoří automaticky při vytvoření nabídky</p>
               </div>
             )}
 
@@ -175,7 +200,13 @@ export default function CustomersPage() {
                         <div className="flex-1 space-y-3">
                           <div>
                             <h3 className="text-lg font-semibold">{customer.name}</h3>
-                            <p className="text-sm text-muted-foreground">Vytvořeno {formatDate(customer.created_at)}</p>
+                            {customer.company_name && (
+                              <p className="text-sm font-medium text-foreground/70">
+                                {customer.company_name}
+                                {customer.company_ico && <span className="ml-2 text-muted-foreground">IČO: {customer.company_ico}</span>}
+                                {customer.company_dic && <span className="ml-2 text-muted-foreground">DIČ: {customer.company_dic}</span>}
+                              </p>
+                            )}
                           </div>
 
                           <div className="flex flex-wrap gap-4 text-sm">
@@ -231,7 +262,7 @@ export default function CustomersPage() {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Upravit zákazníka</DialogTitle>
+            <DialogTitle>{isCreating ? "Nový klient" : "Upravit klienta"}</DialogTitle>
           </DialogHeader>
           {editingCustomer && (
             <div className="space-y-4">
@@ -273,13 +304,28 @@ export default function CustomersPage() {
                 </div>
               </div>
 
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <Label htmlFor="company_name">Firma</Label>
+                  <Input id="company_name" value={editingCustomer.company_name || ""} onChange={(e) => updateEditingCustomer("company_name", e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="company_ico">IČO</Label>
+                  <Input id="company_ico" value={editingCustomer.company_ico || ""} onChange={(e) => updateEditingCustomer("company_ico", e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="company_dic">DIČ</Label>
+                  <Input id="company_dic" value={editingCustomer.company_dic || ""} onChange={(e) => updateEditingCustomer("company_dic", e.target.value)} />
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="notes">Poznámky</Label>
                 <Textarea
                   id="notes"
                   value={editingCustomer.notes || ""}
                   onChange={(e) => updateEditingCustomer("notes", e.target.value)}
-                  placeholder="Poznámky k zákazníkovi..."
+                  placeholder="Poznámky"
                   rows={3}
                 />
               </div>

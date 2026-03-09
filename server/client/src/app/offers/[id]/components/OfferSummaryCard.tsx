@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import type { AdditionalItem } from "@/lib/api";
 import { formatPrice, currencyLabel } from "../utils";
@@ -12,15 +13,17 @@ type OfferSummaryCardProps = {
   onAdditionalItemsChange: (items: AdditionalItem[] | ((prev: AdditionalItem[]) => AdditionalItem[])) => void;
   editingAdditionalIndex: number | null;
   onEditingAdditionalIndexChange: (index: number | null) => void;
-  totalDiscount: number;
-  onTotalDiscountChange: (value: number) => void;
-  editingOrderDiscount: boolean;
-  onEditingOrderDiscountChange: (value: boolean) => void;
   onUnsavedChange: () => void;
   currency: string;
   tax: number;
-  itemsDiscount: number;
+  groupsDiscount: number;
   total: number;
+  totalSell: number;
+  totalSellExclVat: number;
+  totalRounded: number | null;
+  onTotalRoundedChange: (v: number | null) => void;
+  sellMultiplier: number;
+  onSellMultiplierChange: (v: number) => void;
 };
 
 export function OfferSummaryCard({
@@ -28,15 +31,17 @@ export function OfferSummaryCard({
   onAdditionalItemsChange,
   editingAdditionalIndex,
   onEditingAdditionalIndexChange,
-  totalDiscount,
-  onTotalDiscountChange,
-  editingOrderDiscount,
-  onEditingOrderDiscountChange,
   onUnsavedChange,
   currency,
   tax,
-  itemsDiscount,
+  groupsDiscount,
   total,
+  totalSell,
+  totalSellExclVat,
+  totalRounded,
+  onTotalRoundedChange,
+  sellMultiplier,
+  onSellMultiplierChange,
 }: OfferSummaryCardProps) {
   return (
     <Card>
@@ -60,26 +65,46 @@ export function OfferSummaryCard({
                   }}
                   placeholder="Název"
                 />
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="w-24 text-right"
-                    value={item.price === 0 ? "" : item.price}
-                    onChange={(e) => {
-                      const next = [...additionalItems];
-                      next[index] = {
-                        ...next[index],
-                        price: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0,
-                      };
-                      onAdditionalItemsChange(next);
-                      onUnsavedChange();
-                    }}
-                    onBlur={() => onEditingAdditionalIndexChange(null)}
-                    onFocus={(e) => e.target.select()}
-                    placeholder="0"
-                  />
+                <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1">
+                      <span className="w-6 text-right text-xs text-muted-foreground">N.</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="w-20 text-right text-sm"
+                        value={item.price === 0 ? "" : item.price}
+                        onChange={(e) => {
+                          const next = [...additionalItems];
+                          next[index] = { ...next[index], price: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0 };
+                          onAdditionalItemsChange(next);
+                          onUnsavedChange();
+                        }}
+                        onFocus={(e) => e.target.select()}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="w-6 text-right text-xs text-muted-foreground">P.</span>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="w-20 text-right text-sm font-medium"
+                        value={item.sell_price === 0 || item.sell_price == null ? "" : item.sell_price}
+                        onChange={(e) => {
+                          const next = [...additionalItems];
+                          next[index] = { ...next[index], sell_price: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0 };
+                          onAdditionalItemsChange(next);
+                          onUnsavedChange();
+                        }}
+                        onBlur={() => onEditingAdditionalIndexChange(null)}
+                        onFocus={(e) => e.target.select()}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
                   <span className="text-sm text-muted-foreground w-10">{currencyLabel(currency)}</span>
                   <Button
                     type="button"
@@ -102,23 +127,24 @@ export function OfferSummaryCard({
                 <button
                   type="button"
                   onClick={() => onEditingAdditionalIndexChange(index)}
-                  className="flex items-center gap-1.5 rounded px-2 py-1 text-right text-sm hover:bg-muted min-w-[5rem] justify-end"
+                  className="flex items-center gap-1.5 rounded px-2 py-1 text-right text-sm hover:bg-muted"
                 >
-                  <span>{item.price > 0 ? formatPrice(item.price, currency) : "0"}</span>
-                  <span className="text-muted-foreground shrink-0">{currencyLabel(currency)}</span>
+                  <span className="text-muted-foreground">N: {item.price > 0 ? formatPrice(item.price, currency) : "0"}</span>
+                  <span className="font-medium">P: {(item.sell_price ?? 0) > 0 ? formatPrice(item.sell_price!, currency) : "0"}</span>
                   <Pencil className="h-3.5 w-3.5 shrink-0 opacity-70" />
                 </button>
               </>
             )}
           </div>
         ))}
+
         <Button
           type="button"
           variant="outline"
           size="sm"
           className="w-full gap-1.5 text-muted-foreground"
           onClick={() => {
-            const next = [...additionalItems, { title: "Nová položka", price: 0 }];
+            const next = [...additionalItems, { title: "Nová položka", price: 0, sell_price: 0 }];
             onAdditionalItemsChange(next);
             onEditingAdditionalIndexChange(next.length - 1);
             onUnsavedChange();
@@ -130,45 +156,23 @@ export function OfferSummaryCard({
 
         <hr className="my-2" />
 
-        {itemsDiscount > 0 && (
-          <div className="flex justify-between text-sm text-red-600">
-            <span>Sleva na položky</span>
-            <span>-{formatPrice(itemsDiscount, currency)}</span>
-          </div>
-        )}
-
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm text-red-600"> Sleva na objednávku</span>
-          {editingOrderDiscount ? (
-            <div className="flex items-center gap-1">
-              <span className="text-red-600 text-sm">−</span>
-              <Input
-                type="number"
-                min="0"
-                className="w-24 text-right text-red-600 border-red-300 focus-visible:ring-red-500"
-                value={totalDiscount === 0 ? "" : totalDiscount}
-                onChange={(e) => {
-                  onTotalDiscountChange(e.target.value === "" ? 0 : parseFloat(e.target.value));
-                  onUnsavedChange();
-                }}
-                onBlur={() => onEditingOrderDiscountChange(false)}
-                onFocus={(e) => e.target.select()}
-                placeholder="0"
-                autoFocus
-              />
-              <span className="text-sm text-muted-foreground">{currencyLabel(currency)}</span>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onEditingOrderDiscountChange(true)}
-              className="flex items-center gap-1.5 rounded px-2 py-1 text-right text-sm text-red-600 hover:bg-red-50 min-w-[6rem] justify-end"
-            >
-              <span>{totalDiscount > 0 ? `− ${formatPrice(totalDiscount, currency)}` : "0"}</span>
-              <Pencil className="h-3.5 w-3.5 shrink-0 opacity-70" />
-            </button>
-          )}
+          <Label htmlFor="sell-multiplier" className="text-sm font-medium">
+            Koeficient <span className="text-muted-foreground text-xs">(P. = N. ×)</span>
+          </Label>
+          <Input
+            id="sell-multiplier"
+            type="number"
+            min="0"
+            step="0.01"
+            value={sellMultiplier}
+            onChange={(e) => onSellMultiplierChange(parseFloat(e.target.value) || 1)}
+            onFocus={(e) => e.target.select()}
+            className="w-24 text-right"
+          />
         </div>
+
+        <hr className="my-2" />
 
         {tax > 0 && (
           <div className="flex justify-between">
@@ -176,11 +180,44 @@ export function OfferSummaryCard({
             <span>{formatPrice(tax, currency)}</span>
           </div>
         )}
-        <div className="border-t pt-2">
-          <div className="flex justify-between text-lg font-semibold">
-            <span>Celkem</span>
+
+        <div className="border-t pt-2 space-y-1">
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>Celkem nákup</span>
             <span>{formatPrice(total, currency)}</span>
           </div>
+          <div className="flex justify-between text-lg font-semibold">
+            <span>Celkem prodej</span>
+            <span>{formatPrice(totalSell, currency)}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm gap-2">
+            <span className="text-muted-foreground shrink-0">Celkem prodej - zaokrouhleno</span>
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                className="w-32 h-7 text-right text-sm"
+                value={totalRounded ?? ""}
+                placeholder={String(Math.round(totalSell))}
+                onChange={(e) => onTotalRoundedChange(e.target.value === "" ? null : Number(e.target.value))}
+              />
+              <span className="text-xs text-muted-foreground">{currencyLabel(currency)}</span>
+            </div>
+          </div>
+          {groupsDiscount > 0 && (
+            <div className="flex justify-between text-sm text-muted-foreground text-red-600">
+              <span>Sleva celkem</span>
+              <span>-{formatPrice(groupsDiscount, currency)}</span>
+            </div>
+          )}
+          {totalSellExclVat > 0 && total > 0 && (
+            <div className="flex justify-between text-sm text-green-700 font-medium">
+              <span>Marže</span>
+              <span>
+                {formatPrice(totalSellExclVat - total, currency)}{" "}
+                <span className="text-green-600 font-normal">({(((totalSellExclVat - total) / total) * 100).toFixed(1)} %)</span>
+              </span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

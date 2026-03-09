@@ -1,5 +1,6 @@
 import Offer from "../model/offer.model";
 import Customer, { CUSTOMER } from "../model/customer.model";
+import User from "../model/user.model";
 import { configService } from "./config.service";
 import { CreateOfferInput, UpdateOfferInput, ListOffersQuery, AddItemsToOfferInput } from "../schemas/offer.schema";
 
@@ -32,12 +33,23 @@ export class OffersService {
     return additionalItems.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
   }
 
-  async createOffer(data: CreateOfferInput): Promise<Offer> {
+  async findOrCreateUser(email: string): Promise<User> {
+    const [user] = await User.findOrCreate({ where: { email }, defaults: { email } });
+    return user;
+  }
+
+  async createOffer(data: CreateOfferInput, userEmail?: string): Promise<Offer> {
     const customer = await this.findOrCreateCustomer(data.customer);
     const exchangeRate = data.exchange_rate ?? (await configService.getExchangeRate());
     const additionalItems = data.additional_items || [];
     const additionalTotal = this.sumAdditionalItems(additionalItems);
     const total = data.total + additionalTotal;
+
+    let userId: string | undefined;
+    if (userEmail) {
+      const user = await this.findOrCreateUser(userEmail);
+      userId = user.get("id") as string;
+    }
 
     const offer = await Offer.create({
       customer_id: customer.get("id") as string,
@@ -54,10 +66,14 @@ export class OffersService {
       status: data.status || "draft",
       valid_until: data.valid_until ? new Date(data.valid_until) : undefined,
       notes: data.notes,
+      user_id: userId,
     });
 
     return (await Offer.findByPk(offer.get("id") as string, {
-      include: [{ model: Customer, as: "customer" }],
+      include: [
+        { model: Customer, as: "customer" },
+        { model: User, as: "user" },
+      ],
     })) as Offer;
   }
 
@@ -77,7 +93,10 @@ export class OffersService {
 
     const { rows, count } = await Offer.findAndCountAll({
       where,
-      include: [{ model: Customer, as: "customer" }],
+      include: [
+        { model: Customer, as: "customer" },
+        { model: User, as: "user" },
+      ],
       limit,
       offset,
       order: [["created_at", "DESC"]],
@@ -87,45 +106,58 @@ export class OffersService {
   }
 
   async getOfferById(id: string): Promise<Offer | null> {
+    const include = [
+      { model: Customer, as: "customer" },
+      { model: User, as: "user" },
+    ];
     if (/^\d+$/.test(id)) {
-      return await Offer.findOne({
-        where: { simple_id: parseInt(id) },
-        include: [{ model: Customer, as: "customer" }],
-      });
+      return await Offer.findOne({ where: { simple_id: parseInt(id) }, include });
     }
-
-    return await Offer.findByPk(id, {
-      include: [{ model: Customer, as: "customer" }],
-    });
+    return await Offer.findByPk(id, { include });
   }
 
-  async updateOffer(id: string, data: UpdateOfferInput): Promise<Offer | null> {
+  async updateOffer(id: string, data: UpdateOfferInput, userEmail?: string): Promise<Offer | null> {
     const offer = await this.findOffer(id);
 
     if (!offer) {
       return null;
     }
 
-    const items = data.items || (offer.get("items") as any[]) || [];
+    if (userEmail && !offer.get("user_id")) {
+      const user = await this.findOrCreateUser(userEmail);
+      await offer.update({ user_id: user.get("id") as string });
+    }
+
+    const groups = data.items || (offer.get("items") as any[]) || [];
     const additionalItems =
       data.additional_items !== undefined ? data.additional_items : (offer.get("additional_items") as { title: string; price: number }[]) || [];
 
-    const itemsSubtotal = items.reduce((sum: number, item: any) => {
+    const allItems = groups.flatMap((g: any) => (Array.isArray(g.items) ? g.items : []));
+
+    const itemsSubtotal = allItems.reduce((sum: number, item: any) => {
       return sum + item.unit_price * item.quantity;
     }, 0);
 
-    const itemsDiscount = items.reduce((sum: number, item: any) => {
-      return sum + (Number(item.discount) || 0);
+    const groupsDiscount = groups.reduce((sum: number, g: any) => {
+      return sum + (Number(g.discount) || 0);
     }, 0);
 
     const orderDiscount = data.discount !== undefined ? Number(data.discount) : Number(offer.get("order_discount")) || 0;
 
-    const totalDiscount = itemsDiscount + orderDiscount;
+    const totalDiscount = groupsDiscount + orderDiscount;
 
     const tax = data.tax !== undefined ? Number(data.tax) : Number(offer.get("tax")) || 0;
 
     const additionalTotal = this.sumAdditionalItems(additionalItems);
     const total = itemsSubtotal - totalDiscount + tax + additionalTotal;
+
+    const sellMultiplier = data.sell_multiplier !== undefined ? Number(data.sell_multiplier) : Number(offer.get("sell_multiplier")) || 1;
+    const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.sell_price) || 0), 0);
+    const itemsSellSubtotal = allItems.reduce((sum: number, item: any) => {
+      const vat = (item.vat_rate ?? 21) / 100;
+      return sum + item.unit_price * (1 + vat) * sellMultiplier * item.quantity;
+    }, 0);
+    const totalSell = itemsSellSubtotal - totalDiscount + additionalSellTotal;
 
     const updatePayload: Record<string, unknown> = {
       customer_id: data.customer_id,
@@ -134,11 +166,12 @@ export class OffersService {
       items: data.items,
       additional_items: additionalItems,
       subtotal: Number(itemsSubtotal.toFixed(2)),
-      items_discount: Number(itemsDiscount.toFixed(2)),
+      items_discount: Number(groupsDiscount.toFixed(2)),
       order_discount: Number(orderDiscount.toFixed(2)),
       discount: Number(totalDiscount.toFixed(2)),
       tax: tax,
       total: Number(total.toFixed(2)),
+      total_sell: Number(totalSell.toFixed(2)),
       status: data.status,
     };
     if (data.exchange_rate !== undefined) {
@@ -147,10 +180,22 @@ export class OffersService {
     if (data.notes !== undefined) {
       updatePayload.notes = data.notes;
     }
+    if (data.sell_multiplier !== undefined) {
+      updatePayload.sell_multiplier = data.sell_multiplier;
+    }
+    if (data.total_rounded !== undefined) {
+      updatePayload.total_rounded = data.total_rounded ?? Math.round(totalSell);
+    }
+    if (data.company_profile !== undefined) {
+      updatePayload.company_profile = data.company_profile;
+    }
     await offer.update(updatePayload);
 
     return await Offer.findByPk(offer.get("id") as string, {
-      include: [{ model: Customer, as: "customer" }],
+      include: [
+        { model: Customer, as: "customer" },
+        { model: User, as: "user" },
+      ],
     });
   }
 
@@ -161,40 +206,86 @@ export class OffersService {
       return null;
     }
 
-    const existingItems = (offer.get("items") as any[]) || [];
+    const existingGroups = (offer.get("items") as any[]) || [];
 
-    const updatedItems = [...existingItems, ...data.items];
+    let updatedGroups: any[];
+    if (data.group_id) {
+      const groupIndex = existingGroups.findIndex((g: any) => g.id === data.group_id);
+      if (groupIndex >= 0) {
+        updatedGroups = existingGroups.map((g: any, i: number) => (i === groupIndex ? { ...g, items: [...(g.items || []), ...data.items] } : g));
+      } else {
+        updatedGroups = existingGroups;
+      }
+    } else {
+      updatedGroups = [
+        ...existingGroups,
+        {
+          id: crypto.randomUUID(),
+          name: "Produkty",
+          discount: 0,
+          items: data.items,
+        },
+      ];
+    }
 
-    const itemsSubtotal = updatedItems.reduce((sum, item) => {
-      return sum + item.unit_price * item.quantity;
-    }, 0);
-
-    const itemsDiscount = updatedItems.reduce((sum, item) => {
-      return sum + (Number(item.discount) || 0);
-    }, 0);
-
+    const allItems = updatedGroups.flatMap((g: any) => (Array.isArray(g.items) ? g.items : []));
+    const itemsSubtotal = allItems.reduce((sum: number, item: any) => sum + item.unit_price * item.quantity, 0);
+    const groupsDiscount = updatedGroups.reduce((sum: number, g: any) => sum + (Number(g.discount) || 0), 0);
     const orderDiscount = Number(offer.get("order_discount")) || 0;
-
-    const totalDiscount = itemsDiscount + orderDiscount;
-
+    const totalDiscount = groupsDiscount + orderDiscount;
     const tax = Number(offer.get("tax")) || 0;
-
-    const additionalItems = (offer.get("additional_items") as { title: string; price: number }[]) || [];
+    const additionalItems = (offer.get("additional_items") as { title: string; price: number; sell_price?: number }[]) || [];
     const additionalTotal = this.sumAdditionalItems(additionalItems);
     const total = itemsSubtotal - totalDiscount + tax + additionalTotal;
 
+    const sellMultiplier = Number(offer.get("sell_multiplier")) || 1;
+    const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.sell_price) || 0), 0);
+    const itemsSellSubtotal = allItems.reduce((sum: number, item: any) => {
+      const vat = (item.vat_rate ?? 21) / 100;
+      return sum + item.unit_price * (1 + vat) * sellMultiplier * item.quantity;
+    }, 0);
+    const totalSell = itemsSellSubtotal - totalDiscount + additionalSellTotal;
+
     await offer.update({
-      items: updatedItems,
+      items: updatedGroups,
       subtotal: Number(itemsSubtotal.toFixed(2)),
-      items_discount: Number(itemsDiscount.toFixed(2)),
+      items_discount: Number(groupsDiscount.toFixed(2)),
       order_discount: Number(orderDiscount.toFixed(2)),
       discount: Number(totalDiscount.toFixed(2)),
       total: Number(total.toFixed(2)),
+      total_sell: Number(totalSell.toFixed(2)),
+      total_rounded: null as any,
     });
 
     return await Offer.findByPk(offer.get("id") as string, {
-      include: [{ model: Customer, as: "customer" }],
+      include: [
+        { model: Customer, as: "customer" },
+        { model: User, as: "user" },
+      ],
     });
+  }
+
+  async duplicateOffer(id: string): Promise<Offer> {
+    const original = await this.findOffer(id);
+    if (!original) throw new Error("Offer not found");
+
+    const d = original.get({ plain: true }) as any;
+    return await Offer.create({
+      customer_id: d.customer_id,
+      title: `Kopie – ${d.title}`,
+      description: d.description,
+      items: d.items,
+      additional_items: d.additional_items,
+      subtotal: d.subtotal,
+      total: d.total,
+      total_sell: d.total_sell,
+      currency: d.currency,
+      exchange_rate: d.exchange_rate,
+      status: "draft",
+      notes: d.notes,
+      sell_multiplier: d.sell_multiplier,
+      user_id: d.user_id,
+    } as any);
   }
 
   async deleteOffer(id: string): Promise<boolean> {
@@ -230,6 +321,9 @@ export class OffersService {
       postal_code: data.postal_code,
       country: data.country,
       notes: data.notes,
+      company_name: data.company_name,
+      company_ico: data.company_ico,
+      company_dic: data.company_dic,
     });
 
     return customer;

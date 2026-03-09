@@ -11,6 +11,9 @@ export type CUSTOMER = {
   postal_code?: string;
   country?: string;
   notes?: string;
+  company_name?: string;
+  company_ico?: string;
+  company_dic?: string;
   created_at?: Date;
   updated_at?: Date;
 };
@@ -59,6 +62,18 @@ Customer.init(
     },
     notes: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    company_name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    company_ico: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    company_dic: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     created_at: {

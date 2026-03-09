@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Nav } from "@/components/nav";
 import { Button } from "@/components/ui/button";
 import { useOfferDetail } from "./use-offer-detail";
+import { offersApi } from "@/lib/api";
 import {
   OfferDetailHeader,
   OfferProductsTable,
@@ -12,8 +13,10 @@ import {
   OfferSummaryCard,
   OfferNotesCard,
   OfferMetadataCard,
+  OfferCompanyCard,
 } from "./components";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Save, Undo2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function OfferDetailPage() {
   const router = useRouter();
@@ -21,38 +24,53 @@ export default function OfferDetailPage() {
     offer,
     loading,
     error,
-    editedItems,
-    totalDiscount,
-    setTotalDiscount,
+    editedGroups,
+    sellMultiplier,
+    setSellMultiplier,
     status,
     setStatus,
+    offerTitle,
+    setOfferTitle,
     description,
     setDescription,
     saving,
-    draggedIndex,
+    dragState,
     hasUnsavedChanges,
     additionalItems,
     setAdditionalItems,
     notesText,
     setNotesText,
-    editingOrderDiscount,
-    setEditingOrderDiscount,
     editingAdditionalIndex,
     setEditingAdditionalIndex,
     markUnsaved,
     updatingRate,
     loadOffer,
+    addGroup,
+    removeGroup,
+    renameGroup,
+    updateGroupDiscount,
+    removeItemFromGroup,
     updateItemQuantity,
-    updateItemDiscount,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
+    groupDragIndex,
+    handleGroupDragStart,
+    handleGroupDragOver,
+    handleGroupDragEnd,
+    totalRounded,
+    setTotalRounded,
+    companyProfile,
+    setCompanyProfile,
+    availableCompanies,
+    allCustomers,
+    selectedCustomerId,
+    setSelectedCustomerId,
     calculateTotals,
     displayExchangeRate,
     applyTodaysExchangeRate,
     exportToExcel,
     saveChanges,
-    offerId,
   } = useOfferDetail();
 
   if (loading) {
@@ -71,9 +89,7 @@ export default function OfferDetailPage() {
       <div className="min-h-screen bg-gray-50">
         <Nav />
         <div className="container mx-auto px-4 py-8">
-          <div className="rounded-md bg-destructive/10 p-4 text-destructive">
-            {error || "Nabídka nebyla nalezena"}
-          </div>
+          <div className="rounded-md bg-destructive/10 p-4 text-destructive">{error || "Nabídka nebyla nalezena"}</div>
           <Button variant="outline" className="mt-4" onClick={() => router.push("/offers")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Zpět na seznam
@@ -85,54 +101,114 @@ export default function OfferDetailPage() {
 
   const totals = calculateTotals();
 
+  const handleAddSection = async (name: string) => {
+    await addGroup(name);
+  };
+
+  const handleDuplicate = async () => {
+    try {
+      const result = await offersApi.duplicate(offer.simple_id.toString());
+      toast.success("Nabídka duplikována");
+      router.push(`/offers/${result.data.simple_id}`);
+    } catch {
+      toast.error("Nepodařilo se duplikovat nabídku");
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await offersApi.delete(offer.simple_id.toString());
+      toast.success("Nabídka smazána");
+      router.push("/offers");
+    } catch {
+      toast.error("Nepodařilo se smazat nabídku");
+    }
+  };
+
+  const handleAddProductsToGroup = (groupId: string) => {
+    router.push(`/products?offer=${offer.simple_id}&group=${groupId}`);
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      const { downloadOfferPdf } = await import("./export-offer-pdf");
+      await downloadOfferPdf(offer, editedGroups, additionalItems, totals, sellMultiplier, notesText, totalRounded, () => toast.success("PDF exportováno"));
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      toast.error("Chyba při generování PDF");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Nav />
-      <div className="container mx-auto px-4 py-8">
+      <div className={`container mx-auto px-4 py-8 ${hasUnsavedChanges ? "pb-24" : ""}`}>
         <OfferDetailHeader
           offerId={offer.simple_id}
-          title={offer.title}
+          title={offerTitle}
+          onTitleChange={setOfferTitle}
           status={status}
           onStatusChange={setStatus}
           saving={saving}
           hasUnsavedChanges={hasUnsavedChanges}
           onSave={saveChanges}
           onExportExcel={exportToExcel}
+          onExportPdf={handleExportPdf}
           onBack={() => router.push("/offers")}
-          onAddProducts={() => router.push(`/products?offer=${offer.simple_id}`)}
+          onDiscard={() => loadOffer(offer.simple_id.toString())}
+          onAddSection={handleAddSection}
+          onDuplicate={handleDuplicate}
+          onDelete={handleDelete}
         />
 
         <div className="grid gap-6 md:grid-cols-3">
           <div className="space-y-6 md:col-span-2">
             <OfferProductsTable
-              items={editedItems}
+              groups={editedGroups}
               currency={offer.currency}
-              draggedIndex={draggedIndex}
+              sellMultiplier={sellMultiplier}
+              dragState={dragState}
+              groupDragIndex={groupDragIndex}
               onQuantityChange={updateItemQuantity}
-              onDiscountChange={updateItemDiscount}
+              onGroupDiscountChange={updateGroupDiscount}
+              onGroupRename={renameGroup}
+              onGroupRemove={removeGroup}
+              onItemRemove={removeItemFromGroup}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
+              onGroupDragStart={handleGroupDragStart}
+              onGroupDragOver={handleGroupDragOver}
+              onGroupDragEnd={handleGroupDragEnd}
+              onAddProductsToGroup={handleAddProductsToGroup}
             />
             <OfferDescriptionCard value={description} onChange={setDescription} />
           </div>
 
           <div className="space-y-6">
-            <OfferCustomerCard customer={offer.customer} />
+            <OfferCompanyCard companyProfile={companyProfile} availableCompanies={availableCompanies} onChange={setCompanyProfile} />
+            <OfferCustomerCard
+              customer={offer.customer}
+              allCustomers={allCustomers}
+              selectedCustomerId={selectedCustomerId}
+              onCustomerChange={setSelectedCustomerId}
+            />
             <OfferSummaryCard
               additionalItems={additionalItems}
               onAdditionalItemsChange={setAdditionalItems}
               editingAdditionalIndex={editingAdditionalIndex}
               onEditingAdditionalIndexChange={setEditingAdditionalIndex}
-              totalDiscount={totalDiscount}
-              onTotalDiscountChange={setTotalDiscount}
-              editingOrderDiscount={editingOrderDiscount}
-              onEditingOrderDiscountChange={setEditingOrderDiscount}
               onUnsavedChange={markUnsaved}
               currency={offer.currency}
               tax={Number(offer.tax) || 0}
-              itemsDiscount={totals.itemsDiscount}
+              groupsDiscount={totals.groupsDiscount}
               total={totals.total}
+              totalSell={totals.totalSell}
+              totalSellExclVat={totals.totalSellExclVat}
+              totalRounded={totalRounded}
+              onTotalRoundedChange={setTotalRounded}
+              sellMultiplier={sellMultiplier}
+              onSellMultiplierChange={setSellMultiplier}
             />
             <OfferNotesCard value={notesText} onChange={setNotesText} />
             <OfferMetadataCard
@@ -146,6 +222,27 @@ export default function OfferDetailPage() {
           </div>
         </div>
       </div>
+
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-0 inset-x-0 z-50 border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
+          <div className="container mx-auto flex items-center justify-end gap-3 px-4 py-3">
+            <span className="mr-auto text-sm text-amber-600 font-medium">Máte neuložené změny</span>
+            <Button
+              variant="ghost"
+              onClick={() => loadOffer(offer.simple_id.toString())}
+              disabled={saving}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Undo2 className="mr-2 h-4 w-4" />
+              Zrušit změny
+            </Button>
+            <Button onClick={saveChanges} disabled={saving} className="bg-amber-500 text-white hover:bg-amber-600">
+              <Save className="mr-2 h-4 w-4" />
+              {saving ? "Ukládání..." : "Uložit změny"}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
