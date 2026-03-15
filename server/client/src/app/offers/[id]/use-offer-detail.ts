@@ -410,6 +410,7 @@ export function useOfferDetail() {
 
   return {
     offer,
+    setOffer,
     loading,
     error,
     editedGroups,

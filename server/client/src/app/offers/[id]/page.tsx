@@ -24,6 +24,7 @@ export default function OfferDetailPage() {
   const router = useRouter();
   const {
     offer,
+    setOffer,
     loading,
     error,
     editedGroups,
@@ -169,7 +170,7 @@ export default function OfferDetailPage() {
       }));
 
     return {
-      slug: companyProfile?.fakturoid_slug || (process.env.NODE_ENV === "development" ? "upgrowthdev" : ""),
+      slug: process.env.NODE_ENV === "development" ? "upgrowthdev" : companyProfile?.fakturoid_slug || "",
       client_name: customer.company_name || customer.name,
       client_email: customer.email,
       client_phone: customer.phone,
@@ -182,16 +183,20 @@ export default function OfferDetailPage() {
     };
   };
 
+  const saveProformaToOffer = async (result: { public_html_url: string; invoice_id: number }) => {
+    await offersApi.update(offer.simple_id.toString(), {
+      proforma_url: result.public_html_url,
+      proforma_id: result.invoice_id,
+    });
+    setOffer((prev) => prev ? { ...prev, proforma_url: result.public_html_url, proforma_id: result.invoice_id } : prev);
+  };
+
   const handleCreateProforma = async () => {
     if (!offer) return;
     try {
       setCreatingProforma(true);
       const result = await fakturoidApi.createProforma(buildProformaPayload());
-      await offersApi.update(offer.simple_id.toString(), {
-        proforma_url: result.public_html_url,
-        proforma_id: result.invoice_id,
-      });
-      loadOffer(offer.simple_id.toString());
+      await saveProformaToOffer(result);
       toast.success("Proforma vytvořena");
     } catch (err: any) {
       console.error("Proforma creation error:", err);
@@ -206,11 +211,7 @@ export default function OfferDetailPage() {
     try {
       setCreatingProforma(true);
       const result = await fakturoidApi.updateProforma(offer.proforma_id, buildProformaPayload());
-      await offersApi.update(offer.simple_id.toString(), {
-        proforma_url: result.public_html_url,
-        proforma_id: result.invoice_id,
-      });
-      loadOffer(offer.simple_id.toString());
+      await saveProformaToOffer(result);
       toast.success("Proforma aktualizována");
     } catch (err: any) {
       console.error("Proforma update error:", err);

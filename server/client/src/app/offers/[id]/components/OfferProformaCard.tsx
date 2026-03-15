@@ -34,19 +34,14 @@ export function OfferProformaCard({ proformaUrl, proformaId, creating, onCreate,
         </CardHeader>
         <CardContent className="space-y-3">
           {hasExisting && (
-            <a
-              href={proformaUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm text-green-600 hover:underline"
-            >
+            <a href={proformaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-green-600 hover:underline">
               <ExternalLink className="h-4 w-4" />
               Zobrazit proformu
             </a>
           )}
           <Button variant="outline" onClick={handleClick} disabled={creating} className="w-full">
             {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Receipt className="mr-2 h-4 w-4" />}
-            {creating ? "Vytvářím..." : "Vystavit proformu"}
+            {creating ? "Vytvářím..." : hasExisting ? "Aktualizovat / Vystavit proformu" : "Vystavit proformu"}
           </Button>
         </CardContent>
       </Card>
@@ -56,9 +51,7 @@ export function OfferProformaCard({ proformaUrl, proformaId, creating, onCreate,
           <DialogHeader>
             <DialogTitle>Proforma již existuje</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            K této nabídce již existuje proforma. Chcete vytvořit novou, nebo aktualizovat stávající?
-          </p>
+          <p className="text-sm text-muted-foreground">K této nabídce již existuje proforma. Chcete vytvořit novou, nebo aktualizovat stávající?</p>
           <DialogFooter className="flex gap-2 sm:justify-between">
             <Button
               variant="outline"
