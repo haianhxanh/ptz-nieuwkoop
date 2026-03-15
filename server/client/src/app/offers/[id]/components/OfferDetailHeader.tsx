@@ -67,7 +67,7 @@ export function OfferDetailHeader({
           Zpět na seznam
         </Button>
       </div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <span className="font-mono text-muted-foreground shrink-0">#{offerId}</span>
@@ -118,7 +118,7 @@ export function OfferDetailHeader({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {hasUnsavedChanges && (
             <Button variant="ghost" onClick={onDiscard} disabled={saving} className="text-muted-foreground hover:text-foreground">
               <Undo2 className="mr-2 h-4 w-4" />

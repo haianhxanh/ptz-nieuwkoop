@@ -80,6 +80,7 @@ export interface CompanyProfile {
   company_ico: string;
   company_dic: string;
   logo_url?: string;
+  fakturoid_slug?: string;
 }
 
 export interface Offer {
@@ -106,6 +107,8 @@ export interface Offer {
   notes?: string;
   sell_multiplier?: number;
   company_profile?: CompanyProfile | null;
+  proforma_url?: string;
+  proforma_id?: number;
   user?: User;
   created_at: string;
   updated_at: string;
@@ -195,6 +198,43 @@ export const offersApi = {
 
   updateCustomer: async (id: string, data: Partial<Customer>) => {
     const response = await apiClient.put<{ success: boolean; data: Customer }>(`/api/offers/customers/${id}`, data);
+    return response.data;
+  },
+};
+
+type ProformaPayload = {
+  slug: string;
+  client_name: string;
+  client_email?: string;
+  client_phone?: string;
+  client_street?: string;
+  client_city?: string;
+  client_zip?: string;
+  client_country?: string;
+  client_ico?: string;
+  client_dic?: string;
+  items: { name: string; quantity: number; unit_price: number; vat_rate: number }[];
+  note?: string;
+  due?: number;
+};
+
+type ProformaResponse = {
+  success: boolean;
+  invoice_id: number;
+  invoice_number: string;
+  html_url: string;
+  public_html_url: string;
+  pdf_url: string;
+  data: any;
+};
+
+export const fakturoidApi = {
+  createProforma: async (data: ProformaPayload) => {
+    const response = await apiClient.post<ProformaResponse>("/api/fakturoid/invoice", data);
+    return response.data;
+  },
+  updateProforma: async (id: number, data: ProformaPayload) => {
+    const response = await apiClient.patch<ProformaResponse>(`/api/fakturoid/invoice/${id}`, data);
     return response.data;
   },
 };

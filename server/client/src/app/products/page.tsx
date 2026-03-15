@@ -222,7 +222,7 @@ function ProductsPageContent() {
           <Card className="mb-6 border-blue-200 bg-blue-50">
             <CardContent className="flex items-center justify-between py-4">
               <span className="font-medium">Vybráno {selectedProducts.size}</span>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {existingOfferId && targetGroupId ? (
                   <Button onClick={() => setShowExistingOfferModal(true)}>Přidat do nabídky #{existingOfferId}</Button>
                 ) : (

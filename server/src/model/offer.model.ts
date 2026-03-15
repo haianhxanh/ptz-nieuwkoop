@@ -30,6 +30,8 @@ export type OFFER = {
   sell_multiplier?: number;
   notes?: string;
   company_profile?: any;
+  proforma_url?: string;
+  proforma_id?: number;
   user_id?: string;
   created_at?: Date;
   updated_at?: Date;
@@ -145,6 +147,14 @@ Offer.init(
       type: DataTypes.DECIMAL(10, 4),
       allowNull: true,
       defaultValue: 1.0,
+    },
+    proforma_url: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    proforma_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     user_id: {
       type: DataTypes.UUID,

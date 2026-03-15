@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { Nav } from "@/components/nav";
 import { Button } from "@/components/ui/button";
 import { useOfferDetail } from "./use-offer-detail";
-import { offersApi } from "@/lib/api";
+import { useState } from "react";
+import { offersApi, fakturoidApi } from "@/lib/api";
 import {
   OfferDetailHeader,
   OfferProductsTable,
@@ -14,6 +15,7 @@ import {
   OfferNotesCard,
   OfferMetadataCard,
   OfferCompanyCard,
+  OfferProformaCard,
 } from "./components";
 import { ArrowLeft, Save, Undo2 } from "lucide-react";
 import { toast } from "sonner";
@@ -73,6 +75,8 @@ export default function OfferDetailPage() {
     saveChanges,
   } = useOfferDetail();
 
+  const [creatingProforma, setCreatingProforma] = useState(false);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -127,6 +131,93 @@ export default function OfferDetailPage() {
 
   const handleAddProductsToGroup = (groupId: string) => {
     router.push(`/products?offer=${offer.simple_id}&group=${groupId}`);
+  };
+
+  const buildProformaPayload = () => {
+    const customer = offer.customer;
+    const multiplier = Number(sellMultiplier) || 1;
+
+    const lineItems = editedGroups.flatMap((group) => {
+      const discountType = group.discount_type || "fixed";
+      const rawDiscount = Number(group.discount) || 0;
+
+      const itemsWithVat = group.items.map((item) => {
+        const vat = (item.vat_rate ?? 21) / 100;
+        const priceWithVat = item.unit_price * multiplier * (1 + vat);
+        return { ...item, priceWithVat, totalWithVat: priceWithVat * item.quantity };
+      });
+
+      const groupTotal = itemsWithVat.reduce((s, i) => s + i.totalWithVat, 0);
+      const discountAmount = rawDiscount > 0 ? (discountType === "percent" ? (groupTotal * rawDiscount) / 100 : rawDiscount) : 0;
+      const discountRatio = groupTotal > 0 && discountAmount > 0 ? 1 - discountAmount / groupTotal : 1;
+
+      return itemsWithVat.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        unit_price: Math.round(item.priceWithVat * discountRatio * 100) / 100,
+        vat_rate: item.vat_rate ?? 21,
+      }));
+    });
+
+    const additionalLineItems = additionalItems
+      .filter((a) => (Number(a.sell_price) || 0) > 0)
+      .map((a) => ({
+        name: a.title,
+        quantity: 1,
+        unit_price: Number(a.sell_price) || 0,
+        vat_rate: 21,
+      }));
+
+    return {
+      slug: companyProfile?.fakturoid_slug || "upgrowthdev",
+      client_name: customer.company_name || customer.name,
+      client_email: customer.email,
+      client_phone: customer.phone,
+      client_street: customer.address,
+      client_city: customer.city,
+      client_zip: customer.postal_code,
+      client_ico: customer.company_ico,
+      client_dic: customer.company_dic,
+      items: [...lineItems, ...additionalLineItems],
+    };
+  };
+
+  const handleCreateProforma = async () => {
+    if (!offer) return;
+    try {
+      setCreatingProforma(true);
+      const result = await fakturoidApi.createProforma(buildProformaPayload());
+      await offersApi.update(offer.simple_id.toString(), {
+        proforma_url: result.public_html_url,
+        proforma_id: result.invoice_id,
+      });
+      loadOffer(offer.simple_id.toString());
+      toast.success("Proforma vytvořena");
+    } catch (err: any) {
+      console.error("Proforma creation error:", err);
+      toast.error(err?.response?.data?.error || "Nepodařilo se vytvořit proformu");
+    } finally {
+      setCreatingProforma(false);
+    }
+  };
+
+  const handleUpdateProforma = async () => {
+    if (!offer || !offer.proforma_id) return;
+    try {
+      setCreatingProforma(true);
+      const result = await fakturoidApi.updateProforma(offer.proforma_id, buildProformaPayload());
+      await offersApi.update(offer.simple_id.toString(), {
+        proforma_url: result.public_html_url,
+        proforma_id: result.invoice_id,
+      });
+      loadOffer(offer.simple_id.toString());
+      toast.success("Proforma aktualizována");
+    } catch (err: any) {
+      console.error("Proforma update error:", err);
+      toast.error(err?.response?.data?.error || "Nepodařilo se aktualizovat proformu");
+    } finally {
+      setCreatingProforma(false);
+    }
   };
 
   const handleExportPdf = async () => {
@@ -209,6 +300,13 @@ export default function OfferDetailPage() {
               onTotalRoundedChange={setTotalRounded}
               sellMultiplier={sellMultiplier}
               onSellMultiplierChange={setSellMultiplier}
+            />
+            <OfferProformaCard
+              proformaUrl={offer.proforma_url}
+              proformaId={offer.proforma_id}
+              creating={creatingProforma}
+              onCreate={handleCreateProforma}
+              onUpdate={handleUpdateProforma}
             />
             <OfferNotesCard value={notesText} onChange={setNotesText} />
             <OfferMetadataCard

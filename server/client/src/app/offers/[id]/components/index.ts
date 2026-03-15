@@ -6,3 +6,4 @@ export { OfferSummaryCard } from "./OfferSummaryCard";
 export { OfferNotesCard } from "./OfferNotesCard";
 export { OfferMetadataCard } from "./OfferMetadataCard";
 export { OfferCompanyCard } from "./OfferCompanyCard";
+export { OfferProformaCard } from "./OfferProformaCard";

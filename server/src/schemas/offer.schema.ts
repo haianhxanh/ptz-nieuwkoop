@@ -91,6 +91,8 @@ export const updateOfferSchema = z.object({
     company_dic: z.string(),
     logo_url: z.string().optional(),
   }).nullable().optional(),
+  proforma_url: z.string().url().nullable().optional(),
+  proforma_id: z.number().int().nullable().optional(),
 });
 
 export const addItemsToOfferSchema = z.object({

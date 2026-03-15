@@ -197,6 +197,12 @@ export class OffersService {
     if (data.company_profile !== undefined) {
       updatePayload.company_profile = data.company_profile;
     }
+    if (data.proforma_url !== undefined) {
+      updatePayload.proforma_url = data.proforma_url;
+    }
+    if (data.proforma_id !== undefined) {
+      updatePayload.proforma_id = data.proforma_id;
+    }
     await offer.update(updatePayload);
 
     return await Offer.findByPk(offer.get("id") as string, {
