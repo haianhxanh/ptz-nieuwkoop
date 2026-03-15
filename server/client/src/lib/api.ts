@@ -216,6 +216,7 @@ type ProformaPayload = {
   items: { name: string; quantity: number; unit_price: number; vat_rate: number }[];
   note?: string;
   due?: number;
+  send_email?: boolean;
 };
 
 type ProformaResponse = {

@@ -195,7 +195,13 @@ export const fakturoidCreateInvoice = async (req: Request, res: Response) => {
     if (b.note) payload.note = b.note;
 
     const result = await fakturoidFetch(`/accounts/${b.slug}/invoices.json`, { method: "POST", body: payload });
-    return res.status(201).json(invoiceResponse(result.data));
+    const invoice = result.data as any;
+
+    if (req.body.send_email) {
+      await fakturoidFetch(`/accounts/${b.slug}/invoices/${invoice.id}/message.json`, { method: "POST", body: {} });
+    }
+
+    return res.status(201).json(invoiceResponse(invoice));
   } catch (error: any) {
     console.error("Fakturoid create proforma error:", error.message || error);
     return res.status(500).json({ success: false, error: error.message || "Failed to create proforma" });
@@ -226,7 +232,13 @@ export const fakturoidUpdateInvoice = async (req: Request, res: Response) => {
     if (b.note) payload.note = b.note;
 
     const result = await fakturoidFetch(`/accounts/${b.slug}/invoices/${invoiceId}.json`, { method: "PATCH", body: payload });
-    return res.status(200).json(invoiceResponse(result.data));
+    const invoice = result.data as any;
+
+    if (req.body.send_email) {
+      await fakturoidFetch(`/accounts/${b.slug}/invoices/${invoice.id}/message.json`, { method: "POST", body: {} });
+    }
+
+    return res.status(200).json(invoiceResponse(invoice));
   } catch (error: any) {
     console.error("Fakturoid update proforma error:", error.message || error);
     return res.status(500).json({ success: false, error: error.message || "Failed to update proforma" });

@@ -15,7 +15,6 @@ import {
   OfferNotesCard,
   OfferMetadataCard,
   OfferCompanyCard,
-  OfferProformaCard,
 } from "./components";
 import { ArrowLeft, Save, Undo2 } from "lucide-react";
 import { toast } from "sonner";
@@ -188,16 +187,16 @@ export default function OfferDetailPage() {
       proforma_url: result.public_html_url,
       proforma_id: result.invoice_id,
     });
-    setOffer((prev) => prev ? { ...prev, proforma_url: result.public_html_url, proforma_id: result.invoice_id } : prev);
+    setOffer((prev) => (prev ? { ...prev, proforma_url: result.public_html_url, proforma_id: result.invoice_id } : prev));
   };
 
-  const handleCreateProforma = async () => {
+  const handleCreateProforma = async (sendEmail = false) => {
     if (!offer) return;
     try {
       setCreatingProforma(true);
-      const result = await fakturoidApi.createProforma(buildProformaPayload());
+      const result = await fakturoidApi.createProforma({ ...buildProformaPayload(), send_email: sendEmail });
       await saveProformaToOffer(result);
-      toast.success("Proforma vytvořena");
+      toast.success(sendEmail ? "Proforma vytvořena a odeslána" : "Proforma vytvořena");
     } catch (err: any) {
       console.error("Proforma creation error:", err);
       toast.error(err?.response?.data?.error || "Nepodařilo se vytvořit proformu");
@@ -206,13 +205,13 @@ export default function OfferDetailPage() {
     }
   };
 
-  const handleUpdateProforma = async () => {
+  const handleUpdateProforma = async (sendEmail = false) => {
     if (!offer || !offer.proforma_id) return;
     try {
       setCreatingProforma(true);
-      const result = await fakturoidApi.updateProforma(offer.proforma_id, buildProformaPayload());
+      const result = await fakturoidApi.updateProforma(offer.proforma_id, { ...buildProformaPayload(), send_email: sendEmail });
       await saveProformaToOffer(result);
-      toast.success("Proforma aktualizována");
+      toast.success(sendEmail ? "Proforma aktualizována a odeslána" : "Proforma aktualizována");
     } catch (err: any) {
       console.error("Proforma update error:", err);
       toast.error(err?.response?.data?.error || "Nepodařilo se aktualizovat proformu");
@@ -251,6 +250,12 @@ export default function OfferDetailPage() {
           onAddSection={handleAddSection}
           onDuplicate={handleDuplicate}
           onDelete={handleDelete}
+          proformaUrl={offer.proforma_url}
+          proformaId={offer.proforma_id}
+          fakturoidSlug={process.env.NODE_ENV === "development" ? "upgrowthdev" : (companyProfile?.fakturoid_slug || "")}
+          creatingProforma={creatingProforma}
+          onCreateProforma={handleCreateProforma}
+          onUpdateProforma={handleUpdateProforma}
         />
 
         <div className="grid gap-6 md:grid-cols-3">
@@ -301,13 +306,6 @@ export default function OfferDetailPage() {
               onTotalRoundedChange={setTotalRounded}
               sellMultiplier={sellMultiplier}
               onSellMultiplierChange={setSellMultiplier}
-            />
-            <OfferProformaCard
-              proformaUrl={offer.proforma_url}
-              proformaId={offer.proforma_id}
-              creating={creatingProforma}
-              onCreate={handleCreateProforma}
-              onUpdate={handleUpdateProforma}
             />
             <OfferNotesCard value={notesText} onChange={setNotesText} />
             <OfferMetadataCard

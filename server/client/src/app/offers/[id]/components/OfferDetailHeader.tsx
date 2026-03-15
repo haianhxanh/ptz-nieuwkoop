@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, FileDown, FileText, ArrowLeft, Plus, Copy, Trash2, Pencil, Undo2 } from "lucide-react";
+import { Save, FileDown, FileText, ArrowLeft, Plus, Copy, Trash2, Pencil, Undo2, Receipt, ExternalLink, Loader2 } from "lucide-react";
 import type { OfferStatus } from "@/lib/api";
 import { statusConfig } from "../constants";
 
@@ -27,6 +27,12 @@ type OfferDetailHeaderProps = {
   onAddSection: (name: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  proformaUrl?: string;
+  proformaId?: number;
+  fakturoidSlug?: string;
+  creatingProforma: boolean;
+  onCreateProforma: (sendEmail: boolean) => void;
+  onUpdateProforma: (sendEmail: boolean) => void;
 };
 
 export function OfferDetailHeader({
@@ -45,12 +51,31 @@ export function OfferDetailHeader({
   onAddSection,
   onDuplicate,
   onDelete,
+  proformaUrl,
+  proformaId,
+  fakturoidSlug,
+  creatingProforma,
+  onCreateProforma,
+  onUpdateProforma,
 }: OfferDetailHeaderProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [sectionName, setSectionName] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
+  const [proformaDialogOpen, setProformaDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [sendEmail, setSendEmail] = useState(false);
+
+  const hasExistingProforma = !!proformaId && !!proformaUrl;
+
+  const handleProformaClick = () => {
+    if (hasExistingProforma) {
+      setProformaDialogOpen(true);
+    } else {
+      setCreateDialogOpen(true);
+    }
+  };
 
   const handleConfirm = () => {
     const name = sectionName.trim() || "Nová sekce";
@@ -137,6 +162,17 @@ export function OfferDetailHeader({
             <FileText className="mr-2 h-4 w-4" />
             PDF
           </Button>
+          {status === "accepted" && (
+            <Button
+              variant="outline"
+              onClick={handleProformaClick}
+              disabled={creatingProforma}
+              className={hasExistingProforma ? "text-green-600 border-green-300 hover:bg-green-50" : ""}
+            >
+              {creatingProforma ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Receipt className="mr-2 h-4 w-4" />}
+              {creatingProforma ? "Vytvářím..." : hasExistingProforma ? "Spravovat proformu" : "Vystavit proformu"}
+            </Button>
+          )}
           <Button variant="outline" onClick={onDuplicate} title="Duplikovat nabídku">
             <Copy className="mr-2 h-4 w-4" />
             Duplikovat
@@ -202,6 +238,89 @@ export function OfferDetailHeader({
               }}
             >
               Smazat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={proformaDialogOpen}
+        onOpenChange={(open) => {
+          setProformaDialogOpen(open);
+          if (!open) setSendEmail(false);
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Spravovat proformu</DialogTitle>
+          </DialogHeader>
+          {proformaUrl && (
+            <a href={proformaUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-green-600 hover:underline">
+              <ExternalLink className="h-4 w-4" />
+              Zobrazit stávající proformu
+            </a>
+          )}
+          {proformaId && fakturoidSlug && (
+            <a
+              href={`https://app.fakturoid.cz/${fakturoidSlug}/invoices/${proformaId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:underline"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Zobrazit ve Fakturoidu
+            </a>
+          )}
+          <label className="flex items-center gap-2 cursor-pointer pt-2">
+            <input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} className="h-4 w-4 rounded border-gray-300" />
+            <span className="text-sm">Odeslat e-mailem</span>
+          </label>
+          <div className="flex flex-col gap-2 pt-1">
+            <Button
+              onClick={() => {
+                setProformaDialogOpen(false);
+                onUpdateProforma(sendEmail);
+                setSendEmail(false);
+              }}
+            >
+              Aktualizovat stávající
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setProformaDialogOpen(false);
+                onCreateProforma(sendEmail);
+                setSendEmail(false);
+              }}
+            >
+              Vystavit novou
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Vystavit proformu</DialogTitle>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-between">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCreateDialogOpen(false);
+                onCreateProforma(false);
+              }}
+            >
+              Vystavit
+            </Button>
+            <Button
+              onClick={() => {
+                setCreateDialogOpen(false);
+                onCreateProforma(true);
+              }}
+            >
+              Vystavit a odeslat
             </Button>
           </DialogFooter>
         </DialogContent>
