@@ -46,6 +46,7 @@ export const itemGroupSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Group name is required"),
   discount: z.number().min(0, "Discount must be positive").default(0),
+  discount_type: z.enum(["fixed", "percent"]).default("fixed"),
   items: z.array(lineItemSchema),
 });
 

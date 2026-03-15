@@ -65,6 +65,7 @@ export interface ItemGroup {
   id: string;
   name: string;
   discount: number;
+  discount_type?: "fixed" | "percent";
   items: LineItem[];
 }
 

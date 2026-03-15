@@ -17,7 +17,7 @@ type OfferProductsTableProps = {
   dragState: { groupIndex: number; itemIndex: number } | null;
   groupDragIndex: number | null;
   onQuantityChange: (groupIndex: number, itemIndex: number, quantity: number) => void;
-  onGroupDiscountChange: (groupIndex: number, discount: number) => void;
+  onGroupDiscountChange: (groupIndex: number, discount: number, discountType?: "fixed" | "percent") => void;
   onGroupRename: (groupIndex: number, name: string) => void;
   onGroupRemove: (groupIndex: number) => void;
   onItemRemove: (groupIndex: number, itemIndex: number) => void;
@@ -224,12 +224,29 @@ export function OfferProductsTable({
                         autoFocus
                         className="w-24 text-right text-red-600 border-red-300 focus-visible:ring-red-500"
                         value={group.discount === 0 ? "" : group.discount}
-                        onChange={(e) => onGroupDiscountChange(groupIndex, e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                        onChange={(e) => onGroupDiscountChange(groupIndex, e.target.value === "" ? 0 : parseFloat(e.target.value), group.discount_type || "fixed")}
                         onBlur={() => setEditingDiscountIndex(null)}
                         onFocus={(e) => e.target.select()}
                         placeholder="0"
                       />
-                      <span className="text-sm text-muted-foreground">{currencyLabel(currency)}</span>
+                      <div className="flex rounded border border-red-300 overflow-hidden text-xs">
+                        <button
+                          type="button"
+                          className={`px-2 py-1 ${(group.discount_type || "fixed") === "fixed" ? "bg-red-100 font-semibold" : "hover:bg-red-50"}`}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => onGroupDiscountChange(groupIndex, group.discount, "fixed")}
+                        >
+                          {currencyLabel(currency)}
+                        </button>
+                        <button
+                          type="button"
+                          className={`px-2 py-1 border-l border-red-300 ${group.discount_type === "percent" ? "bg-red-100 font-semibold" : "hover:bg-red-50"}`}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => onGroupDiscountChange(groupIndex, group.discount, "percent")}
+                        >
+                          %
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <button
@@ -237,13 +254,21 @@ export function OfferProductsTable({
                       onClick={() => setEditingDiscountIndex(groupIndex)}
                       className="flex items-center gap-1 rounded px-2 py-1 text-right text-sm text-red-600 hover:bg-red-50"
                     >
-                      <span>{group.discount > 0 ? `− ${formatPrice(group.discount, currency)}` : "0"}</span>
+                      {group.discount > 0 ? (
+                        <span>
+                          − {group.discount_type === "percent"
+                            ? `${group.discount} % (${formatPrice(groupSellSubtotal * group.discount / 100, currency)})`
+                            : formatPrice(group.discount, currency)}
+                        </span>
+                      ) : (
+                        <span>0</span>
+                      )}
                       <Pencil className="h-3.5 w-3.5 opacity-70" />
                     </button>
                   )}
                 </div>
                 <span className="text-muted-foreground">
-                  (P.): <span className="font-semibold text-foreground">{formatPrice(Math.max(0, groupSellSubtotal - (group.discount || 0)), currency)}</span>
+                  (P.): <span className="font-semibold text-foreground">{formatPrice(Math.max(0, groupSellSubtotal - (group.discount_type === "percent" ? groupSellSubtotal * (group.discount || 0) / 100 : (group.discount || 0))), currency)}</span>
                 </span>
               </div>
             </CardContent>

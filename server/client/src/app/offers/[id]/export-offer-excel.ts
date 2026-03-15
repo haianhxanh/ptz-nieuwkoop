@@ -107,14 +107,16 @@ export function buildAndDownloadOfferExcel(
           return s + i.unit_price * (1 + vat) * sellMultiplier * i.quantity;
         }, 0) * 100,
       ) / 100;
-    const discount = Number(group.discount) || 0;
+    const rawDiscount = Number(group.discount) || 0;
+    const discount = group.discount_type === "percent" ? Math.round(sectionP * rawDiscount / 100 * 100) / 100 : rawDiscount;
+    const discountLabel = group.discount_type === "percent" ? `Sleva ${rawDiscount} % — ${group.name}` : `Sleva — ${group.name}`;
 
     if (discount > 0) {
       const discRow = currentRow();
       styleCell(discRow, 0, RED);
       styleCell(discRow, 6, RED);
       styleCell(discRow, 7, RED);
-      pushRow([`Sleva — ${group.name}`, "", "", "", "", "", -discount, -discount]);
+      pushRow([discountLabel, "", "", "", "", "", -discount, -discount]);
     }
 
     const netN = Math.round((sectionN - discount) * 100) / 100;

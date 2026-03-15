@@ -22,6 +22,7 @@ interface ItemGroup {
   id: string;
   name: string;
   discount: number;
+  discount_type?: "fixed" | "percent";
   items: LineItem[];
 }
 
@@ -107,7 +108,10 @@ function renderOfferHtml(data: PdfRequestBody): string {
         const vat = (i.vat_rate ?? 21) / 100;
         return sum + i.unit_price * (1 + vat) * sellMultiplier * i.quantity;
       }, 0);
-      const netSell = sectionSell - (group.discount || 0);
+      const discountAmount = group.discount_type === "percent"
+        ? sectionSell * (group.discount || 0) / 100
+        : (group.discount || 0);
+      const netSell = sectionSell - discountAmount;
 
       const rowsHtml = group.items
         .map((item) => {
@@ -132,9 +136,10 @@ function renderOfferHtml(data: PdfRequestBody): string {
         })
         .join("");
 
+      const discountLabel = group.discount_type === "percent" ? `Sleva ${group.discount} %` : "Sleva";
       const discountHtml =
-        group.discount > 0
-          ? `<tr class="discount-row"><td colspan="5" class="discount-label">Sleva</td><td class="discount-value">−${fmt(group.discount)}</td></tr>`
+        discountAmount > 0
+          ? `<tr class="discount-row"><td colspan="5" class="discount-label">${discountLabel}</td><td class="discount-value">−${fmt(discountAmount)}</td></tr>`
           : "";
 
       return `

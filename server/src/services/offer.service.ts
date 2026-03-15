@@ -138,8 +138,18 @@ export class OffersService {
       return sum + item.unit_price * item.quantity;
     }, 0);
 
+    const sellMultiplier = data.sell_multiplier !== undefined ? Number(data.sell_multiplier) : Number(offer.get("sell_multiplier")) || 1;
+
     const groupsDiscount = groups.reduce((sum: number, g: any) => {
-      return sum + (Number(g.discount) || 0);
+      const raw = Number(g.discount) || 0;
+      if (g.discount_type === "percent") {
+        const groupSell = (g.items || []).reduce((s: number, item: any) => {
+          const vat = (item.vat_rate ?? 21) / 100;
+          return s + item.unit_price * (1 + vat) * sellMultiplier * item.quantity;
+        }, 0);
+        return sum + (groupSell * raw) / 100;
+      }
+      return sum + raw;
     }, 0);
 
     const orderDiscount = data.discount !== undefined ? Number(data.discount) : Number(offer.get("order_discount")) || 0;
@@ -150,8 +160,6 @@ export class OffersService {
 
     const additionalTotal = this.sumAdditionalItems(additionalItems);
     const total = itemsSubtotal - totalDiscount + tax + additionalTotal;
-
-    const sellMultiplier = data.sell_multiplier !== undefined ? Number(data.sell_multiplier) : Number(offer.get("sell_multiplier")) || 1;
     const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.sell_price) || 0), 0);
     const itemsSellSubtotal = allItems.reduce((sum: number, item: any) => {
       const vat = (item.vat_rate ?? 21) / 100;
@@ -230,15 +238,24 @@ export class OffersService {
 
     const allItems = updatedGroups.flatMap((g: any) => (Array.isArray(g.items) ? g.items : []));
     const itemsSubtotal = allItems.reduce((sum: number, item: any) => sum + item.unit_price * item.quantity, 0);
-    const groupsDiscount = updatedGroups.reduce((sum: number, g: any) => sum + (Number(g.discount) || 0), 0);
+    const sellMultiplier = Number(offer.get("sell_multiplier")) || 1;
+    const groupsDiscount = updatedGroups.reduce((sum: number, g: any) => {
+      const raw = Number(g.discount) || 0;
+      if (g.discount_type === "percent") {
+        const groupSell = (g.items || []).reduce((s: number, item: any) => {
+          const vat = (item.vat_rate ?? 21) / 100;
+          return s + item.unit_price * (1 + vat) * sellMultiplier * item.quantity;
+        }, 0);
+        return sum + (groupSell * raw) / 100;
+      }
+      return sum + raw;
+    }, 0);
     const orderDiscount = Number(offer.get("order_discount")) || 0;
     const totalDiscount = groupsDiscount + orderDiscount;
     const tax = Number(offer.get("tax")) || 0;
     const additionalItems = (offer.get("additional_items") as { title: string; price: number; sell_price?: number }[]) || [];
     const additionalTotal = this.sumAdditionalItems(additionalItems);
     const total = itemsSubtotal - totalDiscount + tax + additionalTotal;
-
-    const sellMultiplier = Number(offer.get("sell_multiplier")) || 1;
     const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.sell_price) || 0), 0);
     const itemsSellSubtotal = allItems.reduce((sum: number, item: any) => {
       const vat = (item.vat_rate ?? 21) / 100;
