@@ -22,6 +22,7 @@ interface ItemGroup {
   id: string;
   name: string;
   discount: number;
+  discount_type?: "fixed" | "percent";
   items: LineItem[];
 }
 
@@ -107,13 +108,17 @@ function renderOfferHtml(data: PdfRequestBody): string {
         const vat = (i.vat_rate ?? 21) / 100;
         return sum + i.unit_price * (1 + vat) * sellMultiplier * i.quantity;
       }, 0);
-      const netSell = sectionSell - (group.discount || 0);
+      const discountAmount = group.discount_type === "percent" ? (sectionSell * (group.discount || 0)) / 100 : group.discount || 0;
+      const netSell = sectionSell - discountAmount;
 
       const rowsHtml = group.items
         .map((item) => {
-          const vat = (item.vat_rate ?? 21) / 100;
-          const sellUnit = item.unit_price * (1 + vat) * sellMultiplier;
+          const vatRate = item.vat_rate ?? 21;
+          const vat = vatRate / 100;
+          const sellUnitExclVat = item.unit_price * sellMultiplier;
+          const sellUnit = sellUnitExclVat * (1 + vat);
           const sellTotal = sellUnit * item.quantity;
+          const vatAmount = sellUnitExclVat * vat * item.quantity;
           const imgHtml = item.image ? `<img src="${escHtml(item.image)}" class="product-img" />` : `<div class="product-img-placeholder"></div>`;
           return `
           <tr class="table-row">
@@ -123,15 +128,18 @@ function renderOfferHtml(data: PdfRequestBody): string {
               ${item.sku ? `<div class="product-sku">${escHtml(item.sku)}</div>` : ""}
             </td>
             <td class="col-qty">${item.quantity}</td>
-            <td class="col-unit">${fmt(sellUnit)}</td>
+            <td class="col-unit">${fmt(sellUnitExclVat)}</td>
+            <td class="col-dph-rate">${vatRate} %</td>
+            <td class="col-dph-amount">${fmt(vatAmount)}</td>
             <td class="col-total">${fmt(sellTotal)}</td>
           </tr>`;
         })
         .join("");
 
+      const discountLabel = group.discount_type === "percent" ? `Sleva ${group.discount} %` : "Sleva";
       const discountHtml =
-        group.discount > 0
-          ? `<tr class="discount-row"><td colspan="4" class="discount-label">Sleva</td><td class="discount-value">−${fmt(group.discount)}</td></tr>`
+        discountAmount > 0
+          ? `<tr class="discount-row"><td colspan="6" class="discount-label">${discountLabel}</td><td class="discount-value">−${fmt(discountAmount)}</td></tr>`
           : "";
 
       return `
@@ -146,7 +154,9 @@ function renderOfferHtml(data: PdfRequestBody): string {
             <th class="col-name th-label">Produkt</th>
             <th class="col-qty th-label">Mn.</th>
             <th class="col-unit th-label">Cena/ks</th>
-            <th class="col-total th-label">Celkem</th>
+            <th class="col-dph-rate th-label">Sazba</th>
+            <th class="col-dph-amount th-label">DPH</th>
+            <th class="col-total th-label">Celkem s DPH</th>
           </tr>
         </thead>
         <tbody>
@@ -159,25 +169,67 @@ function renderOfferHtml(data: PdfRequestBody): string {
 
   const additionalHtml = hasAdditional
     ? `<div class="add-section-title">Další položky</div>
-       ${additionalItems
-         .filter((a) => (Number(a.sell_price) || 0) > 0)
-         .map(
-           (item) => `
-         <div class="add-row">
-           <span class="add-label">${escHtml(item.title)}</span>
-           <span class="add-value">${fmt(Number(item.sell_price))}</span>
-         </div>`,
-         )
-         .join("")}`
+       <table class="product-table">
+         <thead>
+           <tr>
+             <th class="col-name th-label">Položka</th>
+             <th class="col-unit th-label">Cena/ks</th>
+             <th class="col-dph-rate th-label">Sazba</th>
+             <th class="col-dph-amount th-label">DPH</th>
+             <th class="col-total th-label">Celkem s DPH</th>
+           </tr>
+         </thead>
+         <tbody>
+           ${additionalItems
+             .filter((a) => (Number(a.sell_price) || 0) > 0)
+             .map((item) => {
+               const totalWithVat = Number(item.sell_price) || 0;
+               const price = totalWithVat / 1.21;
+               const vatAmount = totalWithVat - price;
+               return `
+               <tr class="table-row">
+                 <td class="col-name"><div class="product-name">${escHtml(item.title)}</div></td>
+                 <td class="col-unit">${fmt(price)}</td>
+                 <td class="col-dph-rate">21 %</td>
+                 <td class="col-dph-amount">${fmt(vatAmount)}</td>
+                 <td class="col-total">${fmt(totalWithVat)}</td>
+               </tr>`;
+             })
+             .join("")}
+         </tbody>
+       </table>`
     : "";
+
+  const finalSell = totalRounded != null ? Number(totalRounded) : Math.round(Number(totals.totalSell));
+
+  let calcExclVat = 0;
+  let calcInclVat = 0;
+  for (const group of editedGroups) {
+    const sectionSell = group.items.reduce((sum, i) => {
+      const vat = (i.vat_rate ?? 21) / 100;
+      return sum + i.unit_price * (1 + vat) * sellMultiplier * i.quantity;
+    }, 0);
+    const disc = group.discount_type === "percent" ? (sectionSell * (group.discount || 0)) / 100 : group.discount || 0;
+    const sectionExcl = group.items.reduce((sum, i) => sum + i.unit_price * sellMultiplier * i.quantity, 0);
+    const exclDisc = sectionExcl > 0 && sectionSell > 0 ? sectionExcl * (1 - disc / sectionSell) : sectionExcl;
+    calcExclVat += exclDisc;
+    calcInclVat += sectionSell - disc;
+  }
+  for (const a of additionalItems) {
+    const sp = Number(a.sell_price) || 0;
+    if (sp > 0) {
+      calcInclVat += sp;
+      calcExclVat += sp / 1.21;
+    }
+  }
+  const dphAmount = calcInclVat - calcExclVat;
 
   const summaryRows: string[] = [];
   if (totals.groupsDiscount > 0) {
     summaryRows.push(`<div class="summary-row"><span>Sleva celkem</span><span>−${fmt(totals.groupsDiscount)}</span></div>`);
   }
-  if (offer.tax && Number(offer.tax) > 0) {
-    summaryRows.push(`<div class="summary-row"><span>DPH</span><span>${fmt(Number(offer.tax))}</span></div>`);
-  }
+  summaryRows.push(`<div class="summary-row"><span>Celkem bez DPH</span><span>${fmt(calcExclVat)}</span></div>`);
+  summaryRows.push(`<div class="summary-row"><span>DPH</span><span>${fmt(dphAmount)}</span></div>`);
 
   const logoHtml = company.logo_url
     ? `<img src="${escHtml(company.logo_url)}" class="company-logo" />`
@@ -289,10 +341,12 @@ function renderOfferHtml(data: PdfRequestBody): string {
   }
   .col-img { width: 40px; }
   .col-name { padding: 0 6px; }
-  .col-qty { width: 38px; text-align: right; font-size: 11px; }
-  .col-unit { width: 72px; text-align: right; font-size: 11px; }
-  .col-total { width: 78px; text-align: right; font-size: 11px; }
-  .th-label.col-qty, .th-label.col-unit, .th-label.col-total { text-align: right; }
+  .col-qty { width: 32px; text-align: right; font-size: 11px; }
+  .col-dph-rate { width: 50px; text-align: right; font-size: 11px; }
+  .col-dph-amount { width: 70px; text-align: right; font-size: 11px; }
+  .col-unit { width: 110px; text-align: right; font-size: 11px; }
+  .col-total { width: 120px; text-align: right; font-size: 11px; }
+  .th-label.col-qty, .th-label.col-dph-rate, .th-label.col-dph-amount, .th-label.col-unit, .th-label.col-total { text-align: right; }
 
   .table-row td {
     padding: 5px 0;
@@ -374,6 +428,19 @@ function renderOfferHtml(data: PdfRequestBody): string {
   }
   .notes-text { font-size: 12px; line-height: 1.6; }
 
+  /* Validity & Payment terms */
+  .terms-area { margin-top: 28px; }
+  .terms-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-top: 12px;
+    margin-bottom: 5px;
+  }
+  .terms-text { font-size: 12px; line-height: 1.6; color: #374151; }
+
   /* Footer is handled by Playwright's displayHeaderFooter for pagination */
 </style>
 </head>
@@ -433,8 +500,8 @@ function renderOfferHtml(data: PdfRequestBody): string {
   <div class="summary-area">
     ${summaryRows.join("")}
     <div class="total-row">
-      <span class="total-label">Celkem</span>
-      <span class="total-value">${fmt(totalRounded != null ? Number(totalRounded) : Math.round(Number(totals.totalSell)))}</span>
+      <span class="total-label">Celkem s DPH</span>
+      <span class="total-value">${fmt(finalSell)}</span>
     </div>
   </div>
 
@@ -447,6 +514,12 @@ function renderOfferHtml(data: PdfRequestBody): string {
          </div>`
       : ""
   }
+
+  <!-- Validity & Payment terms -->
+  <div class="terms-area">
+    <div class="terms-text">Platnost nabídky je 14 dní.</div>
+    <div class="terms-text">Po odsouhlasení cenové nabídky Vám vystavíme zálohovou fakturu. Po jejím uhrazení činí dodací lhůta přibližně 2 týdny dle dostupnosti jednotlivých položek.</div>
+  </div>
 
 </div>
 </body>

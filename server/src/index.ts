@@ -5,7 +5,7 @@ import cors from "cors";
 import path from "path";
 import all_routes from "./routes/all.route";
 import wolt_routes from "./app_wolt/routes";
-import offer_routes from "./routes/offer.route";
+import api_routes from "./routes/api.route";
 import bodyParser from "body-parser";
 import { db } from "./database_connection/db_connect";
 
@@ -36,7 +36,7 @@ var corsOptions = {
     callback(new Error("Not allowed by CORS"));
   },
   optionsSuccessStatus: 200,
-  methods: ["GET", "PUT", "POST", "DELETE", "OPTIONS"],
+  methods: ["GET", "PUT", "POST", "PATCH", "DELETE", "OPTIONS"],
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization"],
 };
@@ -51,7 +51,7 @@ app.use(bodyParser.urlencoded({ limit: "100mb", extended: true }));
 
 app.use(express.static(path.join(__dirname, "../public")));
 
-app.use("/api/offers", offer_routes);
+app.use("/api", api_routes);
 app.use("/wolt", wolt_routes);
 app.use("/", all_routes);
 

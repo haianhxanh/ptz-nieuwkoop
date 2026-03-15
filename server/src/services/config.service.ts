@@ -32,7 +32,7 @@ export class ConfigService {
     return new Date(updatedAt).toISOString().split("T")[0];
   }
 
-  async getCompanyProfiles(): Promise<Array<{ company_name: string; company_ico: string; company_dic: string; logo_url?: string }>> {
+  async getCompanyProfiles(): Promise<Array<{ company_name: string; company_ico: string; company_dic: string; logo_url?: string; fakturoid_slug?: string }>> {
     const raw = await this.get("COMPANY_PROFILES");
     if (!raw) return [];
     try {

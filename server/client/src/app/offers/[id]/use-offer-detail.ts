@@ -22,7 +22,7 @@ function normalizeGroups(raw: any[]): ItemGroup[] {
   if (!raw || raw.length === 0) return [];
   // Detect old flat LineItem[] format (items have no `items` array property)
   if (!("items" in raw[0])) {
-    return [{ id: crypto.randomUUID(), name: "Produkty", discount: 0, items: raw as LineItem[] }];
+    return [{ id: crypto.randomUUID(), name: "Produkty", discount: 0, discount_type: "fixed" as const, items: raw as LineItem[] }];
   }
   return raw as ItemGroup[];
 }
@@ -57,7 +57,14 @@ export function useOfferDetail() {
   useEffect(() => {
     exchangeRateApi
       .get()
-      .then(({ companies }) => setAvailableCompanies(companies))
+      .then(({ companies }) => {
+        setAvailableCompanies(companies);
+        setCompanyProfile((prev) => {
+          if (!prev) return prev;
+          const match = companies.find((c) => c.company_name === prev.company_name);
+          return match ?? prev;
+        });
+      })
       .catch(() => {});
     offersApi
       .listCustomers()
@@ -81,7 +88,13 @@ export function useOfferDetail() {
         setNotesText(data.data.notes || "");
         setAdditionalItems(data.data.additional_items?.length ? data.data.additional_items : DEFAULT_ADDITIONAL_ITEMS);
         setTotalRounded(data.data.total_rounded != null ? Number(data.data.total_rounded) : null);
-        setCompanyProfile(data.data.company_profile ?? null);
+        const storedProfile = data.data.company_profile ?? null;
+        if (storedProfile && availableCompanies.length > 0) {
+          const match = availableCompanies.find((c) => c.company_name === storedProfile.company_name);
+          setCompanyProfile(match ?? storedProfile);
+        } else {
+          setCompanyProfile(storedProfile);
+        }
         setSelectedCustomerId(data.data.customer_id ?? data.data.customer?.id ?? null);
         setHasUnsavedChanges(false);
       }
@@ -97,7 +110,7 @@ export function useOfferDetail() {
 
   const addGroup = async (name: string) => {
     if (!offer) return;
-    const newGroup: ItemGroup = { id: crypto.randomUUID(), name, discount: 0, items: [] };
+    const newGroup: ItemGroup = { id: crypto.randomUUID(), name, discount: 0, discount_type: "fixed", items: [] };
     const newGroups = [...editedGroups, newGroup];
     setEditedGroups(newGroups);
     try {
@@ -120,8 +133,10 @@ export function useOfferDetail() {
     setHasUnsavedChanges(true);
   };
 
-  const updateGroupDiscount = (groupIndex: number, discount: number) => {
-    setEditedGroups((prev) => prev.map((g, i) => (i === groupIndex ? { ...g, discount } : g)));
+  const updateGroupDiscount = (groupIndex: number, discount: number, discountType?: "fixed" | "percent") => {
+    setEditedGroups((prev) =>
+      prev.map((g, i) => (i === groupIndex ? { ...g, discount, ...(discountType !== undefined ? { discount_type: discountType } : {}) } : g)),
+    );
     setTotalRounded(null);
     setHasUnsavedChanges(true);
   };
@@ -196,13 +211,27 @@ export function useOfferDetail() {
 
   // ── Totals ──────────────────────────────────────────────────────────────────
 
+  const resolveGroupDiscount = (group: ItemGroup, groupSellSubtotal: number): number => {
+    const raw = Number(group.discount) || 0;
+    if (group.discount_type === "percent") return (groupSellSubtotal * raw) / 100;
+    return raw;
+  };
+
   const calculateTotals = (): OfferTotals => {
+    const multiplier = Number(sellMultiplier) || 1;
     const itemsSubtotal = editedGroups.reduce((sum, g) => sum + g.items.reduce((s, item) => s + item.unit_price * item.quantity, 0), 0);
-    const groupsDiscount = editedGroups.reduce((sum, g) => sum + (Number(g.discount) || 0), 0);
+
+    const groupsDiscount = editedGroups.reduce((sum, g) => {
+      const groupSell = g.items.reduce((s, item) => {
+        const vat = (item.vat_rate ?? 21) / 100;
+        return s + item.unit_price * (1 + vat) * multiplier * item.quantity;
+      }, 0);
+      return sum + resolveGroupDiscount(g, groupSell);
+    }, 0);
+
     const totalDiscountAmount = groupsDiscount;
     const additionalCostTotal = additionalItems.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
     const additionalSellTotal = additionalItems.reduce((sum, a) => sum + (Number(a.sell_price) || 0), 0);
-    const multiplier = Number(sellMultiplier) || 1;
     const total = itemsSubtotal - totalDiscountAmount + additionalCostTotal;
     const itemsSellSubtotal = editedGroups.reduce(
       (sum, g) =>
@@ -300,6 +329,7 @@ export function useOfferDetail() {
       const sanitizedGroups: ItemGroup[] = editedGroups.map((g) => ({
         ...g,
         discount: Number(g.discount) || 0,
+        discount_type: g.discount_type || "fixed",
         items: g.items.map((item) => {
           const unitPrice = Number(item.unit_price) || 0;
           const unitPriceEur = item.unit_price_eur != null ? Number(item.unit_price_eur) : Math.round((unitPrice / rate) * 100) / 100;
@@ -380,6 +410,7 @@ export function useOfferDetail() {
 
   return {
     offer,
+    setOffer,
     loading,
     error,
     editedGroups,

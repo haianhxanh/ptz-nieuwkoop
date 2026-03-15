@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { Nav } from "@/components/nav";
 import { Button } from "@/components/ui/button";
 import { useOfferDetail } from "./use-offer-detail";
-import { offersApi } from "@/lib/api";
+import { useState } from "react";
+import { offersApi, fakturoidApi } from "@/lib/api";
 import {
   OfferDetailHeader,
   OfferProductsTable,
@@ -22,6 +23,7 @@ export default function OfferDetailPage() {
   const router = useRouter();
   const {
     offer,
+    setOffer,
     loading,
     error,
     editedGroups,
@@ -72,6 +74,8 @@ export default function OfferDetailPage() {
     exportToExcel,
     saveChanges,
   } = useOfferDetail();
+
+  const [creatingProforma, setCreatingProforma] = useState(false);
 
   if (loading) {
     return (
@@ -129,6 +133,93 @@ export default function OfferDetailPage() {
     router.push(`/products?offer=${offer.simple_id}&group=${groupId}`);
   };
 
+  const buildProformaPayload = () => {
+    const customer = offer.customer;
+    const multiplier = Number(sellMultiplier) || 1;
+
+    const lineItems = editedGroups.flatMap((group) => {
+      const discountType = group.discount_type || "fixed";
+      const rawDiscount = Number(group.discount) || 0;
+
+      const itemsWithVat = group.items.map((item) => {
+        const vat = (item.vat_rate ?? 21) / 100;
+        const priceWithVat = item.unit_price * multiplier * (1 + vat);
+        return { ...item, priceWithVat, totalWithVat: priceWithVat * item.quantity };
+      });
+
+      const groupTotal = itemsWithVat.reduce((s, i) => s + i.totalWithVat, 0);
+      const discountAmount = rawDiscount > 0 ? (discountType === "percent" ? (groupTotal * rawDiscount) / 100 : rawDiscount) : 0;
+      const discountRatio = groupTotal > 0 && discountAmount > 0 ? 1 - discountAmount / groupTotal : 1;
+
+      return itemsWithVat.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        unit_price: Math.round(item.priceWithVat * discountRatio * 100) / 100,
+        vat_rate: item.vat_rate ?? 21,
+      }));
+    });
+
+    const additionalLineItems = additionalItems
+      .filter((a) => (Number(a.sell_price) || 0) > 0)
+      .map((a) => ({
+        name: a.title,
+        quantity: 1,
+        unit_price: Number(a.sell_price) || 0,
+        vat_rate: 21,
+      }));
+
+    return {
+      slug: process.env.NODE_ENV === "development" ? "upgrowthdev" : companyProfile?.fakturoid_slug || "",
+      client_name: customer.company_name || customer.name,
+      client_email: customer.email,
+      client_phone: customer.phone,
+      client_street: customer.address,
+      client_city: customer.city,
+      client_zip: customer.postal_code,
+      client_ico: customer.company_ico,
+      client_dic: customer.company_dic,
+      items: [...lineItems, ...additionalLineItems],
+    };
+  };
+
+  const saveProformaToOffer = async (result: { public_html_url: string; invoice_id: number }) => {
+    await offersApi.update(offer.simple_id.toString(), {
+      proforma_url: result.public_html_url,
+      proforma_id: result.invoice_id,
+    });
+    setOffer((prev) => (prev ? { ...prev, proforma_url: result.public_html_url, proforma_id: result.invoice_id } : prev));
+  };
+
+  const handleCreateProforma = async (sendEmail = false) => {
+    if (!offer) return;
+    try {
+      setCreatingProforma(true);
+      const result = await fakturoidApi.createProforma({ ...buildProformaPayload(), send_email: sendEmail });
+      await saveProformaToOffer(result);
+      toast.success(sendEmail ? "Proforma vytvořena a odeslána" : "Proforma vytvořena");
+    } catch (err: any) {
+      console.error("Proforma creation error:", err);
+      toast.error(err?.response?.data?.error || "Nepodařilo se vytvořit proformu");
+    } finally {
+      setCreatingProforma(false);
+    }
+  };
+
+  const handleUpdateProforma = async (sendEmail = false) => {
+    if (!offer || !offer.proforma_id) return;
+    try {
+      setCreatingProforma(true);
+      const result = await fakturoidApi.updateProforma(offer.proforma_id, { ...buildProformaPayload(), send_email: sendEmail });
+      await saveProformaToOffer(result);
+      toast.success(sendEmail ? "Proforma aktualizována a odeslána" : "Proforma aktualizována");
+    } catch (err: any) {
+      console.error("Proforma update error:", err);
+      toast.error(err?.response?.data?.error || "Nepodařilo se aktualizovat proformu");
+    } finally {
+      setCreatingProforma(false);
+    }
+  };
+
   const handleExportPdf = async () => {
     try {
       const { downloadOfferPdf } = await import("./export-offer-pdf");
@@ -159,6 +250,12 @@ export default function OfferDetailPage() {
           onAddSection={handleAddSection}
           onDuplicate={handleDuplicate}
           onDelete={handleDelete}
+          proformaUrl={offer.proforma_url}
+          proformaId={offer.proforma_id}
+          fakturoidSlug={process.env.NODE_ENV === "development" ? "upgrowthdev" : (companyProfile?.fakturoid_slug || "")}
+          creatingProforma={creatingProforma}
+          onCreateProforma={handleCreateProforma}
+          onUpdateProforma={handleUpdateProforma}
         />
 
         <div className="grid gap-6 md:grid-cols-3">

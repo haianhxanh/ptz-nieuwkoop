@@ -46,6 +46,7 @@ export const itemGroupSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Group name is required"),
   discount: z.number().min(0, "Discount must be positive").default(0),
+  discount_type: z.enum(["fixed", "percent"]).default("fixed"),
   items: z.array(lineItemSchema),
 });
 
@@ -84,12 +85,18 @@ export const updateOfferSchema = z.object({
   notes: z.string().optional(),
   sell_multiplier: z.number().min(0).optional(),
   total_rounded: z.number().min(0).nullable().optional(),
-  company_profile: z.object({
-    company_name: z.string(),
-    company_ico: z.string(),
-    company_dic: z.string(),
-    logo_url: z.string().optional(),
-  }).nullable().optional(),
+  company_profile: z
+    .object({
+      company_name: z.string(),
+      company_ico: z.string(),
+      company_dic: z.string(),
+      logo_url: z.string().optional(),
+      fakturoid_slug: z.string().optional(),
+    })
+    .nullable()
+    .optional(),
+  proforma_url: z.string().url().nullable().optional(),
+  proforma_id: z.number().int().nullable().optional(),
 });
 
 export const addItemsToOfferSchema = z.object({
