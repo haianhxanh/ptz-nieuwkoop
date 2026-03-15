@@ -111,8 +111,10 @@ function renderOfferHtml(data: PdfRequestBody): string {
 
       const rowsHtml = group.items
         .map((item) => {
-          const vat = (item.vat_rate ?? 21) / 100;
-          const sellUnit = item.unit_price * (1 + vat) * sellMultiplier;
+          const vatRate = item.vat_rate ?? 21;
+          const vat = vatRate / 100;
+          const sellUnitExclVat = item.unit_price * sellMultiplier;
+          const sellUnit = sellUnitExclVat * (1 + vat);
           const sellTotal = sellUnit * item.quantity;
           const imgHtml = item.image ? `<img src="${escHtml(item.image)}" class="product-img" />` : `<div class="product-img-placeholder"></div>`;
           return `
@@ -123,7 +125,8 @@ function renderOfferHtml(data: PdfRequestBody): string {
               ${item.sku ? `<div class="product-sku">${escHtml(item.sku)}</div>` : ""}
             </td>
             <td class="col-qty">${item.quantity}</td>
-            <td class="col-unit">${fmt(sellUnit)}</td>
+            <td class="col-unit">${fmt(sellUnitExclVat)}</td>
+            <td class="col-dph">${vatRate} %</td>
             <td class="col-total">${fmt(sellTotal)}</td>
           </tr>`;
         })
@@ -131,7 +134,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
 
       const discountHtml =
         group.discount > 0
-          ? `<tr class="discount-row"><td colspan="4" class="discount-label">Sleva</td><td class="discount-value">−${fmt(group.discount)}</td></tr>`
+          ? `<tr class="discount-row"><td colspan="5" class="discount-label">Sleva</td><td class="discount-value">−${fmt(group.discount)}</td></tr>`
           : "";
 
       return `
@@ -146,7 +149,8 @@ function renderOfferHtml(data: PdfRequestBody): string {
             <th class="col-name th-label">Produkt</th>
             <th class="col-qty th-label">Mn.</th>
             <th class="col-unit th-label">Cena/ks</th>
-            <th class="col-total th-label">Celkem</th>
+            <th class="col-dph th-label">DPH</th>
+            <th class="col-total th-label">Celkem s DPH</th>
           </tr>
         </thead>
         <tbody>
@@ -171,13 +175,16 @@ function renderOfferHtml(data: PdfRequestBody): string {
          .join("")}`
     : "";
 
+  const finalSell = totalRounded != null ? Number(totalRounded) : Math.round(Number(totals.totalSell));
+  const totalExclVat = Number(totals.totalSellExclVat) || 0;
+  const dphAmount = Number(totals.totalSell) - totalExclVat;
+
   const summaryRows: string[] = [];
   if (totals.groupsDiscount > 0) {
     summaryRows.push(`<div class="summary-row"><span>Sleva celkem</span><span>−${fmt(totals.groupsDiscount)}</span></div>`);
   }
-  if (offer.tax && Number(offer.tax) > 0) {
-    summaryRows.push(`<div class="summary-row"><span>DPH</span><span>${fmt(Number(offer.tax))}</span></div>`);
-  }
+  summaryRows.push(`<div class="summary-row"><span>Celkem bez DPH</span><span>${fmt(totalExclVat)}</span></div>`);
+  summaryRows.push(`<div class="summary-row"><span>DPH</span><span>${fmt(dphAmount)}</span></div>`);
 
   const logoHtml = company.logo_url
     ? `<img src="${escHtml(company.logo_url)}" class="company-logo" />`
@@ -289,10 +296,11 @@ function renderOfferHtml(data: PdfRequestBody): string {
   }
   .col-img { width: 40px; }
   .col-name { padding: 0 6px; }
-  .col-qty { width: 38px; text-align: right; font-size: 11px; }
-  .col-unit { width: 72px; text-align: right; font-size: 11px; }
-  .col-total { width: 78px; text-align: right; font-size: 11px; }
-  .th-label.col-qty, .th-label.col-unit, .th-label.col-total { text-align: right; }
+  .col-qty { width: 32px; text-align: right; font-size: 11px; }
+  .col-dph { width: 40px; text-align: right; font-size: 11px; }
+  .col-unit { width: 90px; text-align: right; font-size: 11px; }
+  .col-total { width: 90px; text-align: right; font-size: 11px; }
+  .th-label.col-qty, .th-label.col-dph, .th-label.col-unit, .th-label.col-total { text-align: right; }
 
   .table-row td {
     padding: 5px 0;
@@ -374,6 +382,19 @@ function renderOfferHtml(data: PdfRequestBody): string {
   }
   .notes-text { font-size: 12px; line-height: 1.6; }
 
+  /* Validity & Payment terms */
+  .terms-area { margin-top: 28px; }
+  .terms-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-top: 12px;
+    margin-bottom: 5px;
+  }
+  .terms-text { font-size: 12px; line-height: 1.6; color: #374151; }
+
   /* Footer is handled by Playwright's displayHeaderFooter for pagination */
 </style>
 </head>
@@ -433,8 +454,8 @@ function renderOfferHtml(data: PdfRequestBody): string {
   <div class="summary-area">
     ${summaryRows.join("")}
     <div class="total-row">
-      <span class="total-label">Celkem</span>
-      <span class="total-value">${fmt(totalRounded != null ? Number(totalRounded) : Math.round(Number(totals.totalSell)))}</span>
+      <span class="total-label">Celkem s DPH</span>
+      <span class="total-value">${fmt(finalSell)}</span>
     </div>
   </div>
 
@@ -447,6 +468,12 @@ function renderOfferHtml(data: PdfRequestBody): string {
          </div>`
       : ""
   }
+
+  <!-- Validity & Payment terms -->
+  <div class="terms-area">
+    <div class="terms-text">Platnost nabídky je 14 dní.</div>
+    <div class="terms-text">Po odsouhlasení cenové nabídky Vám vystavíme zálohovou fakturu. Po jejím uhrazení činí dodací lhůta přibližně 2 týdny dle dostupnosti jednotlivých položek.</div>
+  </div>
 
 </div>
 </body>
