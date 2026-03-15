@@ -22,7 +22,6 @@ async function getAccessToken(): Promise<string> {
   const res = await fetch(`${FAKTUROID_API}/oauth/token`, {
     method: "POST",
     headers: {
-      "User-Agent": FAKTUROID_USER_AGENT as string,
       "Content-Type": "application/json",
       Accept: "application/json",
       Authorization: `Basic ${basicAuth}`,
@@ -50,7 +49,6 @@ async function fakturoidFetch(path: string, options: { method: string; body?: un
   const res = await fetch(`${FAKTUROID_API}${path}`, {
     method: options.method,
     headers: {
-      "User-Agent": FAKTUROID_USER_AGENT as string,
       "Content-Type": "application/json",
       Accept: "application/json",
       Authorization: `Bearer ${token}`,
