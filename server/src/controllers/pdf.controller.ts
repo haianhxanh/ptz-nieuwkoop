@@ -108,9 +108,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
         const vat = (i.vat_rate ?? 21) / 100;
         return sum + i.unit_price * (1 + vat) * sellMultiplier * i.quantity;
       }, 0);
-      const discountAmount = group.discount_type === "percent"
-        ? sectionSell * (group.discount || 0) / 100
-        : (group.discount || 0);
+      const discountAmount = group.discount_type === "percent" ? (sectionSell * (group.discount || 0)) / 100 : group.discount || 0;
       const netSell = sectionSell - discountAmount;
 
       const rowsHtml = group.items
@@ -120,6 +118,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
           const sellUnitExclVat = item.unit_price * sellMultiplier;
           const sellUnit = sellUnitExclVat * (1 + vat);
           const sellTotal = sellUnit * item.quantity;
+          const vatAmount = sellUnitExclVat * vat * item.quantity;
           const imgHtml = item.image ? `<img src="${escHtml(item.image)}" class="product-img" />` : `<div class="product-img-placeholder"></div>`;
           return `
           <tr class="table-row">
@@ -130,7 +129,8 @@ function renderOfferHtml(data: PdfRequestBody): string {
             </td>
             <td class="col-qty">${item.quantity}</td>
             <td class="col-unit">${fmt(sellUnitExclVat)}</td>
-            <td class="col-dph">${vatRate} %</td>
+            <td class="col-dph-rate">${vatRate} %</td>
+            <td class="col-dph-amount">${fmt(vatAmount)}</td>
             <td class="col-total">${fmt(sellTotal)}</td>
           </tr>`;
         })
@@ -139,7 +139,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
       const discountLabel = group.discount_type === "percent" ? `Sleva ${group.discount} %` : "Sleva";
       const discountHtml =
         discountAmount > 0
-          ? `<tr class="discount-row"><td colspan="5" class="discount-label">${discountLabel}</td><td class="discount-value">−${fmt(discountAmount)}</td></tr>`
+          ? `<tr class="discount-row"><td colspan="6" class="discount-label">${discountLabel}</td><td class="discount-value">−${fmt(discountAmount)}</td></tr>`
           : "";
 
       return `
@@ -154,7 +154,8 @@ function renderOfferHtml(data: PdfRequestBody): string {
             <th class="col-name th-label">Produkt</th>
             <th class="col-qty th-label">Mn.</th>
             <th class="col-unit th-label">Cena/ks</th>
-            <th class="col-dph th-label">DPH</th>
+            <th class="col-dph-rate th-label">Sazba</th>
+            <th class="col-dph-amount th-label">DPH</th>
             <th class="col-total th-label">Celkem s DPH</th>
           </tr>
         </thead>
@@ -168,27 +169,66 @@ function renderOfferHtml(data: PdfRequestBody): string {
 
   const additionalHtml = hasAdditional
     ? `<div class="add-section-title">Další položky</div>
-       ${additionalItems
-         .filter((a) => (Number(a.sell_price) || 0) > 0)
-         .map(
-           (item) => `
-         <div class="add-row">
-           <span class="add-label">${escHtml(item.title)}</span>
-           <span class="add-value">${fmt(Number(item.sell_price))}</span>
-         </div>`,
-         )
-         .join("")}`
+       <table class="product-table">
+         <thead>
+           <tr>
+             <th class="col-name th-label">Položka</th>
+             <th class="col-unit th-label">Cena/ks</th>
+             <th class="col-dph-rate th-label">Sazba</th>
+             <th class="col-dph-amount th-label">DPH</th>
+             <th class="col-total th-label">Celkem s DPH</th>
+           </tr>
+         </thead>
+         <tbody>
+           ${additionalItems
+             .filter((a) => (Number(a.sell_price) || 0) > 0)
+             .map((item) => {
+               const totalWithVat = Number(item.sell_price) || 0;
+               const price = totalWithVat / 1.21;
+               const vatAmount = totalWithVat - price;
+               return `
+               <tr class="table-row">
+                 <td class="col-name"><div class="product-name">${escHtml(item.title)}</div></td>
+                 <td class="col-unit">${fmt(price)}</td>
+                 <td class="col-dph-rate">21 %</td>
+                 <td class="col-dph-amount">${fmt(vatAmount)}</td>
+                 <td class="col-total">${fmt(totalWithVat)}</td>
+               </tr>`;
+             })
+             .join("")}
+         </tbody>
+       </table>`
     : "";
 
   const finalSell = totalRounded != null ? Number(totalRounded) : Math.round(Number(totals.totalSell));
-  const totalExclVat = Number(totals.totalSellExclVat) || 0;
-  const dphAmount = Number(totals.totalSell) - totalExclVat;
+
+  let calcExclVat = 0;
+  let calcInclVat = 0;
+  for (const group of editedGroups) {
+    const sectionSell = group.items.reduce((sum, i) => {
+      const vat = (i.vat_rate ?? 21) / 100;
+      return sum + i.unit_price * (1 + vat) * sellMultiplier * i.quantity;
+    }, 0);
+    const disc = group.discount_type === "percent" ? (sectionSell * (group.discount || 0)) / 100 : group.discount || 0;
+    const sectionExcl = group.items.reduce((sum, i) => sum + i.unit_price * sellMultiplier * i.quantity, 0);
+    const exclDisc = sectionExcl > 0 && sectionSell > 0 ? sectionExcl * (1 - disc / sectionSell) : sectionExcl;
+    calcExclVat += exclDisc;
+    calcInclVat += sectionSell - disc;
+  }
+  for (const a of additionalItems) {
+    const sp = Number(a.sell_price) || 0;
+    if (sp > 0) {
+      calcInclVat += sp;
+      calcExclVat += sp / 1.21;
+    }
+  }
+  const dphAmount = calcInclVat - calcExclVat;
 
   const summaryRows: string[] = [];
   if (totals.groupsDiscount > 0) {
     summaryRows.push(`<div class="summary-row"><span>Sleva celkem</span><span>−${fmt(totals.groupsDiscount)}</span></div>`);
   }
-  summaryRows.push(`<div class="summary-row"><span>Celkem bez DPH</span><span>${fmt(totalExclVat)}</span></div>`);
+  summaryRows.push(`<div class="summary-row"><span>Celkem bez DPH</span><span>${fmt(calcExclVat)}</span></div>`);
   summaryRows.push(`<div class="summary-row"><span>DPH</span><span>${fmt(dphAmount)}</span></div>`);
 
   const logoHtml = company.logo_url
@@ -302,10 +342,11 @@ function renderOfferHtml(data: PdfRequestBody): string {
   .col-img { width: 40px; }
   .col-name { padding: 0 6px; }
   .col-qty { width: 32px; text-align: right; font-size: 11px; }
-  .col-dph { width: 40px; text-align: right; font-size: 11px; }
-  .col-unit { width: 90px; text-align: right; font-size: 11px; }
-  .col-total { width: 90px; text-align: right; font-size: 11px; }
-  .th-label.col-qty, .th-label.col-dph, .th-label.col-unit, .th-label.col-total { text-align: right; }
+  .col-dph-rate { width: 50px; text-align: right; font-size: 11px; }
+  .col-dph-amount { width: 70px; text-align: right; font-size: 11px; }
+  .col-unit { width: 110px; text-align: right; font-size: 11px; }
+  .col-total { width: 120px; text-align: right; font-size: 11px; }
+  .th-label.col-qty, .th-label.col-dph-rate, .th-label.col-dph-amount, .th-label.col-unit, .th-label.col-total { text-align: right; }
 
   .table-row td {
     padding: 5px 0;

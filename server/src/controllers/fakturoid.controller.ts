@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const { FAKTUROID_API, FAKTUROID_USER_AGENT } = process.env;
+const { FAKTUROID_API } = process.env;
 let cachedToken: { access_token: string; expires_at: number } | null = null;
 
 async function getAccessToken(): Promise<string> {
