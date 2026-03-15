@@ -57,7 +57,14 @@ export function useOfferDetail() {
   useEffect(() => {
     exchangeRateApi
       .get()
-      .then(({ companies }) => setAvailableCompanies(companies))
+      .then(({ companies }) => {
+        setAvailableCompanies(companies);
+        setCompanyProfile((prev) => {
+          if (!prev) return prev;
+          const match = companies.find((c) => c.company_name === prev.company_name);
+          return match ?? prev;
+        });
+      })
       .catch(() => {});
     offersApi
       .listCustomers()
@@ -81,7 +88,13 @@ export function useOfferDetail() {
         setNotesText(data.data.notes || "");
         setAdditionalItems(data.data.additional_items?.length ? data.data.additional_items : DEFAULT_ADDITIONAL_ITEMS);
         setTotalRounded(data.data.total_rounded != null ? Number(data.data.total_rounded) : null);
-        setCompanyProfile(data.data.company_profile ?? null);
+        const storedProfile = data.data.company_profile ?? null;
+        if (storedProfile && availableCompanies.length > 0) {
+          const match = availableCompanies.find((c) => c.company_name === storedProfile.company_name);
+          setCompanyProfile(match ?? storedProfile);
+        } else {
+          setCompanyProfile(storedProfile);
+        }
         setSelectedCustomerId(data.data.customer_id ?? data.data.customer?.id ?? null);
         setHasUnsavedChanges(false);
       }
@@ -200,7 +213,7 @@ export function useOfferDetail() {
 
   const resolveGroupDiscount = (group: ItemGroup, groupSellSubtotal: number): number => {
     const raw = Number(group.discount) || 0;
-    if (group.discount_type === "percent") return groupSellSubtotal * raw / 100;
+    if (group.discount_type === "percent") return (groupSellSubtotal * raw) / 100;
     return raw;
   };
 

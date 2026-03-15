@@ -169,7 +169,7 @@ export default function OfferDetailPage() {
       }));
 
     return {
-      slug: companyProfile?.fakturoid_slug || "upgrowthdev",
+      slug: companyProfile?.fakturoid_slug || (process.env.NODE_ENV === "development" ? "upgrowthdev" : ""),
       client_name: customer.company_name || customer.name,
       client_email: customer.email,
       client_phone: customer.phone,
