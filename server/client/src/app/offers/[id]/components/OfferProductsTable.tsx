@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { GripVertical, Trash2, Plus, Pencil } from "lucide-react";
 import type { ItemGroup } from "@/lib/api";
@@ -27,6 +28,7 @@ type OfferProductsTableProps = {
   onGroupDragStart: (groupIndex: number) => void;
   onGroupDragOver: (e: React.DragEvent, groupIndex: number) => void;
   onGroupDragEnd: () => void;
+  onGroupNotesChange: (groupIndex: number, notes: string) => void;
   onAddProductsToGroup: (groupId: string) => void;
 };
 
@@ -47,6 +49,7 @@ export function OfferProductsTable({
   onGroupDragStart,
   onGroupDragOver,
   onGroupDragEnd,
+  onGroupNotesChange,
   onAddProductsToGroup,
 }: OfferProductsTableProps) {
   const [editingGroupIndex, setEditingGroupIndex] = useState<number | null>(null);
@@ -168,6 +171,17 @@ export function OfferProductsTable({
                           <TableCell>
                             <div className="font-semibold">{item.name}</div>
                             {item.sku && <div className="text-sm text-muted-foreground">SKU: {item.sku}</div>}
+                            {item.dimensions && (item.dimensions.height || item.dimensions.diameter || item.dimensions.pot_size) && (
+                              <div className="text-xs text-muted-foreground">
+                                {[
+                                  item.dimensions.height && `V: ${item.dimensions.height} cm`,
+                                  item.dimensions.diameter && `Ø: ${item.dimensions.diameter} cm`,
+                                  item.dimensions.pot_size && `Květináč: ${item.dimensions.pot_size} cm`,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </div>
+                            )}
                             <div className="mt-0.5 text-xs text-muted-foreground">
                               <div>N.: {formatPrice(item.unit_price, currency)}</div>
                               <div className="font-medium text-foreground">P.: {formatPrice(sellUnitPrice, currency)}</div>
@@ -224,7 +238,9 @@ export function OfferProductsTable({
                         autoFocus
                         className="w-24 text-right text-red-600 border-red-300 focus-visible:ring-red-500"
                         value={group.discount === 0 ? "" : group.discount}
-                        onChange={(e) => onGroupDiscountChange(groupIndex, e.target.value === "" ? 0 : parseFloat(e.target.value), group.discount_type || "fixed")}
+                        onChange={(e) =>
+                          onGroupDiscountChange(groupIndex, e.target.value === "" ? 0 : parseFloat(e.target.value), group.discount_type || "fixed")
+                        }
                         onBlur={() => setEditingDiscountIndex(null)}
                         onFocus={(e) => e.target.select()}
                         placeholder="0"
@@ -256,8 +272,9 @@ export function OfferProductsTable({
                     >
                       {group.discount > 0 ? (
                         <span>
-                          − {group.discount_type === "percent"
-                            ? `${group.discount} % (${formatPrice(groupSellSubtotal * group.discount / 100, currency)})`
+                          −{" "}
+                          {group.discount_type === "percent"
+                            ? `${group.discount} % (${formatPrice((groupSellSubtotal * group.discount) / 100, currency)})`
                             : formatPrice(group.discount, currency)}
                         </span>
                       ) : (
@@ -268,8 +285,27 @@ export function OfferProductsTable({
                   )}
                 </div>
                 <span className="text-muted-foreground">
-                  (P.): <span className="font-semibold text-foreground">{formatPrice(Math.max(0, groupSellSubtotal - (group.discount_type === "percent" ? groupSellSubtotal * (group.discount || 0) / 100 : (group.discount || 0))), currency)}</span>
+                  (P.):{" "}
+                  <span className="font-semibold text-foreground">
+                    {formatPrice(
+                      Math.max(
+                        0,
+                        groupSellSubtotal - (group.discount_type === "percent" ? (groupSellSubtotal * (group.discount || 0)) / 100 : group.discount || 0),
+                      ),
+                      currency,
+                    )}
+                  </span>
                 </span>
+              </div>
+
+              <div className="mt-3">
+                <Textarea
+                  placeholder="Poznámka"
+                  value={group.notes || ""}
+                  onChange={(e) => onGroupNotesChange(groupIndex, e.target.value)}
+                  className="min-h-[60px] text-sm"
+                  rows={2}
+                />
               </div>
             </CardContent>
           </Card>

@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { offersApi, type Offer } from "@/lib/api";
-import { Copy, Trash2 } from "lucide-react";
+import { Copy, Trash2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -35,12 +36,27 @@ function computeSellTotal(offer: Offer): number {
   return subtotal - discount + additionalSell;
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export default function OffersPage() {
   const router = useRouter();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const filteredOffers = offers.filter((offer) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      offer.customer.name.toLowerCase().includes(q) ||
+      offer.customer.email.toLowerCase().includes(q) ||
+      offer.title.toLowerCase().includes(q) ||
+      `#${offer.simple_id}`.includes(q)
+    );
+  });
 
   useEffect(() => {
     loadOffers();
@@ -114,6 +130,21 @@ export default function OffersPage() {
             <Button onClick={() => router.push("/products")}>Vytvořit novou nabídku</Button>
           </CardHeader>
           <CardContent>
+            {!loading && offers.length > 0 && (
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Hledat podle názvu, klienta nebo ID"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-9"
+                />
+              </div>
+            )}
+
             {loading && <div className="py-8 text-center text-muted-foreground">Načítání...</div>}
 
             {error && <div className="rounded-md bg-destructive/10 p-4 text-destructive">{error}</div>}
@@ -126,64 +157,101 @@ export default function OffersPage() {
               </div>
             )}
 
-            {!loading && !error && offers.length > 0 && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-16">ID</TableHead>
-                    <TableHead>Název</TableHead>
-                    <TableHead>Klient</TableHead>
-                    <TableHead>Stav</TableHead>
-                    <TableHead>Počet položek</TableHead>
-                    <TableHead>Celkem P.</TableHead>
-                    <TableHead>Vytvořeno</TableHead>
-                    <TableHead className="w-20"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {offers.map((offer) => (
-                    <TableRow key={offer.id} className="cursor-pointer" onClick={() => router.push(`/offers/${offer.simple_id}`)}>
-                      <TableCell className="font-mono font-semibold">#{offer.simple_id}</TableCell>
-                      <TableCell className="font-semibold">{offer.title}</TableCell>
-                      <TableCell>
-                        <div>{offer.customer.name}</div>
-                        <div className="text-sm text-muted-foreground">{offer.customer.email}</div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={statusConfig[offer.status].variant}>{statusConfig[offer.status].label}</Badge>
-                      </TableCell>
-                      <TableCell>{offer.items?.length || 0}</TableCell>
-                      <TableCell className="font-semibold">
-                        {formatPrice(offer.total_rounded != null ? Number(offer.total_rounded) : Math.round(computeSellTotal(offer)), offer.currency)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{formatDate(offer.created_at)}</TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                            title="Duplikovat"
-                            onClick={(e) => handleDuplicate(offer, e)}
-                          >
-                            <Copy className="h-3.5 w-3.5" />
+            {!loading &&
+              !error &&
+              offers.length > 0 &&
+              (() => {
+                const totalPages = Math.ceil(filteredOffers.length / ITEMS_PER_PAGE);
+                const paginatedOffers = filteredOffers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+                return (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-16">ID</TableHead>
+                          <TableHead>Název</TableHead>
+                          <TableHead>Klient</TableHead>
+                          <TableHead>Stav</TableHead>
+                          <TableHead>Počet položek</TableHead>
+                          <TableHead>Celkem P.</TableHead>
+                          <TableHead>Vytvořeno</TableHead>
+                          <TableHead className="w-20"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedOffers.map((offer) => (
+                          <TableRow key={offer.id} className="cursor-pointer" onClick={() => router.push(`/offers/${offer.simple_id}`)}>
+                            <TableCell className="font-mono font-semibold">#{offer.simple_id}</TableCell>
+                            <TableCell className="font-semibold">{offer.title}</TableCell>
+                            <TableCell>
+                              <div>{offer.customer.name}</div>
+                              <div className="text-sm text-muted-foreground">{offer.customer.email}</div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={statusConfig[offer.status].variant}>{statusConfig[offer.status].label}</Badge>
+                            </TableCell>
+                            <TableCell>{offer.items?.length || 0}</TableCell>
+                            <TableCell className="font-semibold">
+                              {formatPrice(offer.total_rounded != null ? Number(offer.total_rounded) : Math.round(computeSellTotal(offer)), offer.currency)}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{formatDate(offer.created_at)}</TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                  title="Duplikovat"
+                                  onClick={(e) => handleDuplicate(offer, e)}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                  title="Smazat"
+                                  onClick={(e) => handleDelete(offer, e)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between border-t pt-4 mt-4">
+                        <span className="text-sm text-muted-foreground">
+                          {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredOffers.length)} z {filteredOffers.length}{" "}
+                          nabídek
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
+                            Předchozí
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            title="Smazat"
-                            onClick={(e) => handleDelete(offer, e)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <Button
+                              key={page}
+                              variant={page === currentPage ? "default" : "outline"}
+                              size="sm"
+                              className="w-9"
+                              onClick={() => setCurrentPage(page)}
+                            >
+                              {page}
+                            </Button>
+                          ))}
+                          <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)}>
+                            Další
                           </Button>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
           </CardContent>
         </Card>
       </div>

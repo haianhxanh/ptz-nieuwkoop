@@ -133,6 +133,11 @@ export function useOfferDetail() {
     setHasUnsavedChanges(true);
   };
 
+  const updateGroupNotes = (groupIndex: number, notes: string) => {
+    setEditedGroups((prev) => prev.map((g, i) => (i === groupIndex ? { ...g, notes } : g)));
+    setHasUnsavedChanges(true);
+  };
+
   const updateGroupDiscount = (groupIndex: number, discount: number, discountType?: "fixed" | "percent") => {
     setEditedGroups((prev) =>
       prev.map((g, i) => (i === groupIndex ? { ...g, discount, ...(discountType !== undefined ? { discount_type: discountType } : {}) } : g)),
@@ -435,6 +440,7 @@ export function useOfferDetail() {
     addGroup,
     removeGroup,
     renameGroup,
+    updateGroupNotes,
     updateGroupDiscount,
     removeItemFromGroup,
     updateItemQuantity,

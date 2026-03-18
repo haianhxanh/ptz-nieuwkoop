@@ -59,11 +59,20 @@ export interface LineItem {
   total: number;
   image?: string;
   vat_rate?: number;
+  dimensions?: {
+    height?: number;
+    depth?: number;
+    diameter?: number;
+    opening?: number;
+    length?: number;
+    pot_size?: string;
+  };
 }
 
 export interface ItemGroup {
   id: string;
   name: string;
+  notes?: string;
   discount: number;
   discount_type?: "fixed" | "percent";
   items: LineItem[];
@@ -127,6 +136,7 @@ export interface Product {
     diameter: number;
     opening: number;
     length: number;
+    pot_size: string;
   };
   image: string;
   brand: string;
@@ -254,6 +264,15 @@ export const productsApi = {
   },
 };
 
+export type StockMap = Record<string, { stock_available: number; first_available: string | null }>;
+
+export const stockApi = {
+  getAll: async (): Promise<StockMap> => {
+    const response = await apiClient.get<{ stock: StockMap }>("/api/stock");
+    return response.data.stock;
+  },
+};
+
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 let exchangeRateCache: {
   rate: number;
@@ -265,7 +284,13 @@ let exchangeRateCache: {
 } | null = null;
 
 export const exchangeRateApi = {
-  get: async (): Promise<{ rate: number; nieuwkoop_discount: number; date: string | null; company: { name: string; ico: string; dic: string }; companies: CompanyProfile[] }> => {
+  get: async (): Promise<{
+    rate: number;
+    nieuwkoop_discount: number;
+    date: string | null;
+    company: { name: string; ico: string; dic: string };
+    companies: CompanyProfile[];
+  }> => {
     const now = Date.now();
     if (exchangeRateCache && now - exchangeRateCache.fetchedAt < CACHE_TTL_MS) {
       return {
@@ -281,7 +306,14 @@ export const exchangeRateApi = {
       data: { rate: number; nieuwkoop_discount: number; company: { name: string; ico: string; dic: string }; companies: CompanyProfile[]; date: string | null };
     }>("/api/offers/exchange-rate");
     const { rate, nieuwkoop_discount, company, companies, date } = response.data.data;
-    exchangeRateCache = { rate, nieuwkoop_discount: nieuwkoop_discount ?? 0, company: company ?? { name: "", ico: "", dic: "" }, companies: companies ?? [], date, fetchedAt: now };
+    exchangeRateCache = {
+      rate,
+      nieuwkoop_discount: nieuwkoop_discount ?? 0,
+      company: company ?? { name: "", ico: "", dic: "" },
+      companies: companies ?? [],
+      date,
+      fetchedAt: now,
+    };
     return { rate, nieuwkoop_discount: nieuwkoop_discount ?? 0, company: company ?? { name: "", ico: "", dic: "" }, companies: companies ?? [], date };
   },
 };

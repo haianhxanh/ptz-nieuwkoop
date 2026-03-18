@@ -86,11 +86,23 @@ export function OfferDetailHeader({
 
   return (
     <>
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Zpět na seznam
         </Button>
+        <div className="flex flex-wrap gap-2">
+          {hasUnsavedChanges && (
+            <Button variant="ghost" onClick={onDiscard} disabled={saving} className="text-muted-foreground hover:text-foreground">
+              <Undo2 className="mr-2 h-4 w-4" />
+              Zrušit změny
+            </Button>
+          )}
+          <Button variant="outline" onClick={onSave} disabled={saving} className={hasUnsavedChanges ? "border-amber-500 text-amber-600 hover:bg-amber-50" : ""}>
+            <Save className="mr-2 h-4 w-4" />
+            {saving ? "Ukládání..." : hasUnsavedChanges ? "Uložit změny *" : "Uložit změny"}
+          </Button>
+        </div>
       </div>
       <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
@@ -144,16 +156,6 @@ export function OfferDetailHeader({
           </Select>
         </div>
         <div className="flex flex-wrap gap-2">
-          {hasUnsavedChanges && (
-            <Button variant="ghost" onClick={onDiscard} disabled={saving} className="text-muted-foreground hover:text-foreground">
-              <Undo2 className="mr-2 h-4 w-4" />
-              Zrušit změny
-            </Button>
-          )}
-          <Button variant="outline" onClick={onSave} disabled={saving} className={hasUnsavedChanges ? "border-amber-500 text-amber-600 hover:bg-amber-50" : ""}>
-            <Save className="mr-2 h-4 w-4" />
-            {saving ? "Ukládání..." : hasUnsavedChanges ? "Uložit změny *" : "Uložit změny"}
-          </Button>
           <Button variant="outline" onClick={onExportExcel}>
             <FileDown className="mr-2 h-4 w-4" />
             Excel

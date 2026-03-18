@@ -1,10 +1,11 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { productsApi, exchangeRateApi, type Product } from "@/lib/api";
+import { productsApi, exchangeRateApi, stockApi, type Product, type StockMap } from "@/lib/api";
 
 interface ProductsContextType {
   products: Product[];
+  stockMap: StockMap;
   loading: boolean;
   error: string | null;
   refreshProducts: () => Promise<void>;
@@ -30,6 +31,7 @@ function parsePriceEur(value: unknown): number {
 
 export function ProductsProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
+  const [stockMap, setStockMap] = useState<StockMap>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +49,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
           if (now - cachedData.timestamp < CACHE_DURATION) {
             console.log("Using cached products");
             setProducts(cachedData.products);
+            stockApi.getAll().then(setStockMap).catch(() => {});
             setLoading(false);
             return;
           }
@@ -54,7 +57,15 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       }
 
       console.log("Fetching fresh products from API");
-      const [data, { rate: exchangeRate, nieuwkoop_discount }] = await Promise.all([productsApi.list(), exchangeRateApi.get()]);
+      const [data, { rate: exchangeRate, nieuwkoop_discount }, stock] = await Promise.all([
+        productsApi.list(),
+        exchangeRateApi.get(),
+        stockApi.getAll().catch(() => ({} as StockMap)),
+      ]);
+      setStockMap(stock);
+
+      const isStock = data.products.find((product: any) => product.IsStockItem === true);
+      console.log("Is stock:", isStock);
 
       if (data.products && Array.isArray(data.products)) {
         const rate = Number(exchangeRate) || 25;
@@ -81,6 +92,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
               diameter: product.Diameter,
               opening: product.Opening,
               length: product.Length,
+              pot_size: product.PotSize,
             },
             delivery_time: product.DeliveryTimeInDays,
           };
@@ -110,7 +122,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
     loadProducts();
   }, []);
 
-  return <ProductsContext.Provider value={{ products, loading, error, refreshProducts }}>{children}</ProductsContext.Provider>;
+  return <ProductsContext.Provider value={{ products, stockMap, loading, error, refreshProducts }}>{children}</ProductsContext.Provider>;
 }
 
 export function useProducts() {

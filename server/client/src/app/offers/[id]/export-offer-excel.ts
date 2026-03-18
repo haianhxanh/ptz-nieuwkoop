@@ -108,7 +108,7 @@ export function buildAndDownloadOfferExcel(
         }, 0) * 100,
       ) / 100;
     const rawDiscount = Number(group.discount) || 0;
-    const discount = group.discount_type === "percent" ? Math.round(sectionP * rawDiscount / 100 * 100) / 100 : rawDiscount;
+    const discount = group.discount_type === "percent" ? Math.round(((sectionP * rawDiscount) / 100) * 100) / 100 : rawDiscount;
     const discountLabel = group.discount_type === "percent" ? `Sleva ${rawDiscount} % — ${group.name}` : `Sleva — ${group.name}`;
 
     if (discount > 0) {
@@ -180,7 +180,7 @@ export function buildAndDownloadOfferExcel(
   styleCell(prodejExclRow, 7, MUTED);
 
   const marze = totals.totalSell - totals.total;
-  const marzePercent = totals.total > 0 ? ((marze / totals.total) * 100).toFixed(1) : "0.0";
+  const marzePercent = totals.totalSell > 0 ? ((marze / totals.totalSell) * 100).toFixed(1) : "0.0";
   const marzeRow = currentRow();
   styleCell(marzeRow, 0, GREEN);
   styleCell(marzeRow, 7, GREEN);

@@ -3,11 +3,13 @@ import logger from "morgan";
 import dotenv from "dotenv";
 import cors from "cors";
 import path from "path";
+import cron from "node-cron";
 import all_routes from "./routes/all.route";
 import wolt_routes from "./app_wolt/routes";
 import api_routes from "./routes/api.route";
 import bodyParser from "body-parser";
 import { db } from "./database_connection/db_connect";
+import { syncAllStock } from "./controllers/stock_sync.controller";
 
 dotenv.config();
 
@@ -59,6 +61,16 @@ app.use("/", all_routes);
 db.sync({ alter: true })
   .then(() => {
     console.log("Database is connected SUCCESSFULLY");
+
+    if (process.env.NODE_ENV === "production") {
+      syncAllStock().catch((err) => console.error("[StockSync] Initial sync failed:", err));
+      cron.schedule("0 */6 * * *", () => {
+        syncAllStock().catch((err) => console.error("[StockSync] Scheduled sync failed:", err));
+      });
+      console.log("[StockSync] Cron scheduled: every 6 hours");
+    } else {
+      console.log("[StockSync] Skipped in development — use GET /get-stock/sync to trigger manually");
+    }
   })
   .catch((error) => {
     console.error("Unable to connect to the database:", error);

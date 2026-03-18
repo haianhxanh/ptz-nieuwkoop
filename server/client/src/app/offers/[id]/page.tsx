@@ -50,6 +50,7 @@ export default function OfferDetailPage() {
     addGroup,
     removeGroup,
     renameGroup,
+    updateGroupNotes,
     updateGroupDiscount,
     removeItemFromGroup,
     updateItemQuantity,
@@ -151,12 +152,21 @@ export default function OfferDetailPage() {
       const discountAmount = rawDiscount > 0 ? (discountType === "percent" ? (groupTotal * rawDiscount) / 100 : rawDiscount) : 0;
       const discountRatio = groupTotal > 0 && discountAmount > 0 ? 1 - discountAmount / groupTotal : 1;
 
-      return itemsWithVat.map((item) => ({
-        name: item.name,
-        quantity: item.quantity,
-        unit_price: Math.round(item.priceWithVat * discountRatio * 100) / 100,
-        vat_rate: item.vat_rate ?? 21,
-      }));
+      return itemsWithVat.map((item) => {
+        const dimParts: string[] = [];
+        if (item.dimensions) {
+          if (item.dimensions.height) dimParts.push(`Výška: ${item.dimensions.height} cm`);
+          if (item.dimensions.diameter) dimParts.push(`Průměr: ${item.dimensions.diameter} cm`);
+          if (item.dimensions.pot_size) dimParts.push(`Květináč: ${item.dimensions.pot_size} cm`);
+        }
+        const nameWithDims = dimParts.length > 0 ? `${item.name} (${dimParts.join(", ")})` : item.name;
+        return {
+          name: nameWithDims,
+          quantity: item.quantity,
+          unit_price: Math.round(item.priceWithVat * discountRatio * 100) / 100,
+          vat_rate: item.vat_rate ?? 21,
+        };
+      });
     });
 
     const additionalLineItems = additionalItems
@@ -252,7 +262,7 @@ export default function OfferDetailPage() {
           onDelete={handleDelete}
           proformaUrl={offer.proforma_url}
           proformaId={offer.proforma_id}
-          fakturoidSlug={process.env.NODE_ENV === "development" ? "upgrowthdev" : (companyProfile?.fakturoid_slug || "")}
+          fakturoidSlug={process.env.NODE_ENV === "development" ? "upgrowthdev" : companyProfile?.fakturoid_slug || ""}
           creatingProforma={creatingProforma}
           onCreateProforma={handleCreateProforma}
           onUpdateProforma={handleUpdateProforma}
@@ -269,6 +279,7 @@ export default function OfferDetailPage() {
               onQuantityChange={updateItemQuantity}
               onGroupDiscountChange={updateGroupDiscount}
               onGroupRename={renameGroup}
+              onGroupNotesChange={updateGroupNotes}
               onGroupRemove={removeGroup}
               onItemRemove={removeItemFromGroup}
               onDragStart={handleDragStart}

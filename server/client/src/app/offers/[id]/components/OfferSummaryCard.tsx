@@ -214,7 +214,7 @@ export function OfferSummaryCard({
               <span>Marže</span>
               <span>
                 {formatPrice(totalSellExclVat - total, currency)}{" "}
-                <span className="text-green-600 font-normal">({(((totalSellExclVat - total) / total) * 100).toFixed(1)} %)</span>
+                <span className="text-green-600 font-normal">({(((totalSellExclVat - total) / totalSellExclVat) * 100).toFixed(1)} %)</span>
               </span>
             </div>
           )}
