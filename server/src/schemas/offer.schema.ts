@@ -33,18 +33,21 @@ export const lineItemSchema = z.object({
   vat_rate: z.number().min(0).max(100).optional(),
   dimensions: z
     .object({
-      height: z.number().min(0, "Height must be positive").optional(),
-      depth: z.number().min(0, "Depth must be positive").optional(),
-      diameter: z.number().min(0, "Diameter must be positive").optional(),
-      opening: z.number().min(0, "Opening must be positive").optional(),
-      length: z.number().min(0, "Length must be positive").optional(),
+      height: z.number().nullable().optional(),
+      depth: z.number().nullable().optional(),
+      diameter: z.number().nullable().optional(),
+      opening: z.number().nullable().optional(),
+      length: z.number().nullable().optional(),
+      pot_size: z.string().nullable().optional(),
     })
+    .nullable()
     .optional(),
 });
 
 export const itemGroupSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Group name is required"),
+  notes: z.string().optional(),
   discount: z.number().min(0, "Discount must be positive").default(0),
   discount_type: z.enum(["fixed", "percent"]).default("fixed"),
   items: z.array(lineItemSchema),

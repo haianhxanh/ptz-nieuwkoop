@@ -16,11 +16,20 @@ interface LineItem {
   unit_price: number;
   image?: string;
   vat_rate?: number;
+  dimensions?: {
+    height?: number;
+    depth?: number;
+    diameter?: number;
+    opening?: number;
+    length?: number;
+    pot_size?: string;
+  };
 }
 
 interface ItemGroup {
   id: string;
   name: string;
+  notes?: string;
   discount: number;
   discount_type?: "fixed" | "percent";
   items: LineItem[];
@@ -120,12 +129,20 @@ function renderOfferHtml(data: PdfRequestBody): string {
           const sellTotal = sellUnit * item.quantity;
           const vatAmount = sellUnitExclVat * vat * item.quantity;
           const imgHtml = item.image ? `<img src="${escHtml(item.image)}" class="product-img" />` : `<div class="product-img-placeholder"></div>`;
+          const dimParts: string[] = [];
+          if (item.dimensions) {
+            if (item.dimensions.height) dimParts.push(`Výška: ${item.dimensions.height} cm`);
+            if (item.dimensions.diameter) dimParts.push(`Průměr: ${item.dimensions.diameter} cm`);
+            if (item.dimensions.pot_size) dimParts.push(`Květináč: ${item.dimensions.pot_size} cm`);
+          }
+          const dimHtml = dimParts.length > 0 ? `<div class="product-dims">${dimParts.join(" &middot; ")}</div>` : "";
           return `
           <tr class="table-row">
             <td class="col-img">${imgHtml}</td>
             <td class="col-name">
               <div class="product-name">${escHtml(item.name)}</div>
               ${item.sku ? `<div class="product-sku">${escHtml(item.sku)}</div>` : ""}
+              ${dimHtml}
             </td>
             <td class="col-qty">${item.quantity}</td>
             <td class="col-unit">${fmt(sellUnitExclVat)}</td>
@@ -142,11 +159,16 @@ function renderOfferHtml(data: PdfRequestBody): string {
           ? `<tr class="discount-row"><td colspan="6" class="discount-label">${discountLabel}</td><td class="discount-value">−${fmt(discountAmount)}</td></tr>`
           : "";
 
+      const sectionNotesHtml = group.notes
+        ? `<div class="section-notes">${escHtml(group.notes).replace(/\n/g, "<br/>")}</div>`
+        : "";
+
       return `
       <div class="section-header">
         <span class="section-title">${escHtml(group.name)}</span>
         <span class="section-total">${fmt(netSell)}</span>
       </div>
+      ${sectionNotesHtml}
       <table class="product-table">
         <thead>
           <tr>
@@ -313,6 +335,13 @@ function renderOfferHtml(data: PdfRequestBody): string {
     background-color: #f2f2f2;
     padding: 6px 8px;
   }
+  .section-notes {
+    font-size: 10px;
+    color: #4b5563;
+    font-style: italic;
+    padding: 4px 8px 6px;
+    line-height: 1.4;
+  }
   .section-title {
     font-size: 11px;
     font-weight: 700;
@@ -370,6 +399,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
   }
   .product-name { font-size: 12px; font-weight: 500; }
   .product-sku { font-size: 10.5px; color: #6b7280; margin-top: 1px; }
+  .product-dims { font-size: 10px; color: #9ca3af; margin-top: 1px; }
 
   /* Discount row */
   .discount-row td { border: none; padding: 4px 0; color:rgb(220, 68, 68);}

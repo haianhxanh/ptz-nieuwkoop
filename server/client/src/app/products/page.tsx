@@ -22,7 +22,7 @@ function ProductsPageContent() {
   const targetGroupId = searchParams?.get("group");
 
   // Use cached products from context
-  const { products, loading, refreshProducts } = useProducts();
+  const { products, stockMap, loading, refreshProducts } = useProducts();
 
   const [filteredProducts, setFilteredProducts] = useState(products);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
@@ -117,6 +117,7 @@ function ProductsPageContent() {
           total: unitPrice,
           image: product.image,
           vat_rate: product.vat_rate ?? 21,
+          dimensions: product.dimensions,
         };
       });
   };
@@ -269,6 +270,7 @@ function ProductsPageContent() {
                       <TableHead>Kolekce</TableHead>
                       <TableHead>Substrát</TableHead>
                       <TableHead>Dodání (dny)</TableHead>
+                      <TableHead>Sklad</TableHead>
                       <TableHead>Rozměry</TableHead>
                       <TableHead>
                         <TooltipProvider>
@@ -309,6 +311,18 @@ function ProductsPageContent() {
                         <TableCell>{product.collection}</TableCell>
                         <TableCell>{product.substrate ?? "—"}</TableCell>
                         <TableCell className="text-center">{product.delivery_time ?? "—"}</TableCell>
+                        <TableCell className="text-center">
+                          {(() => {
+                            const stock = stockMap[product.sku];
+                            if (!stock) return <span className="text-muted-foreground">—</span>;
+                            const qty = stock.stock_available;
+                            return (
+                              <span className={qty > 0 ? "font-medium text-green-600" : "text-red-500"}>
+                                {qty > 0 ? qty : "0"}
+                              </span>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
                             {product.dimensions?.height > 0 && <span>Výška: {product.dimensions.height} cm</span>}
@@ -316,6 +330,7 @@ function ProductsPageContent() {
                             {product.dimensions?.diameter > 0 && <span>Průměr: {product.dimensions.diameter} cm</span>}
                             {product.dimensions?.opening > 0 && <span>Průměr vnitřní: {product.dimensions.opening} cm</span>}
                             {product.dimensions?.length > 0 && <span>Délka: {product.dimensions.length} cm</span>}
+                            {product.dimensions?.pot_size && <span>Velikost květináče: {product.dimensions.pot_size} cm</span>}
                           </div>
                         </TableCell>
                         <TableCell className="font-semibold">
