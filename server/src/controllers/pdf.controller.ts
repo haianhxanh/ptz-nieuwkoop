@@ -141,7 +141,6 @@ function renderOfferHtml(data: PdfRequestBody): string {
             <td class="col-img">${imgHtml}</td>
             <td class="col-name">
               <div class="product-name">${escHtml(item.name)}</div>
-              ${item.sku ? `<div class="product-sku">${escHtml(item.sku)}</div>` : ""}
               ${dimHtml}
             </td>
             <td class="col-qty">${item.quantity}</td>
@@ -159,9 +158,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
           ? `<tr class="discount-row"><td colspan="6" class="discount-label">${discountLabel}</td><td class="discount-value">−${fmt(discountAmount)}</td></tr>`
           : "";
 
-      const sectionNotesHtml = group.notes
-        ? `<div class="section-notes">${escHtml(group.notes).replace(/\n/g, "<br/>")}</div>`
-        : "";
+      const sectionNotesHtml = group.notes ? `<div class="section-notes">${escHtml(group.notes).replace(/\n/g, "<br/>")}</div>` : "";
 
       return `
       <div class="section-header">
