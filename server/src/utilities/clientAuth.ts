@@ -29,6 +29,17 @@ function getCFToken(req: Request): string | undefined {
     return jwtAssertion.trim();
   }
 
+  const cookieHeader = req.headers["cookie"] || "";
+  const cfCookie = cookieHeader
+    .split(";")
+    .map((c) => c.trim())
+    .find((c) => c.startsWith("CF_Authorization="))
+    ?.split("=")[1];
+
+  if (cfCookie) {
+    return cfCookie;
+  }
+
   return undefined;
 }
 
