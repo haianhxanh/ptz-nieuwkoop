@@ -14,10 +14,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      if (typeof window !== "undefined") {
-        // Cloudflare Access will handle re-authentication
-        window.location.reload();
-      }
+      console.error("Unauthorized API request", {
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
     }
     return Promise.reject(error);
   },
