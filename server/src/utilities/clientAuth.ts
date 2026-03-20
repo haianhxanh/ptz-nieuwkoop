@@ -6,7 +6,14 @@ dotenv.config();
 
 const { CF_TEAM_DOMAIN, CF_AUTH_ENABLED, CF_ACCESS_AUD } = process.env;
 
-const JWKS = CF_TEAM_DOMAIN ? createRemoteJWKSet(new URL(`https://${CF_TEAM_DOMAIN}/cdn-cgi/access/certs`)) : null;
+function getTeamDomainUrl(): URL | null {
+  if (!CF_TEAM_DOMAIN) return null;
+  const rawValue = CF_TEAM_DOMAIN.startsWith("http") ? CF_TEAM_DOMAIN : `https://${CF_TEAM_DOMAIN}`;
+  return new URL(rawValue);
+}
+
+const TEAM_DOMAIN_URL = getTeamDomainUrl();
+const JWKS = TEAM_DOMAIN_URL ? createRemoteJWKSet(new URL("/cdn-cgi/access/certs", TEAM_DOMAIN_URL)) : null;
 
 declare global {
   namespace Express {
@@ -22,15 +29,6 @@ function getCFToken(req: Request): string | undefined {
     return jwtAssertion.trim();
   }
 
-  const cfAuthorization = req.headers["cf-authorization"];
-  if (typeof cfAuthorization === "string" && cfAuthorization.trim()) {
-    return cfAuthorization.trim();
-  }
-
-  const cookieHeader = req.headers.cookie || "";
-  const match = cookieHeader.match(/(?:^|;\s*)CF_Authorization=([^;]+)/);
-  if (match) return decodeURIComponent(match[1]);
-
   return undefined;
 }
 
@@ -40,8 +38,8 @@ export const clientAuth = async (req: Request, res: Response, next: NextFunction
     return next();
   }
 
-  if (!JWKS) {
-    console.error("CF_TEAM_DOMAIN is not set but CF_AUTH_ENABLED=true");
+  if (!TEAM_DOMAIN_URL || !JWKS || !CF_ACCESS_AUD) {
+    console.error("Cloudflare Access auth is misconfigured");
     return res.status(500).json({ error: "Auth misconfiguration" });
   }
 
@@ -52,16 +50,29 @@ export const clientAuth = async (req: Request, res: Response, next: NextFunction
   }
 
   try {
-    const verifyOptions: { algorithms: string[]; audience?: string } = { algorithms: ["RS256"] };
-    if (CF_ACCESS_AUD) {
-      verifyOptions.audience = CF_ACCESS_AUD;
-    }
-
-    const { payload } = await jwtVerify(token, JWKS, verifyOptions);
+    const { payload } = await jwtVerify(token, JWKS, {
+      issuer: TEAM_DOMAIN_URL.origin,
+      audience: CF_ACCESS_AUD,
+    });
     req.userEmail = (payload.email as string) || (payload.sub as string);
     next();
   } catch (err) {
+    let decodedPayload: unknown = null;
+
+    try {
+      decodedPayload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
+    } catch {
+      decodedPayload = "Unable to decode token payload";
+    }
+
     console.error("CF JWT verification failed:", err);
+    console.error("CF auth debug", {
+      host: req.headers.host,
+      hasJwtAssertion: !!req.headers["cf-access-jwt-assertion"],
+      issuerExpected: TEAM_DOMAIN_URL.origin,
+      audienceExpected: CF_ACCESS_AUD,
+      payload: decodedPayload,
+    });
     return res.status(401).json({ error: "Unauthorized: Invalid token" });
   }
 };
