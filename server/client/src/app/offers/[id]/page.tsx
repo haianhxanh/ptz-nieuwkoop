@@ -144,7 +144,7 @@ export default function OfferDetailPage() {
 
       const itemsWithVat = group.items.map((item) => {
         const vat = (item.vatRate ?? 21) / 100;
-        const priceWithVat = item.unitPrice * multiplier * (1 + vat);
+        const priceWithVat = item.unitCost * multiplier * (1 + vat);
         return { ...item, priceWithVat, totalWithVat: priceWithVat * item.quantity };
       });
 
@@ -170,11 +170,11 @@ export default function OfferDetailPage() {
     });
 
     const additionalLineItems = additionalItems
-      .filter((a) => (Number(a.sellPrice) || 0) > 0)
+      .filter((a) => (Number(a.price) || 0) > 0)
       .map((a) => ({
         name: a.title,
         quantity: 1,
-        unit_price: Number(a.sellPrice) || 0,
+        unit_price: Number(a.price) || 0,
         vat_rate: 21,
       }));
 
@@ -295,12 +295,7 @@ export default function OfferDetailPage() {
 
           <div className="space-y-6">
             <OfferCompanyCard companyProfile={companyProfile} availableCompanies={availableCompanies} onChange={setCompanyProfile} />
-            <OfferClientCard
-              client={offer.client}
-              allClients={allClients}
-              selectedClientId={selectedClientId}
-              onClientChange={setSelectedClientId}
-            />
+            <OfferClientCard client={offer.client} allClients={allClients} selectedClientId={selectedClientId} onClientChange={setSelectedClientId} />
             <OfferSummaryCard
               additionalItems={additionalItems}
               onAdditionalItemsChange={setAdditionalItems}
@@ -308,10 +303,8 @@ export default function OfferDetailPage() {
               onEditingAdditionalIndexChange={setEditingAdditionalIndex}
               onUnsavedChange={markUnsaved}
               currency={offer.currency}
-              tax={Number(offer.tax) || 0}
               groupsDiscount={totals.groupsDiscount}
               total={totals.total}
-              totalSell={totals.totalSell}
               totalSellExclVat={totals.totalSellExclVat}
               totalRounded={totalRounded}
               onTotalRoundedChange={setTotalRounded}

@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import DmpOffer from "../model/dmp_offer.model";
 import DmpClient, { DMP_CLIENT } from "../model/dmp_client.model";
 import DmpUser from "../model/dmp_user.model";
@@ -38,16 +39,16 @@ export class OffersService {
     };
   }
 
-  private getUnitPrice(item: any): number {
-    return Number(item?.unitPrice ?? item?.unit_price ?? 0);
+  private getUnitCost(item: any): number {
+    return Number(item?.unitCost ?? item?.unitPrice ?? item?.unit_cost ?? item?.unit_price ?? 0);
   }
 
   private getVatRate(item: any): number {
     return Number(item?.vatRate ?? item?.vat_rate ?? 21);
   }
 
-  private getUnitPriceEur(item: any): number | null {
-    const value = item?.unitPriceEur ?? item?.unit_price_eur;
+  private getUnitCostEur(item: any): number | null {
+    const value = item?.unitCostEur ?? item?.unitPriceEur ?? item?.unit_cost_eur ?? item?.unit_price_eur;
     return value == null ? null : Number(value);
   }
 
@@ -56,9 +57,19 @@ export class OffersService {
   }
 
   private normalizeAdditionalItem(item: any) {
+    const hasNewCostField = item?.cost != null;
     return {
-      ...item,
-      sellPrice: item?.sellPrice ?? item?.sell_price ?? null,
+      title: item?.title ?? "",
+      cost: Number(item?.cost ?? item?.price ?? 0),
+      price: hasNewCostField
+        ? item?.price != null
+          ? Number(item.price)
+          : undefined
+        : item?.sellPrice != null
+          ? Number(item.sellPrice)
+          : item?.sell_price != null
+            ? Number(item.sell_price)
+            : undefined,
     };
   }
 
@@ -66,8 +77,8 @@ export class OffersService {
     return {
       ...item,
       productId: item?.productId ?? item?.product_id,
-      unitPrice: this.getUnitPrice(item),
-      unitPriceEur: this.getUnitPriceEur(item),
+      unitCost: this.getUnitCost(item),
+      unitCostEur: this.getUnitCostEur(item),
       vatRate: this.getVatRate(item),
       dimensions: item?.dimensions
         ? {
@@ -104,7 +115,6 @@ export class OffersService {
       discount: plain.discount == null ? null : Number(plain.discount),
       tax: plain.tax == null ? null : Number(plain.tax),
       total: Number(plain.total ?? 0),
-      totalSell: plain.totalSell == null ? null : Number(plain.totalSell),
       totalRounded: plain.totalRounded == null ? null : Number(plain.totalRounded),
       currency: plain.currency,
       exchangeRate: plain.exchangeRate == null ? null : Number(plain.exchangeRate),
@@ -144,6 +154,7 @@ export class OffersService {
     const normalizedEmail = clientData.email?.trim().toLowerCase();
     const where = normalizedEmail ? { email: normalizedEmail } : { name: clientData.name };
     const defaults: Partial<DMP_CLIENT> = {
+      id: randomUUID(),
       name: clientData.name,
       email: normalizedEmail,
       phone: clientData.phone,
@@ -173,9 +184,9 @@ export class OffersService {
     return this.toApiClient(client);
   }
 
-  private sumAdditionalItems(additionalItems: { title: string; price: number }[] | undefined): number {
+  private sumAdditionalItems(additionalItems: { title: string; cost: number }[] | undefined): number {
     if (!Array.isArray(additionalItems)) return 0;
-    return additionalItems.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+    return additionalItems.reduce((sum, a) => sum + (Number(a.cost) || 0), 0);
   }
 
   async findUserByEmail(email: string): Promise<DmpUser | null> {
@@ -197,6 +208,7 @@ export class OffersService {
     }
 
     const offer = await DmpOffer.create({
+      id: randomUUID(),
       clientId: client.get("id") as string,
       title: data.title,
       description: data.description,
@@ -278,15 +290,14 @@ export class OffersService {
     }
 
     const groups = (data.items || (offer.get("items") as any[]) || []).map((group: any) => this.normalizeItemGroup(group));
-    const additionalItems =
-      (data.additionalItems !== undefined ? data.additionalItems : (offer.get("additionalItems") as { title: string; price: number }[]) || []).map((item: any) =>
-        this.normalizeAdditionalItem(item),
-      );
+    const additionalItems = (
+      data.additionalItems !== undefined ? data.additionalItems : (offer.get("additionalItems") as { title: string; cost: number; price?: number }[]) || []
+    ).map((item: any) => this.normalizeAdditionalItem(item));
 
     const allItems = groups.flatMap((g: any) => (Array.isArray(g.items) ? g.items : []));
 
     const itemsSubtotal = allItems.reduce((sum: number, item: any) => {
-      return sum + this.getUnitPrice(item) * item.quantity;
+      return sum + this.getUnitCost(item) * item.quantity;
     }, 0);
 
     const sellMultiplier = data.sellMultiplier !== undefined ? Number(data.sellMultiplier) : Number(offer.get("sellMultiplier")) || 1;
@@ -296,7 +307,7 @@ export class OffersService {
       if (this.getDiscountType(g) === "percent") {
         const groupSell = (g.items || []).reduce((s: number, item: any) => {
           const vat = this.getVatRate(item) / 100;
-          return s + this.getUnitPrice(item) * (1 + vat) * sellMultiplier * item.quantity;
+          return s + this.getUnitCost(item) * (1 + vat) * sellMultiplier * item.quantity;
         }, 0);
         return sum + (groupSell * raw) / 100;
       }
@@ -311,12 +322,13 @@ export class OffersService {
 
     const additionalTotal = this.sumAdditionalItems(additionalItems);
     const total = itemsSubtotal - totalDiscount + tax + additionalTotal;
-    const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.sellPrice) || 0), 0);
+    const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.price) || 0), 0);
     const itemsSellSubtotal = allItems.reduce((sum: number, item: any) => {
       const vat = this.getVatRate(item) / 100;
-      return sum + this.getUnitPrice(item) * (1 + vat) * sellMultiplier * item.quantity;
+      return sum + this.getUnitCost(item) * (1 + vat) * sellMultiplier * item.quantity;
     }, 0);
-    const totalSell = itemsSellSubtotal - totalDiscount + additionalSellTotal;
+    const itemsSellExclVat = allItems.reduce((sum: number, item: any) => sum + this.getUnitCost(item) * sellMultiplier * item.quantity, 0);
+    const totalSellExclVat = itemsSellExclVat - totalDiscount + additionalSellTotal;
 
     const updatePayload: Record<string, unknown> = {
       clientId: data.clientId,
@@ -330,7 +342,6 @@ export class OffersService {
       discount: Number(totalDiscount.toFixed(2)),
       tax: tax,
       total: Number(total.toFixed(2)),
-      totalSell: Number(totalSell.toFixed(2)),
       status: data.status ? data.status.toUpperCase() : undefined,
     };
     if (data.exchangeRate !== undefined) {
@@ -343,7 +354,7 @@ export class OffersService {
       updatePayload.sellMultiplier = data.sellMultiplier;
     }
     if (data.totalRounded !== undefined) {
-      updatePayload.totalRounded = data.totalRounded ?? Math.round(totalSell);
+      updatePayload.totalRounded = data.totalRounded ?? Math.round(totalSellExclVat);
     }
     if (data.companyProfile !== undefined) {
       updatePayload.companyProfile = data.companyProfile;
@@ -398,14 +409,14 @@ export class OffersService {
     }
 
     const allItems = updatedGroups.flatMap((g: any) => (Array.isArray(g.items) ? g.items : []));
-    const itemsSubtotal = allItems.reduce((sum: number, item: any) => sum + this.getUnitPrice(item) * item.quantity, 0);
+    const itemsSubtotal = allItems.reduce((sum: number, item: any) => sum + this.getUnitCost(item) * item.quantity, 0);
     const sellMultiplier = Number(offer.get("sellMultiplier")) || 1;
     const groupsDiscount = updatedGroups.reduce((sum: number, g: any) => {
       const raw = Number(g.discount) || 0;
       if (this.getDiscountType(g) === "percent") {
         const groupSell = (g.items || []).reduce((s: number, item: any) => {
           const vat = this.getVatRate(item) / 100;
-          return s + this.getUnitPrice(item) * (1 + vat) * sellMultiplier * item.quantity;
+          return s + this.getUnitCost(item) * (1 + vat) * sellMultiplier * item.quantity;
         }, 0);
         return sum + (groupSell * raw) / 100;
       }
@@ -414,18 +425,16 @@ export class OffersService {
     const orderDiscount = Number(offer.get("orderDiscount")) || 0;
     const totalDiscount = groupsDiscount + orderDiscount;
     const tax = Number(offer.get("tax")) || 0;
-    const additionalItems = ((offer.get("additionalItems") as { title: string; price: number; sellPrice?: number }[]) || []).map((item: any) =>
+    const additionalItems = ((offer.get("additionalItems") as { title: string; cost: number; price?: number }[]) || []).map((item: any) =>
       this.normalizeAdditionalItem(item),
     );
     const additionalTotal = this.sumAdditionalItems(additionalItems);
     const total = itemsSubtotal - totalDiscount + tax + additionalTotal;
-    const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.sellPrice) || 0), 0);
+    const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.price) || 0), 0);
     const itemsSellSubtotal = allItems.reduce((sum: number, item: any) => {
       const vat = this.getVatRate(item) / 100;
-      return sum + this.getUnitPrice(item) * (1 + vat) * sellMultiplier * item.quantity;
+      return sum + this.getUnitCost(item) * (1 + vat) * sellMultiplier * item.quantity;
     }, 0);
-    const totalSell = itemsSellSubtotal - totalDiscount + additionalSellTotal;
-
     await offer.update({
       items: updatedGroups,
       subtotal: Number(itemsSubtotal.toFixed(2)),
@@ -433,7 +442,6 @@ export class OffersService {
       orderDiscount: Number(orderDiscount.toFixed(2)),
       discount: Number(totalDiscount.toFixed(2)),
       total: Number(total.toFixed(2)),
-      totalSell: Number(totalSell.toFixed(2)),
       totalRounded: null as any,
     });
 
@@ -452,6 +460,7 @@ export class OffersService {
 
     const d = original.get({ plain: true }) as any;
     const duplicated = await DmpOffer.create({
+      id: randomUUID(),
       clientId: d.clientId,
       title: `Kopie – ${d.title}`,
       description: d.description,
@@ -459,7 +468,6 @@ export class OffersService {
       additionalItems: d.additionalItems,
       subtotal: d.subtotal,
       total: d.total,
-      totalSell: d.totalSell,
       currency: d.currency,
       exchangeRate: d.exchangeRate,
       status: "DRAFT",

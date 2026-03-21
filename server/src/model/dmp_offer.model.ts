@@ -4,7 +4,7 @@ import DmpClient from "./dmp_client.model";
 import DmpUser from "./dmp_user.model";
 
 export type DMP_OFFER_STATUS = "DRAFT" | "SENT" | "ACCEPTED" | "REJECTED" | "EXPIRED";
-export type DmpAdditionalItem = { title: string; price: number; sell_price?: number };
+export type DmpAdditionalItem = { title: string; cost: number; price?: number };
 
 export type DMP_OFFER = {
   id?: string;
@@ -20,7 +20,6 @@ export type DMP_OFFER = {
   discount?: number | null;
   tax?: number | null;
   total: number;
-  totalSell?: number | null;
   totalRounded?: number | null;
   currency?: string;
   exchangeRate?: number;
@@ -103,11 +102,6 @@ DmpOffer.init(
     total: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
-      defaultValue: 0,
-    },
-    totalSell: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: true,
       defaultValue: 0,
     },
     totalRounded: {

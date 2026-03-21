@@ -16,8 +16,8 @@ export const clientSchema = z.object({
 
 export const additionalItemSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  price: z.number().min(0, "Price must be positive"),
-  sellPrice: z.number().min(0, "Sell price must be positive").optional(),
+  cost: z.number().min(0, "Cost must be positive"),
+  price: z.number().min(0, "Price must be positive").optional(),
 });
 
 export const lineItemSchema = z.object({
@@ -26,8 +26,8 @@ export const lineItemSchema = z.object({
   name: z.string().min(1, "Item name is required"),
   description: z.string().optional(),
   quantity: z.number().min(1, "Quantity must be at least 1"),
-  unitPrice: z.number().min(0, "Price must be positive"),
-  unitPriceEur: z.number().min(0, "Unit price EUR must be positive").optional(),
+  unitCost: z.number().min(0, "Cost must be positive"),
+  unitCostEur: z.number().min(0, "Unit cost EUR must be positive").optional(),
   total: z.number().min(0, "Total must be positive"),
   image: z.string().optional(),
   vatRate: z.number().min(0).max(100).optional(),

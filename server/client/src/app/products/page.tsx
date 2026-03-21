@@ -106,15 +106,15 @@ function ProductsPageContent() {
     return products
       .filter((p) => selectedProducts.has(p.id))
       .map((product) => {
-        const unitPrice = Number(product.unitPrice) || 0;
-        const unitPriceEur = Number(product.unitPriceEur);
+        const unitCost = Number(product.unitCost) || 0;
+        const unitCostEur = Number(product.unitCostEur);
         return {
           sku: product.sku,
           name: product.title,
           quantity: 1,
-          unitPrice,
-          unitPriceEur: Number.isNaN(unitPriceEur) ? Math.round((unitPrice / rate) * 100) / 100 : unitPriceEur,
-          total: unitPrice,
+          unitCost,
+          unitCostEur: Number.isNaN(unitCostEur) ? Math.round((unitCost / rate) * 100) / 100 : unitCostEur,
+          total: unitCost,
           image: product.image,
           vatRate: product.vatRate ?? 21,
           dimensions: product.dimensions,
@@ -334,7 +334,7 @@ function ProductsPageContent() {
                           </div>
                         </TableCell>
                         <TableCell className="font-semibold">
-                          {(Number(product.unitPriceEur) || 0).toFixed(2)} EUR / {formatPrice(product.price)}
+                          {(Number(product.unitCostEur) || 0).toFixed(2)} EUR / {formatPrice(product.price)}
                         </TableCell>
                       </TableRow>
                     ))}

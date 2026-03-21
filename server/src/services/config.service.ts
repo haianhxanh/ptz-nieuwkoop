@@ -1,18 +1,18 @@
+import { randomUUID } from "crypto";
 import DmpConfig from "../model/dmp_config.model";
 
 export class ConfigService {
+  async getByKey(key: string): Promise<DmpConfig | null> {
+    return await DmpConfig.findOne({ where: { key } });
+  }
+
   async get(key: string): Promise<string | null> {
-    const config = await DmpConfig.findOne({ where: { key } });
+    const config = await this.getByKey(key);
     return config ? (config.get("value") as string) : null;
   }
 
   async set(key: string, value: string, description?: string): Promise<DmpConfig> {
-    const [config] = await DmpConfig.upsert({
-      key,
-      value,
-      description,
-    });
-    return config;
+    return await this.saveConfig(key, value, description);
   }
 
   async getExchangeRate(): Promise<number> {
@@ -53,6 +53,26 @@ export class ConfigService {
   async listAll(): Promise<DmpConfig[]> {
     return await DmpConfig.findAll({
       order: [["key", "ASC"]],
+    });
+  }
+
+  async saveConfig(key: string, value: string, description?: string): Promise<DmpConfig> {
+    const existing = await this.getByKey(key);
+    const nextDescription = description !== undefined ? description : ((existing?.get("description") as string | null) ?? undefined);
+
+    if (existing) {
+      await existing.update({
+        value,
+        description: nextDescription,
+      });
+      return existing;
+    }
+
+    return await DmpConfig.create({
+      id: randomUUID(),
+      key,
+      value,
+      description: nextDescription,
     });
   }
 }

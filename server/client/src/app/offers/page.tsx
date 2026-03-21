@@ -27,11 +27,10 @@ function computeSellTotal(offer: Offer): number {
   let subtotal = 0;
   for (const g of groups) {
     for (const item of g.items || []) {
-      const vat = (item.vatRate ?? 21) / 100;
-      subtotal += item.unitPrice * (1 + vat) * multiplier * item.quantity;
+      subtotal += item.unitCost * multiplier * item.quantity;
     }
   }
-  const additionalSell = ((offer as any).additionalItems || []).reduce((s: number, a: any) => s + (Number(a.sellPrice) || 0), 0);
+  const additionalSell = ((offer as any).additionalItems || []).reduce((s: number, a: any) => s + (Number(a.price) || 0), 0);
   const discount = Number(offer.discount) || 0;
   return subtotal - discount + additionalSell;
 }

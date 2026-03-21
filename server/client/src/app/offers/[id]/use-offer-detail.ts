@@ -79,15 +79,21 @@ export function useOfferDetail() {
       setLoading(true);
       const data = await offersApi.getById(id);
       if (data.success) {
+        const normalizedGroups = normalizeGroups(data.data.items || []);
+        const resolvedSellMultiplier = Number(data.data.sellMultiplier) || 1;
+        const resolvedAdditionalItems = data.data.additionalItems?.length ? data.data.additionalItems : DEFAULT_ADDITIONAL_ITEMS;
+        const computedTotals = calculateTotalsForState(normalizedGroups, resolvedSellMultiplier, resolvedAdditionalItems);
+        const storedRounded = data.data.totalRounded != null ? Number(data.data.totalRounded) : null;
+
         setOffer(data.data);
-        setEditedGroups(normalizeGroups(data.data.items || []));
-        setSellMultiplier(Number(data.data.sellMultiplier) || 1);
+        setEditedGroups(normalizedGroups);
+        setSellMultiplier(resolvedSellMultiplier);
         setStatus(data.data.status);
         setOfferTitle(data.data.title || "");
         setDescription(data.data.description || "");
         setNotesText(data.data.notes || "");
-        setAdditionalItems(data.data.additionalItems?.length ? data.data.additionalItems : DEFAULT_ADDITIONAL_ITEMS);
-        setTotalRounded(data.data.totalRounded != null ? Number(data.data.totalRounded) : null);
+        setAdditionalItems(resolvedAdditionalItems);
+        setTotalRounded(shouldResetLegacyRoundedTotal(storedRounded, computedTotals) ? null : storedRounded);
         const storedProfile = data.data.companyProfile ?? null;
         if (storedProfile && availableCompanies.length > 0) {
           const match = availableCompanies.find((c) => c.companyName === storedProfile.companyName);
@@ -139,9 +145,7 @@ export function useOfferDetail() {
   };
 
   const updateGroupDiscount = (groupIndex: number, discount: number, discountType?: "fixed" | "percent") => {
-    setEditedGroups((prev) =>
-      prev.map((g, i) => (i === groupIndex ? { ...g, discount, ...(discountType !== undefined ? { discountType } : {}) } : g)),
-    );
+    setEditedGroups((prev) => prev.map((g, i) => (i === groupIndex ? { ...g, discount, ...(discountType !== undefined ? { discountType } : {}) } : g)));
     setTotalRounded(null);
     setHasUnsavedChanges(true);
   };
@@ -161,7 +165,7 @@ export function useOfferDetail() {
         const newItems = [...g.items];
         const item = { ...newItems[itemIndex] };
         item.quantity = quantity;
-        item.total = item.unitPrice * quantity;
+        item.total = item.unitCost * quantity;
         newItems[itemIndex] = item;
         return { ...g, items: newItems };
       }),
@@ -222,34 +226,31 @@ export function useOfferDetail() {
     return raw;
   };
 
-  const calculateTotals = (): OfferTotals => {
-    const multiplier = Number(sellMultiplier) || 1;
-    const itemsSubtotal = editedGroups.reduce((sum, g) => sum + g.items.reduce((s, item) => s + item.unitPrice * item.quantity, 0), 0);
+  const calculateTotalsForState = (groups: ItemGroup[], multiplier: number, extras: AdditionalItem[]): OfferTotals => {
+    const itemsSubtotal = groups.reduce((sum, g) => sum + g.items.reduce((s, item) => s + item.unitCost * item.quantity, 0), 0);
 
-    const groupsDiscount = editedGroups.reduce((sum, g) => {
-      const groupSell = g.items.reduce((s, item) => {
-        const vat = (item.vatRate ?? 21) / 100;
-        return s + item.unitPrice * (1 + vat) * multiplier * item.quantity;
-      }, 0);
-      return sum + resolveGroupDiscount(g, groupSell);
+    const groupsDiscount = groups.reduce((sum, g) => {
+      const groupSellExclVat = g.items.reduce((s, item) => s + item.unitCost * multiplier * item.quantity, 0);
+      return sum + resolveGroupDiscount(g, groupSellExclVat);
     }, 0);
 
     const totalDiscountAmount = groupsDiscount;
-    const additionalCostTotal = additionalItems.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
-    const additionalSellTotal = additionalItems.reduce((sum, a) => sum + (Number(a.sellPrice) || 0), 0);
+    const additionalCostTotal = extras.reduce((sum, a) => sum + (Number(a.cost) || 0), 0);
+    const additionalSellTotal = extras.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
     const total = itemsSubtotal - totalDiscountAmount + additionalCostTotal;
-    const itemsSellSubtotal = editedGroups.reduce(
+    const itemsSellSubtotal = groups.reduce(
       (sum, g) =>
         sum +
         g.items.reduce((s, item) => {
-        const vat = (item.vatRate ?? 21) / 100;
-        return s + item.unitPrice * (1 + vat) * multiplier * item.quantity;
+          const vat = (item.vatRate ?? 21) / 100;
+          return s + item.unitCost * (1 + vat) * multiplier * item.quantity;
         }, 0),
       0,
     );
-    const itemsSellExclVat = editedGroups.reduce((sum, g) => sum + g.items.reduce((s, item) => s + item.unitPrice * multiplier * item.quantity, 0), 0);
+    const itemsSellExclVat = groups.reduce((sum, g) => sum + g.items.reduce((s, item) => s + item.unitCost * multiplier * item.quantity, 0), 0);
     const totalSell = itemsSellSubtotal - totalDiscountAmount + additionalSellTotal;
     const totalSellExclVat = itemsSellExclVat - totalDiscountAmount + additionalSellTotal;
+
     return {
       itemsSubtotal,
       groupsDiscount,
@@ -263,9 +264,21 @@ export function useOfferDetail() {
     };
   };
 
+  const shouldResetLegacyRoundedTotal = (storedRounded: number | null, totals: OfferTotals): boolean => {
+    if (storedRounded == null) return false;
+    const roundedNoVat = Math.round(totals.totalSellExclVat);
+    const roundedWithVat = Math.round(totals.totalSell);
+    return storedRounded === roundedWithVat && roundedWithVat !== roundedNoVat;
+  };
+
+  const calculateTotals = (): OfferTotals => {
+    const multiplier = Number(sellMultiplier) || 1;
+    return calculateTotalsForState(editedGroups, multiplier, additionalItems);
+  };
+
   // ── Exchange rate ───────────────────────────────────────────────────────────
 
-    const displayExchangeRate = Number(offer?.exchangeRate) || 25;
+  const displayExchangeRate = Number(offer?.exchangeRate) || 25;
 
   const applyTodaysExchangeRate = async () => {
     if (!offer) return;
@@ -276,12 +289,12 @@ export function useOfferDetail() {
       const recalculatedGroups = editedGroups.map((g) => ({
         ...g,
         items: g.items.map((item) => {
-          const eurPrice = Number(item.unitPriceEur) || 0;
-          const newCzk = eurPrice > 0 ? Math.round(eurPrice * rate * 100) / 100 : item.unitPrice;
+          const eurPrice = Number(item.unitCostEur) || 0;
+          const newCzk = eurPrice > 0 ? Math.round(eurPrice * rate * 100) / 100 : item.unitCost;
           return {
             ...item,
-            unitPrice: newCzk,
-            unitPriceEur: eurPrice || item.unitPriceEur,
+            unitCost: newCzk,
+            unitCostEur: eurPrice || item.unitCostEur,
             vatRate: item.vatRate ?? 21,
             total: newCzk * item.quantity,
           };
@@ -336,15 +349,15 @@ export function useOfferDetail() {
         discount: Number(g.discount) || 0,
         discountType: g.discountType || "fixed",
         items: g.items.map((item) => {
-          const unitPrice = Number(item.unitPrice) || 0;
-          const unitPriceEur = item.unitPriceEur != null ? Number(item.unitPriceEur) : Math.round((unitPrice / rate) * 100) / 100;
+          const unitCost = Number(item.unitCost) || 0;
+          const unitCostEur = item.unitCostEur != null ? Number(item.unitCostEur) : Math.round((unitCost / rate) * 100) / 100;
           return {
             ...item,
             quantity: Number(item.quantity) || 1,
-            unitPrice,
-            unitPriceEur,
+            unitCost,
+            unitCostEur,
             vatRate: item.vatRate ?? 21,
-            total: unitPrice * (Number(item.quantity) || 1),
+            total: unitCost * (Number(item.quantity) || 1),
           };
         }),
       }));
@@ -362,7 +375,7 @@ export function useOfferDetail() {
         clientId: selectedClientId || undefined,
         title: offerTitle.trim() || offer.title,
         items: sanitizedGroups,
-        additionalItems: additionalItems.map((a) => ({ title: a.title, price: Number(a.price) || 0, sellPrice: Number(a.sellPrice) || 0 })),
+        additionalItems: additionalItems.map((a) => ({ title: a.title, cost: Number(a.cost) || 0, price: Number(a.price) || 0 })),
         sellMultiplier: finalSellMultiplier,
         totalRounded,
         companyProfile,

@@ -58,8 +58,8 @@ export interface LineItem {
   name: string;
   description?: string;
   quantity: number;
-  unitPrice: number;
-  unitPriceEur?: number;
+  unitCost: number;
+  unitCostEur?: number;
   total: number;
   image?: string;
   vatRate?: number;
@@ -84,8 +84,8 @@ export interface ItemGroup {
 
 export interface AdditionalItem {
   title: string;
-  price: number;
-  sellPrice?: number;
+  cost: number;
+  price?: number;
 }
 
 export interface CompanyProfile {
@@ -133,8 +133,8 @@ export interface Product {
   sku: string;
   title: string;
   price: string;
-  unitPrice: number;
-  unitPriceEur: number;
+  unitCost: number;
+  unitCostEur: number;
   dimensions: {
     height: number;
     depth: number;
@@ -149,6 +149,15 @@ export interface Product {
   substrate: string | null;
   vatRate: number;
   deliveryTime?: number;
+}
+
+export interface AppConfig {
+  id?: string;
+  key: string;
+  value: string;
+  description?: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 // API functions
@@ -265,6 +274,23 @@ export const usersApi = {
 export const productsApi = {
   list: async () => {
     const response = await apiClient.get<{ products: any[] }>("/get-products");
+    return response.data;
+  },
+};
+
+export const configsApi = {
+  list: async () => {
+    const response = await apiClient.get<{ success: boolean; data: AppConfig[] }>("/api/offers/configs");
+    return response.data;
+  },
+
+  create: async (data: { key: string; value: string; description?: string }) => {
+    const response = await apiClient.post<{ success: boolean; data: AppConfig }>("/api/offers/configs", data);
+    return response.data;
+  },
+
+  update: async (key: string, data: { value: string; description?: string }) => {
+    const response = await apiClient.put<{ success: boolean; data: AppConfig }>(`/api/offers/configs/${encodeURIComponent(key)}`, data);
     return response.data;
   },
 };

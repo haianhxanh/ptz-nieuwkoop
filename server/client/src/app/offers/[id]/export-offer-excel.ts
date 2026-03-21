@@ -96,15 +96,15 @@ export function buildAndDownloadOfferExcel(
     for (const item of group.items) {
       const vatRate = item.vatRate ?? 21;
       itemRowIndices.push(currentRow());
-      pushRow([item.sku || "", item.name, Number(item.quantity) || 1, Number(item.unitPrice) || 0, vatRate, "", "", ""]);
+      pushRow([item.sku || "", item.name, Number(item.quantity) || 1, Number(item.unitCost) || 0, vatRate, "", "", ""]);
     }
 
-    const sectionN = Math.round(group.items.reduce((s, i) => s + i.unitPrice * i.quantity, 0) * 100) / 100;
+    const sectionN = Math.round(group.items.reduce((s, i) => s + i.unitCost * i.quantity, 0) * 100) / 100;
     const sectionP =
       Math.round(
         group.items.reduce((s, i) => {
           const vat = (i.vatRate ?? 21) / 100;
-          return s + i.unitPrice * (1 + vat) * sellMultiplier * i.quantity;
+          return s + i.unitCost * (1 + vat) * sellMultiplier * i.quantity;
         }, 0) * 100,
       ) / 100;
     const rawDiscount = Number(group.discount) || 0;
@@ -132,16 +132,16 @@ export function buildAndDownloadOfferExcel(
 
   // ── Additional items ──────────────────────────────────────────────────────────
 
-  const hasAdditional = additionalItems.some((a) => (Number(a.price) || 0) > 0 || (Number(a.sellPrice) || 0) > 0);
+  const hasAdditional = additionalItems.some((a) => (Number(a.cost) || 0) > 0 || (Number(a.price) || 0) > 0);
   if (hasAdditional) {
     const addRow = currentRow();
     for (let c = 0; c < 8; c++) styleCell(addRow, c, LIGHT_GRAY_BG);
     pushRow(["Dodatečné položky", "", "", "", "", "", "", ""]);
     for (const item of additionalItems) {
+      const cost = Number(item.cost) || 0;
       const price = Number(item.price) || 0;
-      const sellPrice = Number(item.sellPrice) || 0;
-      if (price > 0 || sellPrice > 0) {
-        pushRow(["", item.title, "", "", "", "", price || "", sellPrice || ""]);
+      if (cost > 0 || price > 0) {
+        pushRow(["", item.title, "", "", "", "", cost || "", price || ""]);
       }
     }
     pushRow([]);

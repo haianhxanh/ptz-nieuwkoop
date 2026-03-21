@@ -1,6 +1,7 @@
 import express from "express";
 import { clientAuth } from "../utilities/clientAuth";
 import { createOffer, listOffers, getOffer, updateOffer, deleteOffer, duplicateOffer, listClients, createClient, addItemsToOffer, updateClient } from "../controllers/offer.controller";
+import { createConfig, listConfigs, updateConfig } from "../controllers/config.controller";
 import { exchangeRate } from "../controllers/exchange_rate.controller";
 import { getMe } from "../controllers/user.controller";
 import { imageProxy } from "../controllers/image_proxy.controller";
@@ -17,6 +18,9 @@ router.get("/", clientAuth, listOffers);
 router.get("/clients", clientAuth, listClients);
 router.post("/clients", clientAuth, createClient);
 router.put("/clients/:id", clientAuth, updateClient);
+router.get("/configs", clientAuth, listConfigs);
+router.post("/configs", clientAuth, createConfig);
+router.put("/configs/:key", clientAuth, updateConfig);
 router.get("/customers", clientAuth, listClients);
 router.post("/customers", clientAuth, createClient);
 router.put("/customers/:id", clientAuth, updateClient);

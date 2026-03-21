@@ -37,8 +37,8 @@ interface ItemGroup {
 
 interface AdditionalItem {
   title: string;
-  price: number;
-  sell_price?: number;
+  cost: number;
+  price?: number;
 }
 
 interface OfferTotals {
@@ -103,11 +103,11 @@ function todayStr(): string {
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
 }
 
-const getUnitPrice = (item: any) => Number(item.unitPrice ?? item.unit_price ?? 0);
+const getUnitCost = (item: any) => Number(item.unitCost ?? item.unitPrice ?? item.unit_cost ?? item.unit_price ?? 0);
 const getVatRate = (item: any) => Number(item.vatRate ?? item.vat_rate ?? 21);
 const getDiscountType = (group: any) => group.discountType ?? group.discount_type ?? "fixed";
 const getPotSize = (dimensions?: any) => dimensions?.potSize ?? dimensions?.pot_size;
-const getSellPrice = (item: any) => Number(item.sellPrice ?? item.sell_price ?? 0);
+const getAdditionalPrice = (item: any) => Number(item.cost != null ? (item.price ?? 0) : (item.sellPrice ?? item.sell_price ?? 0));
 const getClientPostalCode = (client: any) => client.postalCode ?? client.postal_code;
 const getClientCompanyName = (client: any) => client.companyName ?? client.company_name;
 const getClientCompanyIco = (client: any) => client.companyIco ?? client.company_ico;
@@ -121,13 +121,13 @@ function renderOfferHtml(data: PdfRequestBody): string {
   const fmt = (v: number) => fmtCurrency(v, currency);
   const client = offer.client;
   const user = offer.user;
-  const hasAdditional = additionalItems.some((a) => getSellPrice(a) > 0);
+  const hasAdditional = additionalItems.some((a) => getAdditionalPrice(a) > 0);
 
   const groupsHtml = editedGroups
     .map((group) => {
       const sectionSell = group.items.reduce((sum, i) => {
         const vat = getVatRate(i) / 100;
-        return sum + getUnitPrice(i) * (1 + vat) * sellMultiplier * i.quantity;
+        return sum + getUnitCost(i) * (1 + vat) * sellMultiplier * i.quantity;
       }, 0);
       const discountAmount = getDiscountType(group) === "percent" ? (sectionSell * (group.discount || 0)) / 100 : group.discount || 0;
       const netSell = sectionSell - discountAmount;
@@ -136,7 +136,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
         .map((item) => {
           const vatRate = getVatRate(item);
           const vat = vatRate / 100;
-          const sellUnitExclVat = getUnitPrice(item) * sellMultiplier;
+          const sellUnitExclVat = getUnitCost(item) * sellMultiplier;
           const sellUnit = sellUnitExclVat * (1 + vat);
           const sellTotal = sellUnit * item.quantity;
           const vatAmount = sellUnitExclVat * vat * item.quantity;
@@ -212,11 +212,11 @@ function renderOfferHtml(data: PdfRequestBody): string {
          </thead>
          <tbody>
            ${additionalItems
-            .filter((a) => getSellPrice(a) > 0)
+             .filter((a) => getAdditionalPrice(a) > 0)
              .map((item) => {
-              const totalWithVat = getSellPrice(item);
-               const price = totalWithVat / 1.21;
-               const vatAmount = totalWithVat - price;
+               const price = getAdditionalPrice(item);
+               const vatAmount = price * 0.21;
+               const totalWithVat = price + vatAmount;
                return `
                <tr class="table-row">
                  <td class="col-name"><div class="product-name">${escHtml(item.title)}</div></td>
@@ -231,33 +231,35 @@ function renderOfferHtml(data: PdfRequestBody): string {
        </table>`
     : "";
 
-  const finalSell = totalRounded != null ? Number(totalRounded) : Math.round(Number(totals.totalSell));
+  const finalSell = totalRounded != null ? Number(totalRounded) : Math.round(Number(totals.totalSellExclVat));
 
   let calcExclVat = 0;
   let calcInclVat = 0;
+  let totalDiscountInclVat = 0;
   for (const group of editedGroups) {
     const sectionSell = group.items.reduce((sum, i) => {
       const vat = getVatRate(i) / 100;
-      return sum + getUnitPrice(i) * (1 + vat) * sellMultiplier * i.quantity;
+      return sum + getUnitCost(i) * (1 + vat) * sellMultiplier * i.quantity;
     }, 0);
     const disc = getDiscountType(group) === "percent" ? (sectionSell * (group.discount || 0)) / 100 : group.discount || 0;
-    const sectionExcl = group.items.reduce((sum, i) => sum + getUnitPrice(i) * sellMultiplier * i.quantity, 0);
+    const sectionExcl = group.items.reduce((sum, i) => sum + getUnitCost(i) * sellMultiplier * i.quantity, 0);
     const exclDisc = sectionExcl > 0 && sectionSell > 0 ? sectionExcl * (1 - disc / sectionSell) : sectionExcl;
+    totalDiscountInclVat += disc;
     calcExclVat += exclDisc;
     calcInclVat += sectionSell - disc;
   }
   for (const a of additionalItems) {
-    const sp = getSellPrice(a);
+    const sp = getAdditionalPrice(a);
     if (sp > 0) {
-      calcInclVat += sp;
-      calcExclVat += sp / 1.21;
+      calcExclVat += sp;
+      calcInclVat += sp * 1.21;
     }
   }
   const dphAmount = calcInclVat - calcExclVat;
 
   const summaryRows: string[] = [];
-  if (totals.groupsDiscount > 0) {
-    summaryRows.push(`<div class="summary-row"><span>Sleva celkem</span><span>−${fmt(totals.groupsDiscount)}</span></div>`);
+  if (totalDiscountInclVat > 0) {
+    summaryRows.push(`<div class="summary-row"><span>Sleva celkem</span><span>−${fmt(totalDiscountInclVat)}</span></div>`);
   }
   summaryRows.push(`<div class="summary-row"><span>Celkem bez DPH</span><span>${fmt(calcExclVat)}</span></div>`);
   summaryRows.push(`<div class="summary-row"><span>DPH</span><span>${fmt(dphAmount)}</span></div>`);

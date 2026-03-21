@@ -15,10 +15,8 @@ type OfferSummaryCardProps = {
   onEditingAdditionalIndexChange: (index: number | null) => void;
   onUnsavedChange: () => void;
   currency: string;
-  tax: number;
   groupsDiscount: number;
   total: number;
-  totalSell: number;
   totalSellExclVat: number;
   totalRounded: number | null;
   onTotalRoundedChange: (v: number | null) => void;
@@ -33,10 +31,8 @@ export function OfferSummaryCard({
   onEditingAdditionalIndexChange,
   onUnsavedChange,
   currency,
-  tax,
   groupsDiscount,
   total,
-  totalSell,
   totalSellExclVat,
   totalRounded,
   onTotalRoundedChange,
@@ -74,10 +70,10 @@ export function OfferSummaryCard({
                         min="0"
                         step="0.01"
                         className="w-20 text-right text-sm"
-                        value={item.price === 0 ? "" : item.price}
+                        value={item.cost === 0 ? "" : item.cost}
                         onChange={(e) => {
                           const next = [...additionalItems];
-                          next[index] = { ...next[index], price: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0 };
+                          next[index] = { ...next[index], cost: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0 };
                           onAdditionalItemsChange(next);
                           onUnsavedChange();
                         }}
@@ -92,10 +88,10 @@ export function OfferSummaryCard({
                         min="0"
                         step="0.01"
                         className="w-20 text-right text-sm font-medium"
-                        value={item.sellPrice === 0 || item.sellPrice == null ? "" : item.sellPrice}
+                        value={item.price === 0 || item.price == null ? "" : item.price}
                         onChange={(e) => {
                           const next = [...additionalItems];
-                          next[index] = { ...next[index], sellPrice: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0 };
+                          next[index] = { ...next[index], price: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0 };
                           onAdditionalItemsChange(next);
                           onUnsavedChange();
                         }}
@@ -129,8 +125,8 @@ export function OfferSummaryCard({
                   onClick={() => onEditingAdditionalIndexChange(index)}
                   className="flex items-center gap-1.5 rounded px-2 py-1 text-right text-sm hover:bg-muted"
                 >
-                  <span className="text-muted-foreground">N: {item.price > 0 ? formatPrice(item.price, currency) : "0"}</span>
-                  <span className="font-medium">P: {(item.sellPrice ?? 0) > 0 ? formatPrice(item.sellPrice!, currency) : "0"}</span>
+                  <span className="text-muted-foreground">N: {item.cost > 0 ? formatPrice(item.cost, currency) : "0"}</span>
+                  <span className="font-medium">P: {(item.price ?? 0) > 0 ? formatPrice(item.price!, currency) : "0"}</span>
                   <Pencil className="h-3.5 w-3.5 shrink-0 opacity-70" />
                 </button>
               </>
@@ -144,7 +140,7 @@ export function OfferSummaryCard({
           size="sm"
           className="w-full gap-1.5 text-muted-foreground"
           onClick={() => {
-            const next = [...additionalItems, { title: "Nová položka", price: 0, sellPrice: 0 }];
+            const next = [...additionalItems, { title: "Nová položka", cost: 0, price: 0 }];
             onAdditionalItemsChange(next);
             onEditingAdditionalIndexChange(next.length - 1);
             onUnsavedChange();
@@ -174,13 +170,6 @@ export function OfferSummaryCard({
 
         <hr className="my-2" />
 
-        {tax > 0 && (
-          <div className="flex justify-between">
-            <span>DPH</span>
-            <span>{formatPrice(tax, currency)}</span>
-          </div>
-        )}
-
         <div className="border-t pt-2 space-y-1">
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Celkem nákup</span>
@@ -188,7 +177,7 @@ export function OfferSummaryCard({
           </div>
           <div className="flex justify-between text-lg font-semibold">
             <span>Celkem prodej</span>
-            <span>{formatPrice(totalSell, currency)}</span>
+            <span>{formatPrice(totalSellExclVat, currency)}</span>
           </div>
           <div className="flex justify-between items-center text-sm gap-2">
             <span className="text-muted-foreground shrink-0">Celkem prodej - zaokrouhleno</span>
@@ -197,7 +186,7 @@ export function OfferSummaryCard({
                 type="number"
                 className="w-32 h-7 text-right text-sm"
                 value={totalRounded ?? ""}
-                placeholder={String(Math.round(totalSell))}
+                placeholder={String(Math.round(totalSellExclVat))}
                 onChange={(e) => onTotalRoundedChange(e.target.value === "" ? null : Number(e.target.value))}
               />
               <span className="text-xs text-muted-foreground">{currencyLabel(currency)}</span>

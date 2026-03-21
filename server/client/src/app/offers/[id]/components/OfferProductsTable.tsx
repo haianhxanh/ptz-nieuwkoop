@@ -70,11 +70,8 @@ export function OfferProductsTable({
     <div className="space-y-4">
       {groups.map((group, groupIndex) => {
         const multiplier = Number(sellMultiplier) || 1;
-        const groupCostSubtotal = group.items.reduce((s, item) => s + item.unitPrice * item.quantity, 0);
-        const groupSellSubtotal = group.items.reduce((s, item) => {
-          const vat = (item.vatRate ?? 21) / 100;
-          return s + item.unitPrice * (1 + vat) * multiplier * item.quantity;
-        }, 0);
+        const groupCostSubtotal = group.items.reduce((s, item) => s + item.unitCost * item.quantity, 0);
+        const groupSellSubtotal = group.items.reduce((s, item) => s + item.unitCost * multiplier * item.quantity, 0);
 
         return (
           <Card
@@ -147,9 +144,8 @@ export function OfferProductsTable({
                   <TableBody>
                     {group.items.map((item, itemIndex) => {
                       const multiplier = Number(sellMultiplier) || 1;
-                      const vat = (item.vatRate ?? 21) / 100;
-                      const costTotal = item.unitPrice * item.quantity;
-                      const sellUnitPrice = item.unitPrice * (1 + vat) * multiplier;
+                      const costTotal = item.unitCost * item.quantity;
+                      const sellUnitPrice = item.unitCost * multiplier;
                       const sellTotal = sellUnitPrice * item.quantity;
                       return (
                         <TableRow
@@ -183,7 +179,7 @@ export function OfferProductsTable({
                               </div>
                             )}
                             <div className="mt-0.5 text-xs text-muted-foreground">
-                              <div>N.: {formatPrice(item.unitPrice, currency)}</div>
+                              <div>N.: {formatPrice(item.unitCost, currency)}</div>
                               <div className="font-medium text-foreground">P.: {formatPrice(sellUnitPrice, currency)}</div>
                             </div>
                           </TableCell>
