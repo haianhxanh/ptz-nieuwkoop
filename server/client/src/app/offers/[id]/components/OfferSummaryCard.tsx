@@ -92,10 +92,10 @@ export function OfferSummaryCard({
                         min="0"
                         step="0.01"
                         className="w-20 text-right text-sm font-medium"
-                        value={item.sell_price === 0 || item.sell_price == null ? "" : item.sell_price}
+                        value={item.sellPrice === 0 || item.sellPrice == null ? "" : item.sellPrice}
                         onChange={(e) => {
                           const next = [...additionalItems];
-                          next[index] = { ...next[index], sell_price: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0 };
+                          next[index] = { ...next[index], sellPrice: e.target.value === "" ? 0 : parseFloat(e.target.value) || 0 };
                           onAdditionalItemsChange(next);
                           onUnsavedChange();
                         }}
@@ -130,7 +130,7 @@ export function OfferSummaryCard({
                   className="flex items-center gap-1.5 rounded px-2 py-1 text-right text-sm hover:bg-muted"
                 >
                   <span className="text-muted-foreground">N: {item.price > 0 ? formatPrice(item.price, currency) : "0"}</span>
-                  <span className="font-medium">P: {(item.sell_price ?? 0) > 0 ? formatPrice(item.sell_price!, currency) : "0"}</span>
+                  <span className="font-medium">P: {(item.sellPrice ?? 0) > 0 ? formatPrice(item.sellPrice!, currency) : "0"}</span>
                   <Pencil className="h-3.5 w-3.5 shrink-0 opacity-70" />
                 </button>
               </>
@@ -144,7 +144,7 @@ export function OfferSummaryCard({
           size="sm"
           className="w-full gap-1.5 text-muted-foreground"
           onClick={() => {
-            const next = [...additionalItems, { title: "Nová položka", price: 0, sell_price: 0 }];
+            const next = [...additionalItems, { title: "Nová položka", price: 0, sellPrice: 0 }];
             onAdditionalItemsChange(next);
             onEditingAdditionalIndexChange(next.length - 1);
             onUnsavedChange();

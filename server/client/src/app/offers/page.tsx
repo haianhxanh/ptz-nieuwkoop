@@ -22,16 +22,16 @@ const statusConfig = {
 };
 
 function computeSellTotal(offer: Offer): number {
-  const multiplier = Number(offer.sell_multiplier) || 1;
+  const multiplier = Number(offer.sellMultiplier) || 1;
   const groups = (offer.items as any[]) || [];
   let subtotal = 0;
   for (const g of groups) {
     for (const item of g.items || []) {
-      const vat = (item.vat_rate ?? 21) / 100;
-      subtotal += item.unit_price * (1 + vat) * multiplier * item.quantity;
+      const vat = (item.vatRate ?? 21) / 100;
+      subtotal += item.unitPrice * (1 + vat) * multiplier * item.quantity;
     }
   }
-  const additionalSell = ((offer as any).additional_items || []).reduce((s: number, a: any) => s + (Number(a.sell_price) || 0), 0);
+  const additionalSell = ((offer as any).additionalItems || []).reduce((s: number, a: any) => s + (Number(a.sellPrice) || 0), 0);
   const discount = Number(offer.discount) || 0;
   return subtotal - discount + additionalSell;
 }
@@ -51,10 +51,10 @@ export default function OffersPage() {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
-      offer.customer.name.toLowerCase().includes(q) ||
-      offer.customer.email.toLowerCase().includes(q) ||
+      offer.client.name.toLowerCase().includes(q) ||
+      offer.client.email.toLowerCase().includes(q) ||
       offer.title.toLowerCase().includes(q) ||
-      `#${offer.simple_id}`.includes(q)
+      `#${offer.simpleId}`.includes(q)
     );
   });
 
@@ -80,7 +80,7 @@ export default function OffersPage() {
   const handleDuplicate = async (offer: Offer, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await offersApi.duplicate(offer.simple_id.toString());
+      await offersApi.duplicate(offer.simpleId.toString());
       toast.success("Nabídka duplikována");
       loadOffers();
     } catch {
@@ -90,7 +90,7 @@ export default function OffersPage() {
 
   const handleDelete = async (offer: Offer, e: React.MouseEvent) => {
     e.stopPropagation();
-    setConfirmDeleteId(offer.simple_id.toString());
+    setConfirmDeleteId(offer.simpleId.toString());
   };
 
   const confirmDelete = async () => {
@@ -181,21 +181,21 @@ export default function OffersPage() {
                       </TableHeader>
                       <TableBody>
                         {paginatedOffers.map((offer) => (
-                          <TableRow key={offer.id} className="cursor-pointer" onClick={() => router.push(`/offers/${offer.simple_id}`)}>
-                            <TableCell className="font-mono font-semibold">#{offer.simple_id}</TableCell>
+                          <TableRow key={offer.id} className="cursor-pointer" onClick={() => router.push(`/offers/${offer.simpleId}`)}>
+                            <TableCell className="font-mono font-semibold">#{offer.simpleId}</TableCell>
                             <TableCell className="font-semibold">{offer.title}</TableCell>
                             <TableCell>
-                              <div>{offer.customer.name}</div>
-                              <div className="text-sm text-muted-foreground">{offer.customer.email}</div>
+                              <div>{offer.client.name}</div>
+                              <div className="text-sm text-muted-foreground">{offer.client.email}</div>
                             </TableCell>
                             <TableCell>
                               <Badge variant={statusConfig[offer.status].variant}>{statusConfig[offer.status].label}</Badge>
                             </TableCell>
                             <TableCell>{offer.items?.length || 0}</TableCell>
                             <TableCell className="font-semibold">
-                              {formatPrice(offer.total_rounded != null ? Number(offer.total_rounded) : Math.round(computeSellTotal(offer)), offer.currency)}
+                              {formatPrice(offer.totalRounded != null ? Number(offer.totalRounded) : Math.round(computeSellTotal(offer)), offer.currency)}
                             </TableCell>
-                            <TableCell className="text-muted-foreground">{formatDate(offer.created_at)}</TableCell>
+                            <TableCell className="text-muted-foreground">{formatDate(offer.createdAt)}</TableCell>
                             <TableCell onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center gap-1">
                                 <Button

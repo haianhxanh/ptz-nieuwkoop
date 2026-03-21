@@ -70,10 +70,10 @@ export function OfferProductsTable({
     <div className="space-y-4">
       {groups.map((group, groupIndex) => {
         const multiplier = Number(sellMultiplier) || 1;
-        const groupCostSubtotal = group.items.reduce((s, item) => s + item.unit_price * item.quantity, 0);
+        const groupCostSubtotal = group.items.reduce((s, item) => s + item.unitPrice * item.quantity, 0);
         const groupSellSubtotal = group.items.reduce((s, item) => {
-          const vat = (item.vat_rate ?? 21) / 100;
-          return s + item.unit_price * (1 + vat) * multiplier * item.quantity;
+          const vat = (item.vatRate ?? 21) / 100;
+          return s + item.unitPrice * (1 + vat) * multiplier * item.quantity;
         }, 0);
 
         return (
@@ -147,9 +147,9 @@ export function OfferProductsTable({
                   <TableBody>
                     {group.items.map((item, itemIndex) => {
                       const multiplier = Number(sellMultiplier) || 1;
-                      const vat = (item.vat_rate ?? 21) / 100;
-                      const costTotal = item.unit_price * item.quantity;
-                      const sellUnitPrice = item.unit_price * (1 + vat) * multiplier;
+                      const vat = (item.vatRate ?? 21) / 100;
+                      const costTotal = item.unitPrice * item.quantity;
+                      const sellUnitPrice = item.unitPrice * (1 + vat) * multiplier;
                       const sellTotal = sellUnitPrice * item.quantity;
                       return (
                         <TableRow
@@ -171,19 +171,19 @@ export function OfferProductsTable({
                           <TableCell>
                             <div className="font-semibold">{item.name}</div>
                             {item.sku && <div className="text-sm text-muted-foreground">SKU: {item.sku}</div>}
-                            {item.dimensions && (item.dimensions.height || item.dimensions.diameter || item.dimensions.pot_size) && (
+                            {item.dimensions && (item.dimensions.height || item.dimensions.diameter || item.dimensions.potSize) && (
                               <div className="text-xs text-muted-foreground">
                                 {[
                                   item.dimensions.height && `V: ${item.dimensions.height} cm`,
                                   item.dimensions.diameter && `Ø: ${item.dimensions.diameter} cm`,
-                                  item.dimensions.pot_size && `Květináč: ${item.dimensions.pot_size} cm`,
+                                  item.dimensions.potSize && `Květináč: ${item.dimensions.potSize} cm`,
                                 ]
                                   .filter(Boolean)
                                   .join(" · ")}
                               </div>
                             )}
                             <div className="mt-0.5 text-xs text-muted-foreground">
-                              <div>N.: {formatPrice(item.unit_price, currency)}</div>
+                              <div>N.: {formatPrice(item.unitPrice, currency)}</div>
                               <div className="font-medium text-foreground">P.: {formatPrice(sellUnitPrice, currency)}</div>
                             </div>
                           </TableCell>
@@ -197,7 +197,7 @@ export function OfferProductsTable({
                               className="w-16"
                             />
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{item.vat_rate ?? 21} %</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{item.vatRate ?? 21} %</TableCell>
                           <TableCell>
                             <span className="text-muted-foreground">{formatPrice(costTotal, currency)}</span>
                             <span className="mx-1 text-muted-foreground">/</span>
@@ -239,7 +239,7 @@ export function OfferProductsTable({
                         className="w-24 text-right text-red-600 border-red-300 focus-visible:ring-red-500"
                         value={group.discount === 0 ? "" : group.discount}
                         onChange={(e) =>
-                          onGroupDiscountChange(groupIndex, e.target.value === "" ? 0 : parseFloat(e.target.value), group.discount_type || "fixed")
+                          onGroupDiscountChange(groupIndex, e.target.value === "" ? 0 : parseFloat(e.target.value), group.discountType || "fixed")
                         }
                         onBlur={() => setEditingDiscountIndex(null)}
                         onFocus={(e) => e.target.select()}
@@ -248,7 +248,7 @@ export function OfferProductsTable({
                       <div className="flex rounded border border-red-300 overflow-hidden text-xs">
                         <button
                           type="button"
-                          className={`px-2 py-1 ${(group.discount_type || "fixed") === "fixed" ? "bg-red-100 font-semibold" : "hover:bg-red-50"}`}
+                          className={`px-2 py-1 ${(group.discountType || "fixed") === "fixed" ? "bg-red-100 font-semibold" : "hover:bg-red-50"}`}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => onGroupDiscountChange(groupIndex, group.discount, "fixed")}
                         >
@@ -256,7 +256,7 @@ export function OfferProductsTable({
                         </button>
                         <button
                           type="button"
-                          className={`px-2 py-1 border-l border-red-300 ${group.discount_type === "percent" ? "bg-red-100 font-semibold" : "hover:bg-red-50"}`}
+                          className={`px-2 py-1 border-l border-red-300 ${group.discountType === "percent" ? "bg-red-100 font-semibold" : "hover:bg-red-50"}`}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => onGroupDiscountChange(groupIndex, group.discount, "percent")}
                         >
@@ -273,7 +273,7 @@ export function OfferProductsTable({
                       {group.discount > 0 ? (
                         <span>
                           −{" "}
-                          {group.discount_type === "percent"
+                          {group.discountType === "percent"
                             ? `${group.discount} % (${formatPrice((groupSellSubtotal * group.discount) / 100, currency)})`
                             : formatPrice(group.discount, currency)}
                         </span>
@@ -290,7 +290,7 @@ export function OfferProductsTable({
                     {formatPrice(
                       Math.max(
                         0,
-                        groupSellSubtotal - (group.discount_type === "percent" ? (groupSellSubtotal * (group.discount || 0)) / 100 : group.discount || 0),
+                        groupSellSubtotal - (group.discountType === "percent" ? (groupSellSubtotal * (group.discount || 0)) / 100 : group.discount || 0),
                       ),
                       currency,
                     )}

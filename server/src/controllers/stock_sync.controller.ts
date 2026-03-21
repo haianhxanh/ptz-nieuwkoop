@@ -1,7 +1,7 @@
 import axios from "axios";
 import { Op } from "sequelize";
 import dotenv from "dotenv";
-import ProductStock from "../model/product_stock.model";
+import DmpProductStock from "../model/dmp_product_stock.model";
 
 dotenv.config();
 
@@ -52,9 +52,9 @@ export async function syncAllStock() {
   console.log(`[StockSync] Found ${itemcodes.length} products total`);
 
   const cutoff = new Date(Date.now() - SYNC_INTERVAL_MS);
-  const recentlyUpdated = await ProductStock.findAll({
+  const recentlyUpdated = await DmpProductStock.findAll({
     attributes: ["itemcode"],
-    where: { updated_at: { [Op.gte]: cutoff } },
+    where: { updatedAt: { [Op.gte]: cutoff } },
   });
   const recentSet = new Set(recentlyUpdated.map((r) => r.get("itemcode") as string));
   const toSync = itemcodes.filter((code) => !recentSet.has(code));
@@ -69,21 +69,21 @@ export async function syncAllStock() {
       const stockData = await fetchStock(itemcode);
 
       if (stockData) {
-        await ProductStock.upsert({
+        await DmpProductStock.upsert({
           itemcode: stockData.Itemcode,
-          stock_available: stockData.StockAvailable ?? 0,
-          first_available: stockData.FirstAvailable ? new Date(stockData.FirstAvailable) : null,
+          stockAvailable: stockData.StockAvailable ?? 0,
+          firstAvailable: stockData.FirstAvailable ? new Date(stockData.FirstAvailable) : null,
           sysmodified: stockData.Sysmodified ? new Date(stockData.Sysmodified) : null,
-          updated_at: new Date(),
+          updatedAt: new Date(),
         });
         synced++;
       } else {
-        await ProductStock.upsert({
+        await DmpProductStock.upsert({
           itemcode,
-          stock_available: 0,
-          first_available: null,
+          stockAvailable: 0,
+          firstAvailable: null,
           sysmodified: null,
-          updated_at: new Date(),
+          updatedAt: new Date(),
         });
         synced++;
       }

@@ -13,7 +13,7 @@ type OfferCompanyCardProps = {
 export function OfferCompanyCard({ companyProfile, availableCompanies, onChange }: OfferCompanyCardProps) {
   if (availableCompanies.length === 0) return null;
 
-  const selectedName = companyProfile?.company_name ?? "";
+  const selectedName = companyProfile?.companyName ?? "";
 
   return (
     <Card>
@@ -24,7 +24,7 @@ export function OfferCompanyCard({ companyProfile, availableCompanies, onChange 
         <Select
           value={selectedName}
           onValueChange={(name) => {
-            const found = availableCompanies.find((c) => c.company_name === name);
+            const found = availableCompanies.find((c) => c.companyName === name);
             if (found) onChange(found);
           }}
         >
@@ -33,8 +33,8 @@ export function OfferCompanyCard({ companyProfile, availableCompanies, onChange 
           </SelectTrigger>
           <SelectContent>
             {availableCompanies.map((c) => (
-              <SelectItem key={c.company_name} value={c.company_name}>
-                {c.company_name}
+              <SelectItem key={c.companyName} value={c.companyName}>
+                {c.companyName}
               </SelectItem>
             ))}
           </SelectContent>
@@ -42,11 +42,11 @@ export function OfferCompanyCard({ companyProfile, availableCompanies, onChange 
 
         {companyProfile && (
           <div className="space-y-1 text-sm text-muted-foreground">
-            {companyProfile.company_ico && <div>IČO: {companyProfile.company_ico}</div>}
-            {companyProfile.company_dic && <div>DIČ: {companyProfile.company_dic}</div>}
-            {companyProfile.logo_url && (
+            {companyProfile.companyIco && <div>IČO: {companyProfile.companyIco}</div>}
+            {companyProfile.companyDic && <div>DIČ: {companyProfile.companyDic}</div>}
+            {companyProfile.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={companyProfile.logo_url} alt={companyProfile.company_name} className="mt-2 h-8 object-contain" />
+              <img src={companyProfile.logoUrl} alt={companyProfile.companyName} className="mt-2 h-8 object-contain" />
             )}
           </div>
         )}

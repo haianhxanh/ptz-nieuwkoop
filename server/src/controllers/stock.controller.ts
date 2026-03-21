@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import ProductStock from "../model/product_stock.model";
+import DmpProductStock from "../model/dmp_product_stock.model";
 import { syncAllStock } from "./stock_sync.controller";
 
 export const triggerStockSync = async (_req: Request, res: Response) => {
@@ -13,14 +13,14 @@ export const triggerStockSync = async (_req: Request, res: Response) => {
 
 export const getStock = async (_req: Request, res: Response) => {
   try {
-    const stock = await ProductStock.findAll();
-    const stockMap: Record<string, { stock_available: number; first_available: string | null }> = {};
+    const stock = await DmpProductStock.findAll();
+    const stockMap: Record<string, { stockAvailable: number; firstAvailable: string | null }> = {};
 
     for (const s of stock) {
       const data = s.get();
       stockMap[data.itemcode] = {
-        stock_available: Number(data.stock_available),
-        first_available: data.first_available ? new Date(data.first_available).toISOString() : null,
+        stockAvailable: Number(data.stockAvailable),
+        firstAvailable: data.firstAvailable ? new Date(data.firstAvailable).toISOString() : null,
       };
     }
 

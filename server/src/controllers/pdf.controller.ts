@@ -64,7 +64,7 @@ interface PdfRequestBody {
     tax?: number;
     notes?: string;
     user?: { name?: string; email?: string; phone?: string };
-    customer: {
+    client: {
       name: string;
       email?: string;
       phone?: string;
@@ -103,28 +103,40 @@ function todayStr(): string {
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
 }
 
+const getUnitPrice = (item: any) => Number(item.unitPrice ?? item.unit_price ?? 0);
+const getVatRate = (item: any) => Number(item.vatRate ?? item.vat_rate ?? 21);
+const getDiscountType = (group: any) => group.discountType ?? group.discount_type ?? "fixed";
+const getPotSize = (dimensions?: any) => dimensions?.potSize ?? dimensions?.pot_size;
+const getSellPrice = (item: any) => Number(item.sellPrice ?? item.sell_price ?? 0);
+const getClientPostalCode = (client: any) => client.postalCode ?? client.postal_code;
+const getClientCompanyName = (client: any) => client.companyName ?? client.company_name;
+const getClientCompanyIco = (client: any) => client.companyIco ?? client.company_ico;
+const getClientCompanyDic = (client: any) => client.companyDic ?? client.company_dic;
+const getOfferValidUntil = (offer: any) => offer.validUntil ?? offer.valid_until;
+const getCompanyLogoUrl = (company: any) => company.logoUrl ?? company.logo_url;
+
 function renderOfferHtml(data: PdfRequestBody): string {
   const { offer, editedGroups, additionalItems, totals, sellMultiplier, notesText, totalRounded, company } = data;
   const currency = offer.currency || "CZK";
   const fmt = (v: number) => fmtCurrency(v, currency);
-  const customer = offer.customer;
+  const client = offer.client;
   const user = offer.user;
-  const hasAdditional = additionalItems.some((a) => (Number(a.sell_price) || 0) > 0);
+  const hasAdditional = additionalItems.some((a) => getSellPrice(a) > 0);
 
   const groupsHtml = editedGroups
     .map((group) => {
       const sectionSell = group.items.reduce((sum, i) => {
-        const vat = (i.vat_rate ?? 21) / 100;
-        return sum + i.unit_price * (1 + vat) * sellMultiplier * i.quantity;
+        const vat = getVatRate(i) / 100;
+        return sum + getUnitPrice(i) * (1 + vat) * sellMultiplier * i.quantity;
       }, 0);
-      const discountAmount = group.discount_type === "percent" ? (sectionSell * (group.discount || 0)) / 100 : group.discount || 0;
+      const discountAmount = getDiscountType(group) === "percent" ? (sectionSell * (group.discount || 0)) / 100 : group.discount || 0;
       const netSell = sectionSell - discountAmount;
 
       const rowsHtml = group.items
         .map((item) => {
-          const vatRate = item.vat_rate ?? 21;
+          const vatRate = getVatRate(item);
           const vat = vatRate / 100;
-          const sellUnitExclVat = item.unit_price * sellMultiplier;
+          const sellUnitExclVat = getUnitPrice(item) * sellMultiplier;
           const sellUnit = sellUnitExclVat * (1 + vat);
           const sellTotal = sellUnit * item.quantity;
           const vatAmount = sellUnitExclVat * vat * item.quantity;
@@ -133,7 +145,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
           if (item.dimensions) {
             if (item.dimensions.height) dimParts.push(`Výška: ${item.dimensions.height} cm`);
             if (item.dimensions.diameter) dimParts.push(`Průměr: ${item.dimensions.diameter} cm`);
-            if (item.dimensions.pot_size) dimParts.push(`Květináč: ${item.dimensions.pot_size} cm`);
+            if (getPotSize(item.dimensions)) dimParts.push(`Květináč: ${getPotSize(item.dimensions)} cm`);
           }
           const dimHtml = dimParts.length > 0 ? `<div class="product-dims">${dimParts.join(" &middot; ")}</div>` : "";
           return `
@@ -152,7 +164,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
         })
         .join("");
 
-      const discountLabel = group.discount_type === "percent" ? `Sleva ${group.discount} %` : "Sleva";
+      const discountLabel = getDiscountType(group) === "percent" ? `Sleva ${group.discount} %` : "Sleva";
       const discountHtml =
         discountAmount > 0
           ? `<tr class="discount-row"><td colspan="6" class="discount-label">${discountLabel}</td><td class="discount-value">−${fmt(discountAmount)}</td></tr>`
@@ -200,9 +212,9 @@ function renderOfferHtml(data: PdfRequestBody): string {
          </thead>
          <tbody>
            ${additionalItems
-             .filter((a) => (Number(a.sell_price) || 0) > 0)
+            .filter((a) => getSellPrice(a) > 0)
              .map((item) => {
-               const totalWithVat = Number(item.sell_price) || 0;
+              const totalWithVat = getSellPrice(item);
                const price = totalWithVat / 1.21;
                const vatAmount = totalWithVat - price;
                return `
@@ -225,17 +237,17 @@ function renderOfferHtml(data: PdfRequestBody): string {
   let calcInclVat = 0;
   for (const group of editedGroups) {
     const sectionSell = group.items.reduce((sum, i) => {
-      const vat = (i.vat_rate ?? 21) / 100;
-      return sum + i.unit_price * (1 + vat) * sellMultiplier * i.quantity;
+      const vat = getVatRate(i) / 100;
+      return sum + getUnitPrice(i) * (1 + vat) * sellMultiplier * i.quantity;
     }, 0);
-    const disc = group.discount_type === "percent" ? (sectionSell * (group.discount || 0)) / 100 : group.discount || 0;
-    const sectionExcl = group.items.reduce((sum, i) => sum + i.unit_price * sellMultiplier * i.quantity, 0);
+    const disc = getDiscountType(group) === "percent" ? (sectionSell * (group.discount || 0)) / 100 : group.discount || 0;
+    const sectionExcl = group.items.reduce((sum, i) => sum + getUnitPrice(i) * sellMultiplier * i.quantity, 0);
     const exclDisc = sectionExcl > 0 && sectionSell > 0 ? sectionExcl * (1 - disc / sectionSell) : sectionExcl;
     calcExclVat += exclDisc;
     calcInclVat += sectionSell - disc;
   }
   for (const a of additionalItems) {
-    const sp = Number(a.sell_price) || 0;
+    const sp = getSellPrice(a);
     if (sp > 0) {
       calcInclVat += sp;
       calcExclVat += sp / 1.21;
@@ -250,8 +262,8 @@ function renderOfferHtml(data: PdfRequestBody): string {
   summaryRows.push(`<div class="summary-row"><span>Celkem bez DPH</span><span>${fmt(calcExclVat)}</span></div>`);
   summaryRows.push(`<div class="summary-row"><span>DPH</span><span>${fmt(dphAmount)}</span></div>`);
 
-  const logoHtml = company.logo_url
-    ? `<img src="${escHtml(company.logo_url)}" class="company-logo" />`
+  const logoHtml = getCompanyLogoUrl(company)
+    ? `<img src="${escHtml(getCompanyLogoUrl(company))}" class="company-logo" />`
     : `<div class="company-name">${escHtml(company.name || "Dodavatel")}</div>`;
 
   return `<!DOCTYPE html>
@@ -478,7 +490,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
     <div>${logoHtml}</div>
     <div class="offer-right">
       <div class="offer-date">Datum: ${todayStr()}</div>
-      ${offer.valid_until ? `<div class="offer-date">Platná do: ${new Date(offer.valid_until).toLocaleDateString("cs-CZ")}</div>` : ""}
+      ${getOfferValidUntil(offer) ? `<div class="offer-date">Platná do: ${new Date(getOfferValidUntil(offer)).toLocaleDateString("cs-CZ")}</div>` : ""}
     </div>
   </div>
 
@@ -503,17 +515,17 @@ function renderOfferHtml(data: PdfRequestBody): string {
     <div class="info-block">
       <div class="info-accent"></div>
       <div class="info-label">Odběratel</div>
-      <div class="info-name">${escHtml(customer.name)}</div>
-      ${customer.company_name ? `<div class="info-line">${escHtml(customer.company_name)}</div>` : ""}
-      ${customer.company_ico ? `<div class="info-muted">IČO: ${escHtml(customer.company_ico)}</div>` : ""}
-      ${customer.company_dic ? `<div class="info-muted">DIČ: ${escHtml(customer.company_dic)}</div>` : ""}
-      ${customer.email ? `<div class="info-muted">${escHtml(customer.email)}</div>` : ""}
+      <div class="info-name">${escHtml(client.name)}</div>
+      ${getClientCompanyName(client) ? `<div class="info-line">${escHtml(getClientCompanyName(client))}</div>` : ""}
+      ${getClientCompanyIco(client) ? `<div class="info-muted">IČO: ${escHtml(getClientCompanyIco(client))}</div>` : ""}
+      ${getClientCompanyDic(client) ? `<div class="info-muted">DIČ: ${escHtml(getClientCompanyDic(client))}</div>` : ""}
+      ${client.email ? `<div class="info-muted">${escHtml(client.email)}</div>` : ""}
       ${
-        customer.address
-          ? `<div class="info-muted">${escHtml(customer.address)}${customer.postal_code ? `, ${escHtml(customer.postal_code)}` : ""}${customer.city ? ` ${escHtml(customer.city)}` : ""}</div>`
+        client.address
+          ? `<div class="info-muted">${escHtml(client.address)}${getClientPostalCode(client) ? `, ${escHtml(getClientPostalCode(client))}` : ""}${client.city ? ` ${escHtml(client.city)}` : ""}</div>`
           : ""
       }
-      ${customer.phone ? `<div class="info-muted">${escHtml(customer.phone)}</div>` : ""}
+      ${client.phone ? `<div class="info-muted">${escHtml(client.phone)}</div>` : ""}
     </div>
   </div>
 

@@ -49,7 +49,10 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
           if (now - cachedData.timestamp < CACHE_DURATION) {
             console.log("Using cached products");
             setProducts(cachedData.products);
-            stockApi.getAll().then(setStockMap).catch(() => {});
+            stockApi
+              .getAll()
+              .then(setStockMap)
+              .catch(() => {});
             setLoading(false);
             return;
           }
@@ -57,19 +60,16 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       }
 
       console.log("Fetching fresh products from API");
-      const [data, { rate: exchangeRate, nieuwkoop_discount }, stock] = await Promise.all([
+      const [data, { rate: exchangeRate, nieuwkoopDiscount }, stock] = await Promise.all([
         productsApi.list(),
         exchangeRateApi.get(),
-        stockApi.getAll().catch(() => ({} as StockMap)),
+        stockApi.getAll().catch(() => ({}) as StockMap),
       ]);
       setStockMap(stock);
 
-      const isStock = data.products.find((product: any) => product.IsStockItem === true);
-      console.log("Is stock:", isStock);
-
       if (data.products && Array.isArray(data.products)) {
         const rate = Number(exchangeRate) || 25;
-        const discountMultiplier = 1 - (Number(nieuwkoop_discount) || 0) / 100;
+        const discountMultiplier = 1 - (Number(nieuwkoopDiscount) || 0) / 100;
         const mapped = data.products.map((product: any) => {
           const unitPriceEur = Math.round(parsePriceEur(product.Salesprice ?? product.salesprice) * discountMultiplier * 100) / 100;
           const unitPrice = Math.round(unitPriceEur * rate * 100) / 100;
@@ -79,22 +79,22 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
             title: product.Description,
             sku: product.Itemcode,
             brand: product.Tags.find((tag: any) => tag.Code === "Brand")?.Values[0]?.Description_EN || "",
-            unit_price_eur: unitPriceEur,
-            unit_price: unitPrice,
+            unitPriceEur,
+            unitPrice,
             price: unitPrice.toFixed(2),
             collection: product.Tags.find((tag: any) => tag.Code === "Collection")?.Values[0]?.Description_EN || "",
             substrate: product.Tags.find((tag: any) => tag.Code === "SubstrateType")?.Values[0]?.Description_EN ?? null,
             image: "https://images.nieuwkoop-europe.com/images/" + product.ItemPictureName,
-            vat_rate: vatRate,
+            vatRate,
             dimensions: {
               height: product.Height,
               depth: product.Depth,
               diameter: product.Diameter,
               opening: product.Opening,
               length: product.Length,
-              pot_size: product.PotSize,
+              potSize: product.PotSize,
             },
-            delivery_time: product.DeliveryTimeInDays,
+            deliveryTime: product.DeliveryTimeInDays,
           };
         });
 

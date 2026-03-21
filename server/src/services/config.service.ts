@@ -1,13 +1,13 @@
-import Config from "../model/config.model";
+import DmpConfig from "../model/dmp_config.model";
 
 export class ConfigService {
   async get(key: string): Promise<string | null> {
-    const config = await Config.findOne({ where: { key } });
+    const config = await DmpConfig.findOne({ where: { key } });
     return config ? (config.get("value") as string) : null;
   }
 
-  async set(key: string, value: string, description?: string): Promise<Config> {
-    const [config] = await Config.upsert({
+  async set(key: string, value: string, description?: string): Promise<DmpConfig> {
+    const [config] = await DmpConfig.upsert({
       key,
       value,
       description,
@@ -25,26 +25,33 @@ export class ConfigService {
   }
 
   async getExchangeRateLastUpdated(): Promise<string | null> {
-    const config = await Config.findOne({ where: { key: "EXCHANGE_RATE_EUR_CZK" } });
+    const config = await DmpConfig.findOne({ where: { key: "EXCHANGE_RATE_EUR_CZK" } });
     if (!config) return null;
-    const updatedAt = config.get("updated_at") as Date | undefined;
+    const updatedAt = config.get("updatedAt") as Date | undefined;
     if (!updatedAt) return null;
     return new Date(updatedAt).toISOString().split("T")[0];
   }
 
-  async getCompanyProfiles(): Promise<Array<{ company_name: string; company_ico: string; company_dic: string; logo_url?: string; fakturoid_slug?: string }>> {
+  async getCompanyProfiles(): Promise<Array<{ companyName: string; companyIco: string; companyDic: string; logoUrl?: string; fakturoidSlug?: string }>> {
     const raw = await this.get("COMPANY_PROFILES");
     if (!raw) return [];
     try {
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.map((profile: any) => ({
+        companyName: profile.companyName ?? profile.company_name ?? "",
+        companyIco: profile.companyIco ?? profile.company_ico ?? "",
+        companyDic: profile.companyDic ?? profile.company_dic ?? "",
+        logoUrl: profile.logoUrl ?? profile.logo_url,
+        fakturoidSlug: profile.fakturoidSlug ?? profile.fakturoid_slug,
+      }));
     } catch {
       return [];
     }
   }
 
-  async listAll(): Promise<Config[]> {
-    return await Config.findAll({
+  async listAll(): Promise<DmpConfig[]> {
+    return await DmpConfig.findAll({
       order: [["key", "ASC"]],
     });
   }

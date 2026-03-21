@@ -20,16 +20,16 @@ export async function downloadOfferPdf(
   onSuccess: () => void,
 ) {
   let companyData: { name: string; ico: string; dic: string; logo_url?: string };
-  if (offer.company_profile) {
+  if (offer.companyProfile) {
     companyData = {
-      name: offer.company_profile.company_name,
-      ico: offer.company_profile.company_ico,
-      dic: offer.company_profile.company_dic,
-      logo_url: offer.company_profile.logo_url,
+      name: offer.companyProfile.companyName,
+      ico: offer.companyProfile.companyIco,
+      dic: offer.companyProfile.companyDic,
+      logo_url: offer.companyProfile.logoUrl,
     };
   } else {
     const { company, companies } = await exchangeRateApi.get();
-    const logoUrl = companies?.[0]?.logo_url;
+    const logoUrl = companies?.[0]?.logoUrl;
     companyData = { name: company.name, ico: company.ico, dic: company.dic ?? "", logo_url: logoUrl };
   }
 
@@ -62,7 +62,7 @@ export async function downloadOfferPdf(
     .replace(/[^a-z0-9]/gi, "_");
   const ts = todayStr().replace(/\./g, "-");
   a.href = url;
-  a.download = `nabidka-${offer.simple_id}-${safeTitle}_${ts}.pdf`;
+  a.download = `nabidka-${offer.simpleId}-${safeTitle}_${ts}.pdf`;
   a.click();
   URL.revokeObjectURL(url);
   onSuccess();

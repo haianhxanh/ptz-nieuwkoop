@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { offersApi, type LineItem, type ItemGroup, type Customer, exchangeRateApi } from "@/lib/api";
+import { offersApi, type LineItem, type ItemGroup, type Client, exchangeRateApi } from "@/lib/api";
 import { useProducts } from "@/contexts/products-context";
 import { ArrowLeft, RefreshCw, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -38,11 +38,11 @@ function ProductsPageContent() {
   // Form states
   const [offerTitle, setOfferTitle] = useState("");
   const [offerDescription, setOfferDescription] = useState("");
-  const [customerName, setCustomerName] = useState("");
-  const [customerEmail, setCustomerEmail] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
   const [targetOfferId, setTargetOfferId] = useState(existingOfferId || "");
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
@@ -65,17 +65,17 @@ function ProductsPageContent() {
 
   const [clientSearch, setClientSearch] = useState("");
 
-  // Load customers once for client search
+  // Load clients once for client search
   useEffect(() => {
     offersApi
-      .listCustomers()
-      .then((res) => setCustomers(res.data))
+      .listClients()
+      .then((res) => setClients(res.data))
       .catch(() => {});
   }, []);
 
   const clientSearchResults =
     clientSearch.length > 0
-      ? customers
+      ? clients
           .filter((c) => {
             const q = clientSearch.toLowerCase();
             return c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
@@ -83,10 +83,10 @@ function ProductsPageContent() {
           .slice(0, 6)
       : [];
 
-  const selectCustomerSuggestion = (c: Customer) => {
-    setCustomerEmail(c.email);
-    setCustomerName(c.name);
-    setCustomerPhone(c.phone || "");
+  const selectClientSuggestion = (c: Client) => {
+    setClientEmail(c.email);
+    setClientName(c.name);
+    setClientPhone(c.phone || "");
     setClientSearch("");
     setShowSuggestions(false);
   };
@@ -106,17 +106,17 @@ function ProductsPageContent() {
     return products
       .filter((p) => selectedProducts.has(p.id))
       .map((product) => {
-        const unitPrice = Number(product.unit_price) || 0;
-        const unitPriceEur = Number(product.unit_price_eur);
+        const unitPrice = Number(product.unitPrice) || 0;
+        const unitPriceEur = Number(product.unitPriceEur);
         return {
           sku: product.sku,
           name: product.title,
           quantity: 1,
-          unit_price: unitPrice,
-          unit_price_eur: Number.isNaN(unitPriceEur) ? Math.round((unitPrice / rate) * 100) / 100 : unitPriceEur,
+          unitPrice,
+          unitPriceEur: Number.isNaN(unitPriceEur) ? Math.round((unitPrice / rate) * 100) / 100 : unitPriceEur,
           total: unitPrice,
           image: product.image,
-          vat_rate: product.vat_rate ?? 21,
+          vatRate: product.vatRate ?? 21,
           dimensions: product.dimensions,
         };
       });
@@ -125,7 +125,7 @@ function ProductsPageContent() {
   const handleCreateNewOffer = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!offerTitle || !customerName || !customerEmail || selectedProducts.size === 0) {
+    if (!offerTitle || !clientName || !clientEmail || selectedProducts.size === 0) {
       alert("Vyplňte prosím všechna povinná pole a vyberte alespoň jeden produkt");
       return;
     }
@@ -144,10 +144,10 @@ function ProductsPageContent() {
       };
 
       const result = await offersApi.create({
-        customer: {
-          name: customerName,
-          email: customerEmail,
-          phone: customerPhone,
+        client: {
+          name: clientName,
+          email: clientEmail,
+          phone: clientPhone,
         },
         title: offerTitle,
         description: offerDescription,
@@ -155,12 +155,12 @@ function ProductsPageContent() {
         subtotal,
         total: subtotal,
         currency: "CZK",
-        exchange_rate: exchangeRate,
+        exchangeRate,
         status: "draft",
       });
 
       if (result.success) {
-        router.push(`/offers/${result.data.simple_id}`);
+        router.push(`/offers/${result.data.simpleId}`);
       }
     } catch (err) {
       console.error("Error creating offer:", err);
@@ -310,12 +310,12 @@ function ProductsPageContent() {
                         <TableCell>{product.brand}</TableCell>
                         <TableCell>{product.collection}</TableCell>
                         <TableCell>{product.substrate ?? "—"}</TableCell>
-                        <TableCell className="text-center">{product.delivery_time ?? "—"}</TableCell>
+                        <TableCell className="text-center">{product.deliveryTime ?? "—"}</TableCell>
                         <TableCell className="text-center">
                           {(() => {
                             const stock = stockMap[product.sku];
                             if (!stock) return <span className="text-muted-foreground">—</span>;
-                            const qty = stock.stock_available;
+                            const qty = stock.stockAvailable;
                             return (
                               <span className={qty > 0 ? "font-medium text-green-600" : "text-red-500"}>
                                 {qty > 0 ? qty : "0"}
@@ -330,11 +330,11 @@ function ProductsPageContent() {
                             {product.dimensions?.diameter > 0 && <span>Průměr: {product.dimensions.diameter} cm</span>}
                             {product.dimensions?.opening > 0 && <span>Průměr vnitřní: {product.dimensions.opening} cm</span>}
                             {product.dimensions?.length > 0 && <span>Délka: {product.dimensions.length} cm</span>}
-                            {product.dimensions?.pot_size && <span>Velikost květináče: {product.dimensions.pot_size} cm</span>}
+                            {product.dimensions?.potSize && <span>Velikost květináče: {product.dimensions.potSize} cm</span>}
                           </div>
                         </TableCell>
                         <TableCell className="font-semibold">
-                          {(Number(product.unit_price_eur) || 0).toFixed(2)} EUR / {formatPrice(product.price)}
+                          {(Number(product.unitPriceEur) || 0).toFixed(2)} EUR / {formatPrice(product.price)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -394,7 +394,7 @@ function ProductsPageContent() {
                 {showSuggestions && clientSearchResults.length > 0 && (
                   <ul className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-lg">
                     {clientSearchResults.map((c) => (
-                      <li key={c.id} className="cursor-pointer px-3 py-2 hover:bg-muted" onMouseDown={() => selectCustomerSuggestion(c)}>
+                  <li key={c.id} className="cursor-pointer px-3 py-2 hover:bg-muted" onMouseDown={() => selectClientSuggestion(c)}>
                         <div className="text-sm font-medium">{c.name}</div>
                         <div className="text-xs text-muted-foreground">{c.email}</div>
                       </li>
@@ -404,15 +404,15 @@ function ProductsPageContent() {
               </div>
               <div>
                 <Label htmlFor="customer-name">Jméno klienta *</Label>
-                <Input id="customer-name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
+                <Input id="customer-name" value={clientName} onChange={(e) => setClientName(e.target.value)} required />
               </div>
               <div>
                 <Label htmlFor="customer-email">Email klienta *</Label>
-                <Input id="customer-email" type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} required />
+                <Input id="customer-email" type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} required />
               </div>
               <div>
                 <Label htmlFor="customer-phone">Telefon (volitelné)</Label>
-                <Input id="customer-phone" type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+                <Input id="customer-phone" type="tel" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} />
               </div>
               <div className="rounded-md bg-blue-50 p-3 text-sm text-blue-900">Vybráno: {selectedProducts.size}</div>
             </div>
