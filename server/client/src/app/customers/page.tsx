@@ -359,7 +359,7 @@ export default function ClientsPage() {
                 </div>
                 <div>
                   <Label htmlFor="email">Email *</Label>
-                  <Input id="email" type="email" value={editingClient.email} onChange={(e) => updateEditingClient("email", e.target.value)} required />
+                  <Input id="email" type="email" value={editingClient.email ?? ""} onChange={(e) => updateEditingClient("email", e.target.value)} required />
                 </div>
               </div>
 

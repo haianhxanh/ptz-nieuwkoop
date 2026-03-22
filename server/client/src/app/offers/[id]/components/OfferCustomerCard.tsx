@@ -26,7 +26,7 @@ export function OfferClientCard({ client, allClients, selectedClientId, onClient
       ? allClients
           .filter((c) => {
             const q = search.toLowerCase();
-            return c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || (c.companyName && c.companyName.toLowerCase().includes(q));
+            return (c.name ?? "").toLowerCase().includes(q) || (c.email ?? "").toLowerCase().includes(q) || (c.companyName && c.companyName.toLowerCase().includes(q));
           })
           .slice(0, 6)
       : [];
@@ -71,7 +71,7 @@ export function OfferClientCard({ client, allClients, selectedClientId, onClient
                       {c.name}
                       {c.companyName ? ` (${c.companyName})` : ""}
                     </div>
-                    <div className="text-xs text-muted-foreground">{c.email}</div>
+                    <div className="text-xs text-muted-foreground">{c.email ?? "-"}</div>
                   </li>
                 ))}
               </ul>

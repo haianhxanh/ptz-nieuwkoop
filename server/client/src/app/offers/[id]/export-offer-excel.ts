@@ -53,7 +53,7 @@ export function buildAndDownloadOfferExcel(
   pushRow([`${offer.title}`]);
   pushRow([]);
   pushRow(["Klient:", offer.client.name]);
-  pushRow(["Email:", offer.client.email]);
+  pushRow(["Email:", offer.client.email ?? ""]);
   if (offer.client.phone) pushRow(["Telefon:", offer.client.phone]);
   if (offer.client.companyName) {
     pushRow(["Firma:", offer.client.companyName]);

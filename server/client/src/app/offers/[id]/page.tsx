@@ -181,7 +181,7 @@ export default function OfferDetailPage() {
     return {
       slug: process.env.NODE_ENV === "development" ? "upgrowthdev" : companyProfile?.fakturoidSlug || "",
       client_name: client.companyName || client.name,
-      client_email: client.email,
+      client_email: client.email ?? undefined,
       client_phone: client.phone,
       client_street: client.address,
       client_city: client.city,

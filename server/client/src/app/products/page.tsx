@@ -78,13 +78,13 @@ function ProductsPageContent() {
       ? clients
           .filter((c) => {
             const q = clientSearch.toLowerCase();
-            return c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
+            return (c.name ?? "").toLowerCase().includes(q) || (c.email ?? "").toLowerCase().includes(q);
           })
           .slice(0, 6)
       : [];
 
   const selectClientSuggestion = (c: Client) => {
-    setClientEmail(c.email);
+    setClientEmail(c.email ?? "");
     setClientName(c.name);
     setClientPhone(c.phone || "");
     setClientSearch("");
