@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { chromium, type Browser } from "playwright";
+import { configService } from "../services/config.service";
 
 let browserInstance: Browser | null = null;
 
@@ -85,6 +86,10 @@ interface PdfRequestBody {
   company: { name: string; ico: string; dic: string; logo_url?: string };
 }
 
+const DEFAULT_OFFER_NOTE_HTML =
+  '<div class="terms-text">Platnost nabídky je 14 dní.</div>' +
+  '<div class="terms-text">Po odsouhlasení cenové nabídky Vám vystavíme zálohovou fakturu. Po jejím uhrazení činí dodací lhůta přibližně 2 týdny dle dostupnosti jednotlivých položek.</div>';
+
 function escHtml(str: string | undefined | null): string {
   if (!str) return "";
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -115,7 +120,7 @@ const getClientCompanyDic = (client: any) => client.companyDic ?? client.company
 const getOfferValidUntil = (offer: any) => offer.validUntil ?? offer.valid_until;
 const getCompanyLogoUrl = (company: any) => company.logoUrl ?? company.logo_url;
 
-function renderOfferHtml(data: PdfRequestBody): string {
+function renderOfferHtml(data: PdfRequestBody, offerNoteHtml: string): string {
   const { offer, editedGroups, additionalItems, totals, sellMultiplier, notesText, totalRounded, company } = data;
   const currency = offer.currency || "CZK";
   const fmt = (v: number) => fmtCurrency(v, currency);
@@ -568,8 +573,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
 
   <!-- Validity & Payment terms -->
   <div class="terms-area">
-    <div class="terms-text">Platnost nabídky je 14 dní.</div>
-    <div class="terms-text">Po odsouhlasení cenové nabídky Vám vystavíme zálohovou fakturu. Po jejím uhrazení činí dodací lhůta přibližně 2 týdny dle dostupnosti jednotlivých položek.</div>
+    ${offerNoteHtml}
   </div>
 
 </div>
@@ -584,7 +588,8 @@ export const exportOfferPdf = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const html = renderOfferHtml(body);
+    const offerNoteHtml = (await configService.get("OFFER_NOTE_HTML")) || DEFAULT_OFFER_NOTE_HTML;
+    const html = renderOfferHtml(body, offerNoteHtml);
     const browser = await getBrowser();
     const context = await browser.newContext();
     const page = await context.newPage();
