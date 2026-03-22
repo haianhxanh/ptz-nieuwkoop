@@ -15,6 +15,30 @@ import { toast } from "sonner";
 
 const ITEMS_PER_PAGE = 12;
 
+function getVisiblePages(currentPage: number, totalPages: number): Array<number | "ellipsis"> {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+
+  const pages = new Set<number>([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  if (currentPage <= 3) {
+    pages.add(2);
+    pages.add(3);
+  }
+  if (currentPage >= totalPages - 2) {
+    pages.add(totalPages - 1);
+    pages.add(totalPages - 2);
+  }
+
+  const sortedPages = Array.from(pages).filter((page) => page >= 1 && page <= totalPages).sort((a, b) => a - b);
+  const result: Array<number | "ellipsis"> = [];
+
+  sortedPages.forEach((page, index) => {
+    if (index > 0 && page - sortedPages[index - 1] > 1) result.push("ellipsis");
+    result.push(page);
+  });
+
+  return result;
+}
+
 export default function ClientsPage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
@@ -284,17 +308,23 @@ export default function ClientsPage() {
                           <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
                             Předchozí
                           </Button>
-                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                            <Button
-                              key={page}
-                              variant={page === currentPage ? "default" : "outline"}
-                              size="sm"
-                              className="w-9"
-                              onClick={() => setCurrentPage(page)}
-                            >
-                              {page}
-                            </Button>
-                          ))}
+                          {getVisiblePages(currentPage, totalPages).map((page, index) =>
+                            page === "ellipsis" ? (
+                              <span key={`ellipsis-${index}`} className="px-1 text-sm text-muted-foreground">
+                                ...
+                              </span>
+                            ) : (
+                              <Button
+                                key={page}
+                                variant={page === currentPage ? "default" : "outline"}
+                                size="sm"
+                                className="w-9"
+                                onClick={() => setCurrentPage(page)}
+                              >
+                                {page}
+                              </Button>
+                            ),
+                          )}
                           <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)}>
                             Další
                           </Button>
