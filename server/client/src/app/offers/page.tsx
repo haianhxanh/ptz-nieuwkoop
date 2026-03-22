@@ -76,9 +76,9 @@ export default function OffersPage() {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
-      offer.client.name.toLowerCase().includes(q) ||
-      offer.client.email.toLowerCase().includes(q) ||
-      offer.title.toLowerCase().includes(q) ||
+      (offer.client.name ?? "").toLowerCase().includes(q) ||
+      (offer.client.email ?? "").toLowerCase().includes(q) ||
+      (offer.title ?? "").toLowerCase().includes(q) ||
       `#${offer.simpleId}`.includes(q)
     );
   });
@@ -211,7 +211,7 @@ export default function OffersPage() {
                             <TableCell className="font-semibold">{offer.title}</TableCell>
                             <TableCell>
                               <div>{offer.client.name}</div>
-                              <div className="text-sm text-muted-foreground">{offer.client.email}</div>
+                              {offer.client.email ? <div className="text-sm text-muted-foreground">{offer.client.email}</div> : null}
                             </TableCell>
                             <TableCell>
                               <Badge variant={statusConfig[offer.status].variant}>{statusConfig[offer.status].label}</Badge>

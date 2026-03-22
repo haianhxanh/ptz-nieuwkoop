@@ -28,7 +28,9 @@ function getVisiblePages(currentPage: number, totalPages: number): Array<number 
     pages.add(totalPages - 2);
   }
 
-  const sortedPages = Array.from(pages).filter((page) => page >= 1 && page <= totalPages).sort((a, b) => a - b);
+  const sortedPages = Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((a, b) => a - b);
   const result: Array<number | "ellipsis"> = [];
 
   sortedPages.forEach((page, index) => {
@@ -63,8 +65,8 @@ export default function ClientsPage() {
       const query = searchQuery.toLowerCase();
       const filtered = clients.filter(
         (client) =>
-          client.name.toLowerCase().includes(query) ||
-          client.email.toLowerCase().includes(query) ||
+          (client.name ?? "").toLowerCase().includes(query) ||
+          (client.email ?? "").toLowerCase().includes(query) ||
           client.phone?.toLowerCase().includes(query) ||
           client.city?.toLowerCase().includes(query),
       );
@@ -226,9 +228,13 @@ export default function ClientsPage() {
                                   <div className="grid gap-3 md:grid-cols-3 text-sm">
                                     <div className="flex items-start gap-2">
                                       <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                                      <a href={`mailto:${client.email}`} className="break-all text-blue-600 hover:underline">
-                                        {client.email}
-                                      </a>
+                                      {client.email ? (
+                                        <a href={`mailto:${client.email}`} className="break-all text-blue-600 hover:underline">
+                                          {client.email}
+                                        </a>
+                                      ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                      )}
                                     </div>
 
                                     <div className="flex items-start gap-2">

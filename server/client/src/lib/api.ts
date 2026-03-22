@@ -37,7 +37,7 @@ export interface User {
 
 export interface Client {
   id?: string;
-  email: string;
+  email?: string | null;
   name: string;
   phone?: string;
   address?: string;
