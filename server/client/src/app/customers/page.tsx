@@ -13,6 +13,8 @@ import { offersApi, type Client } from "@/lib/api";
 import { Search, Mail, Phone, MapPin, User, Edit, Plus } from "lucide-react";
 import { toast } from "sonner";
 
+const ITEMS_PER_PAGE = 12;
+
 export default function ClientsPage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
@@ -24,6 +26,7 @@ export default function ClientsPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     loadClients();
@@ -43,6 +46,7 @@ export default function ClientsPage() {
       );
       setFilteredClients(filtered);
     }
+    setCurrentPage(1);
   }, [searchQuery, clients]);
 
   const loadClients = async () => {
@@ -175,69 +179,131 @@ export default function ClientsPage() {
               </div>
             )}
 
-            {!loading && !error && filteredClients.length > 0 && (
-              <div className="space-y-4">
-                {filteredClients.map((client) => (
-                  <Card key={client.id} className="transition-shadow hover:shadow-md">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 space-y-3">
-                          <div>
-                            <h3 className="text-lg font-semibold">{client.name}</h3>
-                            {client.companyName && (
-                              <p className="text-sm font-medium text-foreground/70">
-                                {client.companyName}
-                                {client.companyIco && <span className="ml-2 text-muted-foreground">IČO: {client.companyIco}</span>}
-                                {client.companyDic && <span className="ml-2 text-muted-foreground">DIČ: {client.companyDic}</span>}
-                              </p>
-                            )}
-                          </div>
+            {!loading &&
+              !error &&
+              filteredClients.length > 0 &&
+              (() => {
+                const totalPages = Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
+                const paginatedClients = filteredClients.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-                          <div className="flex flex-wrap gap-4 text-sm">
-                            <div className="flex items-center gap-2">
-                              <Mail className="h-4 w-4 text-muted-foreground" />
-                              <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">
-                                {client.email}
-                              </a>
-                            </div>
+                return (
+                  <>
+                    <div className="space-y-4">
+                      {paginatedClients.map((client) => (
+                        <Card key={client.id} className="transition-shadow hover:shadow-md">
+                          <CardContent className="p-6">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="grid flex-1 gap-5 md:grid-cols-[minmax(180px,220px)_1fr]">
+                                <div className="space-y-2">
+                                  <h3 className="text-lg font-semibold leading-tight">{client.name}</h3>
+                                </div>
 
-                            {client.phone && (
-                              <div className="flex items-center gap-2">
-                                <Phone className="h-4 w-4 text-muted-foreground" />
-                                <a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">
-                                  {client.phone}
-                                </a>
+                                <div className="space-y-4">
+                                  <div className="grid gap-3 md:grid-cols-3 text-sm">
+                                    <div className="flex items-start gap-2">
+                                      <Mail className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                                      <a href={`mailto:${client.email}`} className="break-all text-blue-600 hover:underline">
+                                        {client.email}
+                                      </a>
+                                    </div>
+
+                                    <div className="flex items-start gap-2">
+                                      <Phone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                                      {client.phone ? (
+                                        <a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">
+                                          {client.phone}
+                                        </a>
+                                      ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-start gap-2">
+                                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                                      <span className="text-muted-foreground">
+                                        {client.address && <span>{client.address}, </span>}
+                                        {client.postalCode && <span>{client.postalCode} </span>}
+                                        {client.city || client.country ? (
+                                          <>
+                                            {client.city}
+                                            {client.country && (
+                                              <span>
+                                                {client.city ? ", " : ""}
+                                                {client.country}
+                                              </span>
+                                            )}
+                                          </>
+                                        ) : (
+                                          "-"
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {(client.companyName || client.companyIco || client.companyDic) && (
+                                    <div className="grid gap-3 rounded-md bg-muted/40 p-3 text-sm md:grid-cols-3">
+                                      <div>
+                                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Firma</p>
+                                        <p className="font-medium">{client.companyName || "-"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs uppercase tracking-wide text-muted-foreground">IČO</p>
+                                        <p className="font-medium">{client.companyIco || "-"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs uppercase tracking-wide text-muted-foreground">DIČ</p>
+                                        <p className="font-medium">{client.companyDic || "-"}</p>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {client.notes && (
+                                    <div className="rounded-md bg-muted p-3 text-sm">
+                                      <p className="text-muted-foreground">{client.notes}</p>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            )}
 
-                            {(client.address || client.city) && (
-                              <div className="flex items-center gap-2">
-                                <MapPin className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-muted-foreground">
-                                  {client.address && <span>{client.address}, </span>}
-                                  {client.postalCode && <span>{client.postalCode} </span>}
-                                  {client.city}
-                                  {client.country && <span>, {client.country}</span>}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-
-                          {client.notes && (
-                            <div className="mt-2 rounded-md bg-muted p-3 text-sm">
-                              <p className="text-muted-foreground">{client.notes}</p>
+                              <Button variant="outline" size="sm" onClick={() => handleEditClick(client)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
                             </div>
-                          )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+
+                    {totalPages > 1 && (
+                      <div className="mt-4 flex items-center justify-between border-t pt-4">
+                        <span className="text-sm text-muted-foreground">
+                          {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredClients.length)} z {filteredClients.length}{" "}
+                          klientů
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
+                            Předchozí
+                          </Button>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <Button
+                              key={page}
+                              variant={page === currentPage ? "default" : "outline"}
+                              size="sm"
+                              className="w-9"
+                              onClick={() => setCurrentPage(page)}
+                            >
+                              {page}
+                            </Button>
+                          ))}
+                          <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => p + 1)}>
+                            Další
+                          </Button>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => handleEditClick(client)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+                    )}
+                  </>
+                );
+              })()}
           </CardContent>
         </Card>
       </div>
@@ -307,8 +373,8 @@ export default function ClientsPage() {
                 <Label htmlFor="notes">Poznámky</Label>
                 <Textarea
                   id="notes"
-                    value={editingClient.notes || ""}
-                    onChange={(e) => updateEditingClient("notes", e.target.value)}
+                  value={editingClient.notes || ""}
+                  onChange={(e) => updateEditingClient("notes", e.target.value)}
                   placeholder="Poznámky"
                   rows={3}
                 />
