@@ -214,16 +214,16 @@ export const deleteOffer = async (req: Request, res: Response) => {
   }
 };
 
-export const listCustomers = async (req: Request, res: Response) => {
+export const listClients = async (req: Request, res: Response) => {
   try {
-    const customers = await offersService.listCustomers();
+    const clients = await offersService.listClients();
 
     return res.status(200).json({
       success: true,
-      data: customers,
+      data: clients,
     });
   } catch (error) {
-    console.error("Error listing customers:", error);
+    console.error("Error listing clients:", error);
     return res.status(500).json({
       success: false,
       error: "Internal server error",
@@ -231,16 +231,16 @@ export const listCustomers = async (req: Request, res: Response) => {
   }
 };
 
-export const createCustomer = async (req: Request, res: Response) => {
+export const createClient = async (req: Request, res: Response) => {
   try {
-    const customer = await offersService.findOrCreateCustomer(req.body);
+    const client = await offersService.createClient(req.body);
 
     return res.status(201).json({
       success: true,
-      data: customer,
+      data: client,
     });
   } catch (error: any) {
-    console.error("Error creating customer:", error);
+    console.error("Error creating client:", error);
     return res.status(400).json({
       success: false,
       error: error.message || "Internal server error",
@@ -248,26 +248,26 @@ export const createCustomer = async (req: Request, res: Response) => {
   }
 };
 
-export const updateCustomer = async (req: Request, res: Response) => {
+export const updateClient = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const data = req.body;
 
-    const customer = await offersService.updateCustomer(id, data);
+    const client = await offersService.updateClient(id, data);
 
-    if (!customer) {
+    if (!client) {
       return res.status(404).json({
         success: false,
-        error: "Customer not found",
+        error: "Client not found",
       });
     }
 
     return res.status(200).json({
       success: true,
-      data: customer,
+      data: client,
     });
   } catch (error) {
-    console.error("Error updating customer:", error);
+    console.error("Error updating client:", error);
     return res.status(500).json({
       success: false,
       error: "Internal server error",

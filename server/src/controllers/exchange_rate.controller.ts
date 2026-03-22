@@ -12,11 +12,10 @@ export const exchangeRate = async (req: Request, res: Response) => {
       configService.getCompanyProfiles(),
     ]);
 
-    const nieuwkoop_discount = discountRaw ? parseFloat(discountRaw) : 0;
-    // Keep legacy `company` field for backward compat (first entry)
+    const nieuwkoopDiscount = discountRaw ? parseFloat(discountRaw) : 0;
     const first = companies[0];
     const company = first
-      ? { name: first.company_name, ico: first.company_ico, dic: first.company_dic }
+      ? { name: first.companyName, ico: first.companyIco, dic: first.companyDic }
       : { name: "", ico: "", dic: "" };
 
     if (lastUpdateDate !== todayFormatted) {
@@ -32,7 +31,7 @@ export const exchangeRate = async (req: Request, res: Response) => {
           await configService.setExchangeRate(parseFloat(eurRate));
           return res.status(200).json({
             success: true,
-            data: { rate: parseFloat(eurRate), nieuwkoop_discount, company, companies, source: "ČNB", updated: true },
+            data: { rate: parseFloat(eurRate), nieuwkoopDiscount, company, companies, source: "ČNB", updated: true, date: todayFormatted },
           });
         }
 
@@ -46,7 +45,7 @@ export const exchangeRate = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       success: true,
-      data: { rate, nieuwkoop_discount, company, companies, source: "ČNB", updated: false },
+      data: { rate, nieuwkoopDiscount, company, companies, source: "ČNB", updated: false, date: lastUpdateDate },
     });
   } catch (error) {
     console.error("Error getting exchange rate:", error);

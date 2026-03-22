@@ -10,7 +10,7 @@ import {
   OfferDetailHeader,
   OfferProductsTable,
   OfferDescriptionCard,
-  OfferCustomerCard,
+  OfferClientCard,
   OfferSummaryCard,
   OfferNotesCard,
   OfferMetadataCard,
@@ -66,9 +66,9 @@ export default function OfferDetailPage() {
     companyProfile,
     setCompanyProfile,
     availableCompanies,
-    allCustomers,
-    selectedCustomerId,
-    setSelectedCustomerId,
+    allClients,
+    selectedClientId,
+    setSelectedClientId,
     calculateTotals,
     displayExchangeRate,
     applyTodaysExchangeRate,
@@ -112,9 +112,9 @@ export default function OfferDetailPage() {
 
   const handleDuplicate = async () => {
     try {
-      const result = await offersApi.duplicate(offer.simple_id.toString());
+      const result = await offersApi.duplicate(offer.simpleId.toString());
       toast.success("Nabídka duplikována");
-      router.push(`/offers/${result.data.simple_id}`);
+      router.push(`/offers/${result.data.simpleId}`);
     } catch {
       toast.error("Nepodařilo se duplikovat nabídku");
     }
@@ -122,7 +122,7 @@ export default function OfferDetailPage() {
 
   const handleDelete = async () => {
     try {
-      await offersApi.delete(offer.simple_id.toString());
+      await offersApi.delete(offer.simpleId.toString());
       toast.success("Nabídka smazána");
       router.push("/offers");
     } catch {
@@ -131,25 +131,25 @@ export default function OfferDetailPage() {
   };
 
   const handleAddProductsToGroup = (groupId: string) => {
-    router.push(`/products?offer=${offer.simple_id}&group=${groupId}`);
+    router.push(`/products?offer=${offer.simpleId}&group=${groupId}`);
   };
 
   const buildProformaPayload = () => {
-    const customer = offer.customer;
+    const client = offer.client;
     const multiplier = Number(sellMultiplier) || 1;
 
     const lineItems = editedGroups.flatMap((group) => {
-      const discountType = group.discount_type || "fixed";
+      const discountType = "percent";
       const rawDiscount = Number(group.discount) || 0;
 
       const itemsWithVat = group.items.map((item) => {
-        const vat = (item.vat_rate ?? 21) / 100;
-        const priceWithVat = item.unit_price * multiplier * (1 + vat);
+        const vat = (item.vatRate ?? 21) / 100;
+        const priceWithVat = item.unitCost * multiplier * (1 + vat);
         return { ...item, priceWithVat, totalWithVat: priceWithVat * item.quantity };
       });
 
       const groupTotal = itemsWithVat.reduce((s, i) => s + i.totalWithVat, 0);
-      const discountAmount = rawDiscount > 0 ? (discountType === "percent" ? (groupTotal * rawDiscount) / 100 : rawDiscount) : 0;
+      const discountAmount = rawDiscount > 0 ? (groupTotal * rawDiscount) / 100 : 0;
       const discountRatio = groupTotal > 0 && discountAmount > 0 ? 1 - discountAmount / groupTotal : 1;
 
       return itemsWithVat.map((item) => {
@@ -157,47 +157,47 @@ export default function OfferDetailPage() {
         if (item.dimensions) {
           if (item.dimensions.height) dimParts.push(`Výška: ${item.dimensions.height} cm`);
           if (item.dimensions.diameter) dimParts.push(`Průměr: ${item.dimensions.diameter} cm`);
-          if (item.dimensions.pot_size) dimParts.push(`Květináč: ${item.dimensions.pot_size} cm`);
+          if (item.dimensions.potSize) dimParts.push(`Květináč: ${item.dimensions.potSize} cm`);
         }
         const nameWithDims = dimParts.length > 0 ? `${item.name} (${dimParts.join(", ")})` : item.name;
         return {
           name: nameWithDims,
           quantity: item.quantity,
           unit_price: Math.round(item.priceWithVat * discountRatio * 100) / 100,
-          vat_rate: item.vat_rate ?? 21,
+          vat_rate: item.vatRate ?? 21,
         };
       });
     });
 
     const additionalLineItems = additionalItems
-      .filter((a) => (Number(a.sell_price) || 0) > 0)
+      .filter((a) => (Number(a.price) || 0) > 0)
       .map((a) => ({
         name: a.title,
         quantity: 1,
-        unit_price: Number(a.sell_price) || 0,
+        unit_price: Math.round((Number(a.price) || 0) * 1.21 * 100) / 100,
         vat_rate: 21,
       }));
 
     return {
-      slug: process.env.NODE_ENV === "development" ? "upgrowthdev" : companyProfile?.fakturoid_slug || "",
-      client_name: customer.company_name || customer.name,
-      client_email: customer.email,
-      client_phone: customer.phone,
-      client_street: customer.address,
-      client_city: customer.city,
-      client_zip: customer.postal_code,
-      client_ico: customer.company_ico,
-      client_dic: customer.company_dic,
+      slug: process.env.NODE_ENV === "development" ? "upgrowthdev" : companyProfile?.fakturoidSlug || "",
+      client_name: client.companyName || client.name,
+      client_email: client.email,
+      client_phone: client.phone,
+      client_street: client.address,
+      client_city: client.city,
+      client_zip: client.postalCode,
+      client_ico: client.companyIco,
+      client_dic: client.companyDic,
       items: [...lineItems, ...additionalLineItems],
     };
   };
 
   const saveProformaToOffer = async (result: { public_html_url: string; invoice_id: number }) => {
-    await offersApi.update(offer.simple_id.toString(), {
-      proforma_url: result.public_html_url,
-      proforma_id: result.invoice_id,
+    await offersApi.update(offer.simpleId.toString(), {
+      proformaUrl: result.public_html_url,
+      proformaId: result.invoice_id,
     });
-    setOffer((prev) => (prev ? { ...prev, proforma_url: result.public_html_url, proforma_id: result.invoice_id } : prev));
+    setOffer((prev) => (prev ? { ...prev, proformaUrl: result.public_html_url, proformaId: result.invoice_id } : prev));
   };
 
   const handleCreateProforma = async (sendEmail = false) => {
@@ -216,10 +216,10 @@ export default function OfferDetailPage() {
   };
 
   const handleUpdateProforma = async (sendEmail = false) => {
-    if (!offer || !offer.proforma_id) return;
+    if (!offer || !offer.proformaId) return;
     try {
       setCreatingProforma(true);
-      const result = await fakturoidApi.updateProforma(offer.proforma_id, { ...buildProformaPayload(), send_email: sendEmail });
+      const result = await fakturoidApi.updateProforma(offer.proformaId, { ...buildProformaPayload(), send_email: sendEmail });
       await saveProformaToOffer(result);
       toast.success(sendEmail ? "Proforma aktualizována a odeslána" : "Proforma aktualizována");
     } catch (err: any) {
@@ -245,7 +245,7 @@ export default function OfferDetailPage() {
       <Nav />
       <div className={`container mx-auto px-4 py-8 ${hasUnsavedChanges ? "pb-24" : ""}`}>
         <OfferDetailHeader
-          offerId={offer.simple_id}
+          offerId={offer.simpleId}
           title={offerTitle}
           onTitleChange={setOfferTitle}
           status={status}
@@ -256,13 +256,13 @@ export default function OfferDetailPage() {
           onExportExcel={exportToExcel}
           onExportPdf={handleExportPdf}
           onBack={() => router.push("/offers")}
-          onDiscard={() => loadOffer(offer.simple_id.toString())}
+          onDiscard={() => loadOffer(offer.simpleId.toString())}
           onAddSection={handleAddSection}
           onDuplicate={handleDuplicate}
           onDelete={handleDelete}
-          proformaUrl={offer.proforma_url}
-          proformaId={offer.proforma_id}
-          fakturoidSlug={process.env.NODE_ENV === "development" ? "upgrowthdev" : companyProfile?.fakturoid_slug || ""}
+          proformaUrl={offer.proformaUrl}
+          proformaId={offer.proformaId}
+          fakturoidSlug={process.env.NODE_ENV === "development" ? "upgrowthdev" : companyProfile?.fakturoidSlug || ""}
           creatingProforma={creatingProforma}
           onCreateProforma={handleCreateProforma}
           onUpdateProforma={handleUpdateProforma}
@@ -295,12 +295,7 @@ export default function OfferDetailPage() {
 
           <div className="space-y-6">
             <OfferCompanyCard companyProfile={companyProfile} availableCompanies={availableCompanies} onChange={setCompanyProfile} />
-            <OfferCustomerCard
-              customer={offer.customer}
-              allCustomers={allCustomers}
-              selectedCustomerId={selectedCustomerId}
-              onCustomerChange={setSelectedCustomerId}
-            />
+            <OfferClientCard client={offer.client} allClients={allClients} selectedClientId={selectedClientId} onClientChange={setSelectedClientId} />
             <OfferSummaryCard
               additionalItems={additionalItems}
               onAdditionalItemsChange={setAdditionalItems}
@@ -308,11 +303,9 @@ export default function OfferDetailPage() {
               onEditingAdditionalIndexChange={setEditingAdditionalIndex}
               onUnsavedChange={markUnsaved}
               currency={offer.currency}
-              tax={Number(offer.tax) || 0}
               groupsDiscount={totals.groupsDiscount}
+              totalCost={totals.totalCost}
               total={totals.total}
-              totalSell={totals.totalSell}
-              totalSellExclVat={totals.totalSellExclVat}
               totalRounded={totalRounded}
               onTotalRoundedChange={setTotalRounded}
               sellMultiplier={sellMultiplier}
@@ -320,9 +313,9 @@ export default function OfferDetailPage() {
             />
             <OfferNotesCard value={notesText} onChange={setNotesText} />
             <OfferMetadataCard
-              createdAt={offer.created_at}
-              updatedAt={offer.updated_at}
-              validUntil={offer.valid_until}
+              createdAt={offer.createdAt}
+              updatedAt={offer.updatedAt}
+              validUntil={offer.validUntil}
               exchangeRate={displayExchangeRate}
               updatingRate={updatingRate}
               onApplyTodaysRate={applyTodaysExchangeRate}
@@ -337,7 +330,7 @@ export default function OfferDetailPage() {
             <span className="mr-auto text-sm text-amber-600 font-medium">Máte neuložené změny</span>
             <Button
               variant="ghost"
-              onClick={() => loadOffer(offer.simple_id.toString())}
+              onClick={() => loadOffer(offer.simpleId.toString())}
               disabled={saving}
               className="text-muted-foreground hover:text-foreground"
             >

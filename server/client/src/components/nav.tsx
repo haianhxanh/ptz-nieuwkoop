@@ -60,10 +60,10 @@ export function Nav() {
                 Produkty
               </Link>
               <Link
-                href="/customers"
+                href="/clients"
                 className={cn(
                   "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  pathname === "/customers" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+                  pathname === "/clients" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
                 )}
               >
                 Klienti

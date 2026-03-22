@@ -9,65 +9,49 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { offersApi } from "@/lib/api";
+import { offersApi, type Client } from "@/lib/api";
 import { Search, Mail, Phone, MapPin, User, Edit, Plus } from "lucide-react";
 import { toast } from "sonner";
 
-interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  postal_code?: string;
-  country?: string;
-  notes?: string;
-  company_name?: string;
-  company_ico?: string;
-  company_dic?: string;
-  created_at: string;
-}
-
-export default function CustomersPage() {
+export default function ClientsPage() {
   const router = useRouter();
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    loadCustomers();
+    loadClients();
   }, []);
 
   useEffect(() => {
     if (searchQuery.trim() === "") {
-      setFilteredCustomers(customers);
+      setFilteredClients(clients);
     } else {
       const query = searchQuery.toLowerCase();
-      const filtered = customers.filter(
-        (customer) =>
-          customer.name.toLowerCase().includes(query) ||
-          customer.email.toLowerCase().includes(query) ||
-          customer.phone?.toLowerCase().includes(query) ||
-          customer.city?.toLowerCase().includes(query),
+      const filtered = clients.filter(
+        (client) =>
+          client.name.toLowerCase().includes(query) ||
+          client.email.toLowerCase().includes(query) ||
+          client.phone?.toLowerCase().includes(query) ||
+          client.city?.toLowerCase().includes(query),
       );
-      setFilteredCustomers(filtered);
+      setFilteredClients(filtered);
     }
-  }, [searchQuery, customers]);
+  }, [searchQuery, clients]);
 
-  const loadCustomers = async () => {
+  const loadClients = async () => {
     try {
       setLoading(true);
-      const data = await offersApi.listCustomers();
+      const data = await offersApi.listClients();
       if (data.success) {
-        setCustomers(data.data as Customer[]);
-        setFilteredCustomers(data.data as Customer[]);
+        setClients(data.data as Client[]);
+        setFilteredClients(data.data as Client[]);
       }
     } catch (err) {
       setError("Chyba při načítání klientů");
@@ -85,60 +69,60 @@ export default function CustomersPage() {
     });
   };
 
-  const handleEditClick = (customer: Customer) => {
-    setEditingCustomer({ ...customer });
+  const handleEditClick = (client: Client) => {
+    setEditingClient({ ...client });
     setIsCreating(false);
     setEditDialogOpen(true);
   };
 
   const handleNewClick = () => {
-    setEditingCustomer({ id: "", name: "", email: "", created_at: "" });
+    setEditingClient({ id: "", name: "", email: "", createdAt: "" });
     setIsCreating(true);
     setEditDialogOpen(true);
   };
 
-  const handleSaveCustomer = async () => {
-    if (!editingCustomer) return;
+  const handleSaveClient = async () => {
+    if (!editingClient) return;
 
     try {
       setSaving(true);
       const payload = {
-        name: editingCustomer.name,
-        email: editingCustomer.email,
-        phone: editingCustomer.phone,
-        address: editingCustomer.address,
-        city: editingCustomer.city,
-        postal_code: editingCustomer.postal_code,
-        country: editingCustomer.country,
-        notes: editingCustomer.notes,
-        company_name: editingCustomer.company_name,
-        company_ico: editingCustomer.company_ico,
-        company_dic: editingCustomer.company_dic,
+        name: editingClient.name,
+        email: editingClient.email,
+        phone: editingClient.phone,
+        address: editingClient.address,
+        city: editingClient.city,
+        postalCode: editingClient.postalCode,
+        country: editingClient.country,
+        notes: editingClient.notes,
+        companyName: editingClient.companyName,
+        companyIco: editingClient.companyIco,
+        companyDic: editingClient.companyDic,
       };
 
       let result;
       if (isCreating) {
-        result = await offersApi.createCustomer(payload);
+        result = await offersApi.createClient(payload);
       } else {
-        result = await offersApi.updateCustomer(editingCustomer.id, payload);
+        result = await offersApi.updateClient(editingClient.id!, payload);
       }
 
       if (result.success) {
         toast.success(isCreating ? "Klient byl vytvořen" : "Klient byl aktualizován");
         setEditDialogOpen(false);
-        loadCustomers();
+        loadClients();
       }
     } catch (err: any) {
-      console.error("Error saving customer:", err);
+      console.error("Error saving client:", err);
       toast.error(err.response?.data?.error || "Chyba při ukládání");
     } finally {
       setSaving(false);
     }
   };
 
-  const updateEditingCustomer = (field: keyof Customer, value: string) => {
-    if (editingCustomer) {
-      setEditingCustomer({ ...editingCustomer, [field]: value });
+  const updateEditingClient = (field: keyof Client, value: string) => {
+    if (editingClient) {
+      setEditingClient({ ...editingClient, [field]: value });
     }
   };
 
@@ -152,7 +136,7 @@ export default function CustomersPage() {
               <div>
                 <CardTitle>Seznam klientů</CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Celkem {customers.length} {customers.length === 1 ? "klient" : customers.length < 5 ? "klienti" : "klientů"}
+                  Celkem {clients.length} {clients.length === 1 ? "klient" : clients.length < 5 ? "klienti" : "klientů"}
                 </p>
               </div>
               <Button onClick={handleNewClick} className="gap-2">
@@ -175,7 +159,7 @@ export default function CustomersPage() {
 
             {error && <div className="rounded-md bg-destructive/10 p-4 text-destructive">{error}</div>}
 
-            {!loading && !error && customers.length === 0 && (
+            {!loading && !error && clients.length === 0 && (
               <div className="py-12 text-center">
                 <User className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                 <h3 className="mb-2 text-lg font-semibold">Zatím žádní klienti</h3>
@@ -183,7 +167,7 @@ export default function CustomersPage() {
               </div>
             )}
 
-            {!loading && !error && customers.length > 0 && filteredCustomers.length === 0 && (
+            {!loading && !error && clients.length > 0 && filteredClients.length === 0 && (
               <div className="py-12 text-center">
                 <Search className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
                 <h3 className="mb-2 text-lg font-semibold">Žádné výsledky</h3>
@@ -191,20 +175,20 @@ export default function CustomersPage() {
               </div>
             )}
 
-            {!loading && !error && filteredCustomers.length > 0 && (
+            {!loading && !error && filteredClients.length > 0 && (
               <div className="space-y-4">
-                {filteredCustomers.map((customer) => (
-                  <Card key={customer.id} className="transition-shadow hover:shadow-md">
+                {filteredClients.map((client) => (
+                  <Card key={client.id} className="transition-shadow hover:shadow-md">
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between">
                         <div className="flex-1 space-y-3">
                           <div>
-                            <h3 className="text-lg font-semibold">{customer.name}</h3>
-                            {customer.company_name && (
+                            <h3 className="text-lg font-semibold">{client.name}</h3>
+                            {client.companyName && (
                               <p className="text-sm font-medium text-foreground/70">
-                                {customer.company_name}
-                                {customer.company_ico && <span className="ml-2 text-muted-foreground">IČO: {customer.company_ico}</span>}
-                                {customer.company_dic && <span className="ml-2 text-muted-foreground">DIČ: {customer.company_dic}</span>}
+                                {client.companyName}
+                                {client.companyIco && <span className="ml-2 text-muted-foreground">IČO: {client.companyIco}</span>}
+                                {client.companyDic && <span className="ml-2 text-muted-foreground">DIČ: {client.companyDic}</span>}
                               </p>
                             )}
                           </div>
@@ -212,40 +196,40 @@ export default function CustomersPage() {
                           <div className="flex flex-wrap gap-4 text-sm">
                             <div className="flex items-center gap-2">
                               <Mail className="h-4 w-4 text-muted-foreground" />
-                              <a href={`mailto:${customer.email}`} className="text-blue-600 hover:underline">
-                                {customer.email}
+                              <a href={`mailto:${client.email}`} className="text-blue-600 hover:underline">
+                                {client.email}
                               </a>
                             </div>
 
-                            {customer.phone && (
+                            {client.phone && (
                               <div className="flex items-center gap-2">
                                 <Phone className="h-4 w-4 text-muted-foreground" />
-                                <a href={`tel:${customer.phone}`} className="text-blue-600 hover:underline">
-                                  {customer.phone}
+                                <a href={`tel:${client.phone}`} className="text-blue-600 hover:underline">
+                                  {client.phone}
                                 </a>
                               </div>
                             )}
 
-                            {(customer.address || customer.city) && (
+                            {(client.address || client.city) && (
                               <div className="flex items-center gap-2">
                                 <MapPin className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-muted-foreground">
-                                  {customer.address && <span>{customer.address}, </span>}
-                                  {customer.postal_code && <span>{customer.postal_code} </span>}
-                                  {customer.city}
-                                  {customer.country && <span>, {customer.country}</span>}
+                                  {client.address && <span>{client.address}, </span>}
+                                  {client.postalCode && <span>{client.postalCode} </span>}
+                                  {client.city}
+                                  {client.country && <span>, {client.country}</span>}
                                 </span>
                               </div>
                             )}
                           </div>
 
-                          {customer.notes && (
+                          {client.notes && (
                             <div className="mt-2 rounded-md bg-muted p-3 text-sm">
-                              <p className="text-muted-foreground">{customer.notes}</p>
+                              <p className="text-muted-foreground">{client.notes}</p>
                             </div>
                           )}
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => handleEditClick(customer)}>
+                        <Button variant="outline" size="sm" onClick={() => handleEditClick(client)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                       </div>
@@ -258,64 +242,64 @@ export default function CustomersPage() {
         </Card>
       </div>
 
-      {/* Edit Customer Dialog */}
+      {/* Edit Client Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{isCreating ? "Nový klient" : "Upravit klienta"}</DialogTitle>
           </DialogHeader>
-          {editingCustomer && (
+          {editingClient && (
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <Label htmlFor="name">Jméno *</Label>
-                  <Input id="name" value={editingCustomer.name} onChange={(e) => updateEditingCustomer("name", e.target.value)} required />
+                  <Input id="name" value={editingClient.name} onChange={(e) => updateEditingClient("name", e.target.value)} required />
                 </div>
                 <div>
                   <Label htmlFor="email">Email *</Label>
-                  <Input id="email" type="email" value={editingCustomer.email} onChange={(e) => updateEditingCustomer("email", e.target.value)} required />
+                  <Input id="email" type="email" value={editingClient.email} onChange={(e) => updateEditingClient("email", e.target.value)} required />
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <Label htmlFor="phone">Telefon</Label>
-                  <Input id="phone" value={editingCustomer.phone || ""} onChange={(e) => updateEditingCustomer("phone", e.target.value)} />
+                  <Input id="phone" value={editingClient.phone || ""} onChange={(e) => updateEditingClient("phone", e.target.value)} />
                 </div>
                 <div>
-                  <Label htmlFor="postal_code">PSČ</Label>
-                  <Input id="postal_code" value={editingCustomer.postal_code || ""} onChange={(e) => updateEditingCustomer("postal_code", e.target.value)} />
+                  <Label htmlFor="postalCode">PSČ</Label>
+                  <Input id="postalCode" value={editingClient.postalCode || ""} onChange={(e) => updateEditingClient("postalCode", e.target.value)} />
                 </div>
               </div>
 
               <div>
                 <Label htmlFor="address">Adresa</Label>
-                <Input id="address" value={editingCustomer.address || ""} onChange={(e) => updateEditingCustomer("address", e.target.value)} />
+                <Input id="address" value={editingClient.address || ""} onChange={(e) => updateEditingClient("address", e.target.value)} />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <Label htmlFor="city">Město</Label>
-                  <Input id="city" value={editingCustomer.city || ""} onChange={(e) => updateEditingCustomer("city", e.target.value)} />
+                  <Input id="city" value={editingClient.city || ""} onChange={(e) => updateEditingClient("city", e.target.value)} />
                 </div>
                 <div>
                   <Label htmlFor="country">Země</Label>
-                  <Input id="country" value={editingCustomer.country || ""} onChange={(e) => updateEditingCustomer("country", e.target.value)} />
+                  <Input id="country" value={editingClient.country || ""} onChange={(e) => updateEditingClient("country", e.target.value)} />
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <Label htmlFor="company_name">Firma</Label>
-                  <Input id="company_name" value={editingCustomer.company_name || ""} onChange={(e) => updateEditingCustomer("company_name", e.target.value)} />
+                  <Label htmlFor="companyName">Firma</Label>
+                  <Input id="companyName" value={editingClient.companyName || ""} onChange={(e) => updateEditingClient("companyName", e.target.value)} />
                 </div>
                 <div>
-                  <Label htmlFor="company_ico">IČO</Label>
-                  <Input id="company_ico" value={editingCustomer.company_ico || ""} onChange={(e) => updateEditingCustomer("company_ico", e.target.value)} />
+                  <Label htmlFor="companyIco">IČO</Label>
+                  <Input id="companyIco" value={editingClient.companyIco || ""} onChange={(e) => updateEditingClient("companyIco", e.target.value)} />
                 </div>
                 <div>
-                  <Label htmlFor="company_dic">DIČ</Label>
-                  <Input id="company_dic" value={editingCustomer.company_dic || ""} onChange={(e) => updateEditingCustomer("company_dic", e.target.value)} />
+                  <Label htmlFor="companyDic">DIČ</Label>
+                  <Input id="companyDic" value={editingClient.companyDic || ""} onChange={(e) => updateEditingClient("companyDic", e.target.value)} />
                 </div>
               </div>
 
@@ -323,8 +307,8 @@ export default function CustomersPage() {
                 <Label htmlFor="notes">Poznámky</Label>
                 <Textarea
                   id="notes"
-                  value={editingCustomer.notes || ""}
-                  onChange={(e) => updateEditingCustomer("notes", e.target.value)}
+                    value={editingClient.notes || ""}
+                    onChange={(e) => updateEditingClient("notes", e.target.value)}
                   placeholder="Poznámky"
                   rows={3}
                 />
@@ -335,7 +319,7 @@ export default function CustomersPage() {
             <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={saving}>
               Zrušit
             </Button>
-            <Button onClick={handleSaveCustomer} disabled={saving}>
+            <Button onClick={handleSaveClient} disabled={saving}>
               {saving ? "Ukládání..." : "Uložit"}
             </Button>
           </DialogFooter>

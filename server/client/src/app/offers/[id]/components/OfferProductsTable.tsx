@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { GripVertical, Trash2, Plus, Pencil } from "lucide-react";
 import type { ItemGroup } from "@/lib/api";
-import { formatPrice, currencyLabel } from "../utils";
+import { formatPrice } from "../utils";
 import { useState } from "react";
 
 type OfferProductsTableProps = {
@@ -70,11 +70,8 @@ export function OfferProductsTable({
     <div className="space-y-4">
       {groups.map((group, groupIndex) => {
         const multiplier = Number(sellMultiplier) || 1;
-        const groupCostSubtotal = group.items.reduce((s, item) => s + item.unit_price * item.quantity, 0);
-        const groupSellSubtotal = group.items.reduce((s, item) => {
-          const vat = (item.vat_rate ?? 21) / 100;
-          return s + item.unit_price * (1 + vat) * multiplier * item.quantity;
-        }, 0);
+        const groupCostSubtotal = group.items.reduce((s, item) => s + item.unitCost * item.quantity, 0);
+        const groupSellSubtotal = group.items.reduce((s, item) => s + item.unitCost * multiplier * item.quantity, 0);
 
         return (
           <Card
@@ -147,9 +144,8 @@ export function OfferProductsTable({
                   <TableBody>
                     {group.items.map((item, itemIndex) => {
                       const multiplier = Number(sellMultiplier) || 1;
-                      const vat = (item.vat_rate ?? 21) / 100;
-                      const costTotal = item.unit_price * item.quantity;
-                      const sellUnitPrice = item.unit_price * (1 + vat) * multiplier;
+                      const costTotal = item.unitCost * item.quantity;
+                      const sellUnitPrice = item.unitCost * multiplier;
                       const sellTotal = sellUnitPrice * item.quantity;
                       return (
                         <TableRow
@@ -171,19 +167,19 @@ export function OfferProductsTable({
                           <TableCell>
                             <div className="font-semibold">{item.name}</div>
                             {item.sku && <div className="text-sm text-muted-foreground">SKU: {item.sku}</div>}
-                            {item.dimensions && (item.dimensions.height || item.dimensions.diameter || item.dimensions.pot_size) && (
+                            {item.dimensions && (item.dimensions.height || item.dimensions.diameter || item.dimensions.potSize) && (
                               <div className="text-xs text-muted-foreground">
                                 {[
                                   item.dimensions.height && `V: ${item.dimensions.height} cm`,
                                   item.dimensions.diameter && `Ø: ${item.dimensions.diameter} cm`,
-                                  item.dimensions.pot_size && `Květináč: ${item.dimensions.pot_size} cm`,
+                                  item.dimensions.potSize && `Květináč: ${item.dimensions.potSize} cm`,
                                 ]
                                   .filter(Boolean)
                                   .join(" · ")}
                               </div>
                             )}
                             <div className="mt-0.5 text-xs text-muted-foreground">
-                              <div>N.: {formatPrice(item.unit_price, currency)}</div>
+                              <div>N.: {formatPrice(item.unitCost, currency)}</div>
                               <div className="font-medium text-foreground">P.: {formatPrice(sellUnitPrice, currency)}</div>
                             </div>
                           </TableCell>
@@ -197,7 +193,7 @@ export function OfferProductsTable({
                               className="w-16"
                             />
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{item.vat_rate ?? 21} %</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{item.vatRate ?? 21} %</TableCell>
                           <TableCell>
                             <span className="text-muted-foreground">{formatPrice(costTotal, currency)}</span>
                             <span className="mx-1 text-muted-foreground">/</span>
@@ -238,31 +234,12 @@ export function OfferProductsTable({
                         autoFocus
                         className="w-24 text-right text-red-600 border-red-300 focus-visible:ring-red-500"
                         value={group.discount === 0 ? "" : group.discount}
-                        onChange={(e) =>
-                          onGroupDiscountChange(groupIndex, e.target.value === "" ? 0 : parseFloat(e.target.value), group.discount_type || "fixed")
-                        }
+                        onChange={(e) => onGroupDiscountChange(groupIndex, e.target.value === "" ? 0 : parseFloat(e.target.value), "percent")}
                         onBlur={() => setEditingDiscountIndex(null)}
                         onFocus={(e) => e.target.select()}
                         placeholder="0"
                       />
-                      <div className="flex rounded border border-red-300 overflow-hidden text-xs">
-                        <button
-                          type="button"
-                          className={`px-2 py-1 ${(group.discount_type || "fixed") === "fixed" ? "bg-red-100 font-semibold" : "hover:bg-red-50"}`}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => onGroupDiscountChange(groupIndex, group.discount, "fixed")}
-                        >
-                          {currencyLabel(currency)}
-                        </button>
-                        <button
-                          type="button"
-                          className={`px-2 py-1 border-l border-red-300 ${group.discount_type === "percent" ? "bg-red-100 font-semibold" : "hover:bg-red-50"}`}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => onGroupDiscountChange(groupIndex, group.discount, "percent")}
-                        >
-                          %
-                        </button>
-                      </div>
+                      <div className="rounded border border-red-300 bg-red-100 px-2 py-1 text-xs font-semibold">%</div>
                     </>
                   ) : (
                     <button
@@ -273,9 +250,7 @@ export function OfferProductsTable({
                       {group.discount > 0 ? (
                         <span>
                           −{" "}
-                          {group.discount_type === "percent"
-                            ? `${group.discount} % (${formatPrice((groupSellSubtotal * group.discount) / 100, currency)})`
-                            : formatPrice(group.discount, currency)}
+                          {`${group.discount} % (${formatPrice((groupSellSubtotal * group.discount) / 100, currency)})`}
                         </span>
                       ) : (
                         <span>0</span>
@@ -290,7 +265,7 @@ export function OfferProductsTable({
                     {formatPrice(
                       Math.max(
                         0,
-                        groupSellSubtotal - (group.discount_type === "percent" ? (groupSellSubtotal * (group.discount || 0)) / 100 : group.discount || 0),
+                        groupSellSubtotal - (groupSellSubtotal * (group.discount || 0)) / 100,
                       ),
                       currency,
                     )}

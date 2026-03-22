@@ -8,9 +8,9 @@ export type OfferTotals = {
   additionalCostTotal: number;
   additionalSellTotal: number;
   subtotal: number;
+  totalCost: number;
   total: number;
-  totalSell: number;
-  totalSellExclVat: number;
+  totalWithVat: number;
 };
 
 type StyleRecord = { r: number; c: number; style: object };
@@ -52,18 +52,18 @@ export function buildAndDownloadOfferExcel(
   styleCell(0, 0, BOLD_TITLE);
   pushRow([`${offer.title}`]);
   pushRow([]);
-  pushRow(["Klient:", offer.customer.name]);
-  pushRow(["Email:", offer.customer.email]);
-  if (offer.customer.phone) pushRow(["Telefon:", offer.customer.phone]);
-  if (offer.customer.company_name) {
-    pushRow(["Firma:", offer.customer.company_name]);
-    if (offer.customer.company_ico) pushRow(["IČO:", offer.customer.company_ico]);
-    if (offer.customer.company_dic) pushRow(["DIČ:", offer.customer.company_dic]);
+  pushRow(["Klient:", offer.client.name]);
+  pushRow(["Email:", offer.client.email]);
+  if (offer.client.phone) pushRow(["Telefon:", offer.client.phone]);
+  if (offer.client.companyName) {
+    pushRow(["Firma:", offer.client.companyName]);
+    if (offer.client.companyIco) pushRow(["IČO:", offer.client.companyIco]);
+    if (offer.client.companyDic) pushRow(["DIČ:", offer.client.companyDic]);
   }
-  if (offer.customer.address) {
-    pushRow(["Adresa:", offer.customer.address]);
-    pushRow(["", `${offer.customer.postal_code} ${offer.customer.city}`]);
-    if (offer.customer.country) pushRow(["", offer.customer.country]);
+  if (offer.client.address) {
+    pushRow(["Adresa:", offer.client.address]);
+    pushRow(["", `${offer.client.postalCode} ${offer.client.city}`]);
+    if (offer.client.country) pushRow(["", offer.client.country]);
   }
   pushRow([]);
   const today = new Date();
@@ -85,6 +85,8 @@ export function buildAndDownloadOfferExcel(
   pushRow(colHeader);
 
   const itemRowIndices: number[] = [];
+  let totalItemsGrossBeforeDiscount = 0;
+  let totalDiscountGross = 0;
 
   // ── Product groups ────────────────────────────────────────────────────────────
 
@@ -94,33 +96,36 @@ export function buildAndDownloadOfferExcel(
     pushRow([group.name, "", "", "", "", "", "", ""]);
 
     for (const item of group.items) {
-      const vatRate = item.vat_rate ?? 21;
+      const vatRate = item.vatRate ?? 21;
       itemRowIndices.push(currentRow());
-      pushRow([item.sku || "", item.name, Number(item.quantity) || 1, Number(item.unit_price) || 0, vatRate, "", "", ""]);
+      pushRow([item.sku || "", item.name, Number(item.quantity) || 1, Number(item.unitCost) || 0, vatRate, "", "", ""]);
     }
 
-    const sectionN = Math.round(group.items.reduce((s, i) => s + i.unit_price * i.quantity, 0) * 100) / 100;
+    const sectionN = Math.round(group.items.reduce((s, i) => s + i.unitCost * i.quantity, 0) * 100) / 100;
     const sectionP =
       Math.round(
         group.items.reduce((s, i) => {
-          const vat = (i.vat_rate ?? 21) / 100;
-          return s + i.unit_price * (1 + vat) * sellMultiplier * i.quantity;
+          const vat = (i.vatRate ?? 21) / 100;
+          return s + i.unitCost * (1 + vat) * sellMultiplier * i.quantity;
         }, 0) * 100,
       ) / 100;
     const rawDiscount = Number(group.discount) || 0;
-    const discount = group.discount_type === "percent" ? Math.round(((sectionP * rawDiscount) / 100) * 100) / 100 : rawDiscount;
-    const discountLabel = group.discount_type === "percent" ? `Sleva ${rawDiscount} % — ${group.name}` : `Sleva — ${group.name}`;
+    const discountN = Math.round(((sectionN * rawDiscount) / 100) * 100) / 100;
+    const discountP = Math.round(((sectionP * rawDiscount) / 100) * 100) / 100;
+    const discountLabel = `Sleva ${rawDiscount} % — ${group.name}`;
+    totalItemsGrossBeforeDiscount += sectionP;
+    totalDiscountGross += discountP;
 
-    if (discount > 0) {
+    if (discountP > 0 || discountN > 0) {
       const discRow = currentRow();
       styleCell(discRow, 0, RED);
-      styleCell(discRow, 6, RED);
       styleCell(discRow, 7, RED);
-      pushRow([discountLabel, "", "", "", "", "", -discount, -discount]);
+      if (discountN > 0) styleCell(discRow, 6, RED);
+      pushRow([discountLabel, "", "", "", "", "", discountN > 0 ? -discountN : "", -discountP]);
     }
 
-    const netN = Math.round((sectionN - discount) * 100) / 100;
-    const netP = Math.round((sectionP - discount) * 100) / 100;
+    const netN = Math.round((sectionN - discountN) * 100) / 100;
+    const netP = Math.round((sectionP - discountP) * 100) / 100;
     const subtotalRow = currentRow();
     styleCell(subtotalRow, 0, DARK_GRAY);
     styleCell(subtotalRow, 6, DARK_GRAY);
@@ -132,16 +137,16 @@ export function buildAndDownloadOfferExcel(
 
   // ── Additional items ──────────────────────────────────────────────────────────
 
-  const hasAdditional = additionalItems.some((a) => (Number(a.price) || 0) > 0 || (Number(a.sell_price) || 0) > 0);
+  const hasAdditional = additionalItems.some((a) => (Number(a.cost) || 0) > 0 || (Number(a.price) || 0) > 0);
   if (hasAdditional) {
     const addRow = currentRow();
     for (let c = 0; c < 8; c++) styleCell(addRow, c, LIGHT_GRAY_BG);
     pushRow(["Dodatečné položky", "", "", "", "", "", "", ""]);
     for (const item of additionalItems) {
+      const cost = Number(item.cost) || 0;
       const price = Number(item.price) || 0;
-      const sellPrice = Number(item.sell_price) || 0;
-      if (price > 0 || sellPrice > 0) {
-        pushRow(["", item.title, "", "", "", "", price || "", sellPrice || ""]);
+      if (cost > 0 || price > 0) {
+        pushRow(["", item.title, "", "", "", "", cost || "", price || ""]);
       }
     }
     pushRow([]);
@@ -153,14 +158,13 @@ export function buildAndDownloadOfferExcel(
   styleCell(meziRow, 0, MUTED);
   styleCell(meziRow, 6, MUTED);
   styleCell(meziRow, 7, MUTED);
-  pushRow(["Mezisoučet (N. / P. vč. DPH):", "", "", "", "", "", totals.itemsSubtotal, totals.totalSell - totals.additionalSellTotal + totals.groupsDiscount]);
+  pushRow(["Mezisoučet (N. / P. vč. DPH):", "", "", "", "", "", totals.itemsSubtotal, totalItemsGrossBeforeDiscount]);
 
-  if (totals.groupsDiscount > 0) {
+  if (totalDiscountGross > 0) {
     const slevaRow = currentRow();
     styleCell(slevaRow, 0, RED);
-    styleCell(slevaRow, 6, RED);
     styleCell(slevaRow, 7, RED);
-    pushRow(["Sleva celkem:", "", "", "", "", "", -totals.groupsDiscount, -totals.groupsDiscount]);
+    pushRow(["Sleva celkem:", "", "", "", "", "", "", -totalDiscountGross]);
   }
 
   pushRow([]);
@@ -168,19 +172,19 @@ export function buildAndDownloadOfferExcel(
   const nakupRow = currentRow();
   styleCell(nakupRow, 0, BOLD_LARGE);
   styleCell(nakupRow, 6, BOLD_LARGE);
-  pushRow(["Celkem nákup:", "", "", "", "", "", totals.total, ""]);
+  pushRow(["Celkem nákup:", "", "", "", "", "", totals.totalCost, ""]);
 
   const prodejRow = currentRow();
   styleCell(prodejRow, 0, BOLD_LARGE);
   styleCell(prodejRow, 7, BOLD_LARGE);
-  pushRow(["Celkem prodej (vč. DPH):", "", "", "", "", "", "", totals.totalSell]);
+  pushRow(["Celkem prodej:", "", "", "", "", "", "", totals.total]);
 
   const prodejExclRow = currentRow();
   styleCell(prodejExclRow, 0, MUTED);
   styleCell(prodejExclRow, 7, MUTED);
 
-  const marze = totals.totalSell - totals.total;
-  const marzePercent = totals.totalSell > 0 ? ((marze / totals.totalSell) * 100).toFixed(1) : "0.0";
+  const marze = totals.total - totals.totalCost;
+  const marzePercent = totals.total > 0 ? ((marze / totals.total) * 100).toFixed(1) : "0.0";
   const marzeRow = currentRow();
   styleCell(marzeRow, 0, GREEN);
   styleCell(marzeRow, 7, GREEN);
@@ -244,7 +248,7 @@ export function buildAndDownloadOfferExcel(
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]/gi, "_");
-  const filename = `nabidka-${offer.simple_id}-${safeTitle}_${ts}.xlsx`;
+  const filename = `nabidka-${offer.simpleId}-${safeTitle}_${ts}.xlsx`;
   XLSX.writeFile(wb, filename);
   onSuccess();
 }

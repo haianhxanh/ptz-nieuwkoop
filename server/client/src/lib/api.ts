@@ -35,39 +35,41 @@ export interface User {
   phone?: string;
 }
 
-export interface Customer {
+export interface Client {
   id?: string;
   email: string;
   name: string;
   phone?: string;
   address?: string;
   city?: string;
-  postal_code?: string;
+  postalCode?: string;
   country?: string;
   notes?: string;
-  company_name?: string;
-  company_ico?: string;
-  company_dic?: string;
+  companyName?: string;
+  companyIco?: string;
+  companyDic?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface LineItem {
-  product_id?: string;
+  productId?: string;
   sku?: string;
   name: string;
   description?: string;
   quantity: number;
-  unit_price: number;
-  unit_price_eur?: number;
+  unitCost: number;
+  unitCostEur?: number;
   total: number;
   image?: string;
-  vat_rate?: number;
+  vatRate?: number;
   dimensions?: {
     height?: number;
     depth?: number;
     diameter?: number;
     opening?: number;
     length?: number;
-    pot_size?: string;
+    potSize?: string;
   };
 }
 
@@ -76,53 +78,54 @@ export interface ItemGroup {
   name: string;
   notes?: string;
   discount: number;
-  discount_type?: "fixed" | "percent";
+  discountType?: "fixed" | "percent";
   items: LineItem[];
 }
 
 export interface AdditionalItem {
   title: string;
-  price: number;
-  sell_price?: number;
+  cost: number;
+  price?: number;
 }
 
 export interface CompanyProfile {
-  company_name: string;
-  company_ico: string;
-  company_dic: string;
-  logo_url?: string;
-  fakturoid_slug?: string;
+  companyName: string;
+  companyIco: string;
+  companyDic: string;
+  logoUrl?: string;
+  fakturoidSlug?: string;
 }
 
 export interface Offer {
   id: string;
-  simple_id: number;
-  customer_id: string;
-  customer: Customer;
+  simpleId: number;
+  clientId: string;
+  client: Client;
   title: string;
   description?: string;
   items?: ItemGroup[];
-  additional_items?: AdditionalItem[];
+  additionalItems?: AdditionalItem[];
   subtotal: number;
-  items_discount?: number;
-  order_discount?: number;
+  totalCost?: number;
+  itemsDiscount?: number;
+  orderDiscount?: number;
   discount?: number;
   tax?: number;
   total: number;
-  total_sell?: number;
-  total_rounded?: number | null;
+  totalRounded?: number | null;
   currency: string;
-  exchange_rate?: number;
+  exchangeRate?: number;
   status: OfferStatus;
-  valid_until?: string;
+  validUntil?: string;
   notes?: string;
-  sell_multiplier?: number;
-  company_profile?: CompanyProfile | null;
-  proforma_url?: string;
-  proforma_id?: number;
+  sellMultiplier?: number;
+  companyProfile?: CompanyProfile | null;
+  proformaUrl?: string;
+  proformaId?: number;
+  userId?: string;
   user?: User;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Product {
@@ -130,22 +133,31 @@ export interface Product {
   sku: string;
   title: string;
   price: string;
-  unit_price: number;
-  unit_price_eur: number;
+  unitCost: number;
+  unitCostEur: number;
   dimensions: {
     height: number;
     depth: number;
     diameter: number;
     opening: number;
     length: number;
-    pot_size: string;
+    potSize: string;
   };
   image: string;
   brand: string;
   collection: string;
   substrate: string | null;
-  vat_rate: number;
-  delivery_time?: number;
+  vatRate: number;
+  deliveryTime?: number;
+}
+
+export interface AppConfig {
+  id?: string;
+  key: string;
+  value: string;
+  description?: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 // API functions
@@ -161,7 +173,7 @@ export const offersApi = {
   },
 
   create: async (data: {
-    customer: Customer;
+    client: Client;
     title: string;
     description?: string;
     items?: ItemGroup[];
@@ -170,7 +182,7 @@ export const offersApi = {
     tax?: number;
     total: number;
     currency?: string;
-    exchange_rate?: number;
+    exchangeRate?: number;
     status?: OfferStatus;
     notes?: string;
   }) => {
@@ -178,8 +190,8 @@ export const offersApi = {
     return response.data;
   },
 
-  addItems: async (id: string, items: LineItem[], group_id?: string) => {
-    const response = await apiClient.post<{ success: boolean; data: Offer }>(`/api/offers/${id}/items`, { items, group_id });
+  addItems: async (id: string, items: LineItem[], groupId?: string) => {
+    const response = await apiClient.post<{ success: boolean; data: Offer }>(`/api/offers/${id}/items`, { items, groupId });
     return response.data;
   },
 
@@ -198,18 +210,18 @@ export const offersApi = {
     return response.data;
   },
 
-  listCustomers: async () => {
-    const response = await apiClient.get<{ success: boolean; data: Customer[] }>("/api/offers/customers");
+  listClients: async () => {
+    const response = await apiClient.get<{ success: boolean; data: Client[] }>("/api/offers/clients");
     return response.data;
   },
 
-  createCustomer: async (data: Partial<Customer>) => {
-    const response = await apiClient.post<{ success: boolean; data: Customer }>("/api/offers/customers", data);
+  createClient: async (data: Partial<Client>) => {
+    const response = await apiClient.post<{ success: boolean; data: Client }>("/api/offers/clients", data);
     return response.data;
   },
 
-  updateCustomer: async (id: string, data: Partial<Customer>) => {
-    const response = await apiClient.put<{ success: boolean; data: Customer }>(`/api/offers/customers/${id}`, data);
+  updateClient: async (id: string, data: Partial<Client>) => {
+    const response = await apiClient.put<{ success: boolean; data: Client }>(`/api/offers/clients/${id}`, data);
     return response.data;
   },
 };
@@ -266,7 +278,24 @@ export const productsApi = {
   },
 };
 
-export type StockMap = Record<string, { stock_available: number; first_available: string | null }>;
+export const configsApi = {
+  list: async () => {
+    const response = await apiClient.get<{ success: boolean; data: AppConfig[] }>("/api/offers/configs");
+    return response.data;
+  },
+
+  create: async (data: { key: string; value: string; description?: string }) => {
+    const response = await apiClient.post<{ success: boolean; data: AppConfig }>("/api/offers/configs", data);
+    return response.data;
+  },
+
+  update: async (key: string, data: { value: string; description?: string }) => {
+    const response = await apiClient.put<{ success: boolean; data: AppConfig }>(`/api/offers/configs/${encodeURIComponent(key)}`, data);
+    return response.data;
+  },
+};
+
+export type StockMap = Record<string, { stockAvailable: number; firstAvailable: string | null }>;
 
 export const stockApi = {
   getAll: async (): Promise<StockMap> => {
@@ -278,7 +307,7 @@ export const stockApi = {
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 let exchangeRateCache: {
   rate: number;
-  nieuwkoop_discount: number;
+  nieuwkoopDiscount: number;
   company?: { name: string; ico: string; dic: string };
   companies?: CompanyProfile[];
   date: string | null;
@@ -288,7 +317,7 @@ let exchangeRateCache: {
 export const exchangeRateApi = {
   get: async (): Promise<{
     rate: number;
-    nieuwkoop_discount: number;
+    nieuwkoopDiscount: number;
     date: string | null;
     company: { name: string; ico: string; dic: string };
     companies: CompanyProfile[];
@@ -297,7 +326,7 @@ export const exchangeRateApi = {
     if (exchangeRateCache && now - exchangeRateCache.fetchedAt < CACHE_TTL_MS) {
       return {
         rate: exchangeRateCache.rate,
-        nieuwkoop_discount: exchangeRateCache.nieuwkoop_discount,
+        nieuwkoopDiscount: exchangeRateCache.nieuwkoopDiscount,
         date: exchangeRateCache.date,
         company: exchangeRateCache.company ?? { name: "", ico: "", dic: "" },
         companies: exchangeRateCache.companies ?? [],
@@ -305,17 +334,17 @@ export const exchangeRateApi = {
     }
     const response = await apiClient.get<{
       success: boolean;
-      data: { rate: number; nieuwkoop_discount: number; company: { name: string; ico: string; dic: string }; companies: CompanyProfile[]; date: string | null };
+      data: { rate: number; nieuwkoopDiscount: number; company: { name: string; ico: string; dic: string }; companies: CompanyProfile[]; date: string | null };
     }>("/api/offers/exchange-rate");
-    const { rate, nieuwkoop_discount, company, companies, date } = response.data.data;
+    const { rate, nieuwkoopDiscount, company, companies, date } = response.data.data;
     exchangeRateCache = {
       rate,
-      nieuwkoop_discount: nieuwkoop_discount ?? 0,
+      nieuwkoopDiscount: nieuwkoopDiscount ?? 0,
       company: company ?? { name: "", ico: "", dic: "" },
       companies: companies ?? [],
       date,
       fetchedAt: now,
     };
-    return { rate, nieuwkoop_discount: nieuwkoop_discount ?? 0, company: company ?? { name: "", ico: "", dic: "" }, companies: companies ?? [], date };
+    return { rate, nieuwkoopDiscount: nieuwkoopDiscount ?? 0, company: company ?? { name: "", ico: "", dic: "" }, companies: companies ?? [], date };
   },
 };

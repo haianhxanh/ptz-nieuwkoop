@@ -1,232 +1,401 @@
-import Offer from "../model/offer.model";
-import Customer, { CUSTOMER } from "../model/customer.model";
-import User from "../model/user.model";
+import { randomUUID } from "crypto";
+import DmpOffer from "../model/dmp_offer.model";
+import DmpClient, { DMP_CLIENT } from "../model/dmp_client.model";
+import DmpUser from "../model/dmp_user.model";
 import { configService } from "./config.service";
 import { CreateOfferInput, UpdateOfferInput, ListOffersQuery, AddItemsToOfferInput } from "../schemas/offer.schema";
 
 export class OffersService {
-  private async findOffer(id: string): Promise<Offer | null> {
+  private toApiClient(client: any) {
+    if (!client) return null;
+    const plain = typeof client.get === "function" ? client.get({ plain: true }) : client;
+    return {
+      id: plain.id,
+      email: plain.email,
+      name: plain.name,
+      phone: plain.phone,
+      address: plain.address,
+      city: plain.city,
+      postalCode: plain.postalCode ?? null,
+      country: plain.country,
+      notes: plain.notes,
+      companyName: plain.companyName ?? null,
+      companyIco: plain.companyIco ?? null,
+      companyDic: plain.companyDic ?? null,
+      createdAt: plain.createdAt ?? null,
+      updatedAt: plain.updatedAt ?? null,
+    };
+  }
+
+  private toApiUser(user: any) {
+    if (!user) return null;
+    const plain = typeof user.get === "function" ? user.get({ plain: true }) : user;
+    return {
+      id: plain.id,
+      email: plain.email,
+      name: plain.name,
+      createdAt: plain.createdAt ?? null,
+      updatedAt: plain.updatedAt ?? null,
+    };
+  }
+
+  private getUnitCost(item: any): number {
+    return Number(item?.unitCost ?? item?.unitPrice ?? item?.unit_cost ?? item?.unit_price ?? 0);
+  }
+
+  private getVatRate(item: any): number {
+    return Number(item?.vatRate ?? item?.vat_rate ?? 21);
+  }
+
+  private getUnitCostEur(item: any): number | null {
+    const value = item?.unitCostEur ?? item?.unitPriceEur ?? item?.unit_cost_eur ?? item?.unit_price_eur;
+    return value == null ? null : Number(value);
+  }
+
+  private getDiscountType(group: any): "fixed" | "percent" {
+    return "percent";
+  }
+
+  private normalizeAdditionalItem(item: any) {
+    const hasNewCostField = item?.cost != null;
+    return {
+      title: item?.title ?? "",
+      cost: Number(item?.cost ?? item?.price ?? 0),
+      price: hasNewCostField
+        ? item?.price != null
+          ? Number(item.price)
+          : undefined
+        : item?.sellPrice != null
+          ? Number(item.sellPrice)
+          : item?.sell_price != null
+            ? Number(item.sell_price)
+            : undefined,
+    };
+  }
+
+  private normalizeLineItem(item: any) {
+    return {
+      ...item,
+      productId: item?.productId ?? item?.product_id,
+      unitCost: this.getUnitCost(item),
+      unitCostEur: this.getUnitCostEur(item),
+      vatRate: this.getVatRate(item),
+      dimensions: item?.dimensions
+        ? {
+            ...item.dimensions,
+            potSize: item.dimensions.potSize ?? item.dimensions.pot_size,
+          }
+        : item?.dimensions,
+    };
+  }
+
+  private normalizeItemGroup(group: any) {
+    return {
+      ...group,
+      discountType: this.getDiscountType(group),
+      items: Array.isArray(group?.items) ? group.items.map((item: any) => this.normalizeLineItem(item)) : [],
+    };
+  }
+
+  private toApiOffer(offer: any) {
+    if (!offer) return null;
+    const plain = typeof offer.get === "function" ? offer.get({ plain: true }) : offer;
+    const items = (plain.items ?? []).map((group: any) => this.normalizeItemGroup(group));
+    const additionalItems = (plain.additionalItems ?? []).map((item: any) => this.normalizeAdditionalItem(item));
+    const totalCost =
+      items.reduce((sum: number, group: any) => sum + (group.items || []).reduce((s: number, item: any) => s + this.getUnitCost(item) * item.quantity, 0), 0) +
+      additionalItems.reduce((sum: number, item: any) => sum + (Number(item.cost) || 0), 0);
+    return {
+      id: plain.id,
+      simpleId: plain.simpleId ?? null,
+      clientId: plain.clientId,
+      client: this.toApiClient(plain.client),
+      title: plain.title,
+      description: plain.description,
+      items,
+      additionalItems,
+      subtotal: Number(plain.subtotal ?? 0),
+      totalCost: Number(totalCost.toFixed(2)),
+      itemsDiscount: plain.itemsDiscount == null ? null : Number(plain.itemsDiscount),
+      orderDiscount: plain.orderDiscount == null ? null : Number(plain.orderDiscount),
+      discount: plain.discount == null ? null : Number(plain.discount),
+      tax: plain.tax == null ? null : Number(plain.tax),
+      total: Number(plain.total ?? 0),
+      totalRounded: plain.totalRounded == null ? null : Number(plain.totalRounded),
+      currency: plain.currency,
+      exchangeRate: plain.exchangeRate == null ? null : Number(plain.exchangeRate),
+      status: String(plain.status || "DRAFT").toLowerCase(),
+      validUntil: plain.validUntil ?? null,
+      sellMultiplier: plain.sellMultiplier == null ? null : Number(plain.sellMultiplier),
+      notes: plain.notes ?? null,
+      companyProfile: plain.companyProfile
+        ? {
+            companyName: plain.companyProfile.companyName ?? plain.companyProfile.company_name ?? "",
+            companyIco: plain.companyProfile.companyIco ?? plain.companyProfile.company_ico ?? "",
+            companyDic: plain.companyProfile.companyDic ?? plain.companyProfile.company_dic ?? "",
+            logoUrl: plain.companyProfile.logoUrl ?? plain.companyProfile.logo_url,
+            fakturoidSlug: plain.companyProfile.fakturoidSlug ?? plain.companyProfile.fakturoid_slug,
+          }
+        : null,
+      proformaUrl: plain.proformaUrl ?? null,
+      proformaId: plain.proformaId ?? null,
+      userId: plain.userId ?? null,
+      user: this.toApiUser(plain.user),
+      createdAt: plain.createdAt ?? null,
+      updatedAt: plain.updatedAt ?? null,
+    };
+  }
+
+  private async findOffer(id: string): Promise<DmpOffer | null> {
     if (/^\d+$/.test(id)) {
-      return await Offer.findOne({
-        where: { simple_id: parseInt(id) },
+      return await DmpOffer.findOne({
+        where: { simpleId: parseInt(id) },
       });
     }
 
-    return await Offer.findByPk(id);
+    return await DmpOffer.findByPk(id);
   }
 
-  async findOrCreateCustomer(customerData: CUSTOMER): Promise<Customer> {
-    const [customer] = await Customer.findOrCreate({
-      where: { email: customerData.email },
-      defaults: customerData,
-    });
+  async findOrCreateClient(clientData: any): Promise<DmpClient> {
+    const normalizedEmail = clientData.email?.trim().toLowerCase();
+    const where = normalizedEmail ? { email: normalizedEmail } : { name: clientData.name };
+    const defaults: Partial<DMP_CLIENT> = {
+      id: randomUUID(),
+      name: clientData.name,
+      email: normalizedEmail,
+      phone: clientData.phone,
+      address: clientData.address,
+      city: clientData.city,
+      postalCode: clientData.postalCode,
+      country: clientData.country,
+      notes: clientData.notes,
+      companyName: clientData.companyName,
+      companyIco: clientData.companyIco,
+      companyDic: clientData.companyDic,
+    };
+    const [client] = await DmpClient.findOrCreate({
+      where,
+      defaults,
+    } as any);
 
-    if (customer) {
-      await customer.update(customerData);
+    if (client) {
+      await client.update(defaults);
     }
 
-    return customer;
+    return client;
   }
 
-  private sumAdditionalItems(additionalItems: { title: string; price: number }[] | undefined): number {
+  async createClient(data: any): Promise<any> {
+    const client = await this.findOrCreateClient(data);
+    return this.toApiClient(client);
+  }
+
+  private sumAdditionalItems(additionalItems: { title: string; cost: number }[] | undefined): number {
     if (!Array.isArray(additionalItems)) return 0;
-    return additionalItems.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
+    return additionalItems.reduce((sum, a) => sum + (Number(a.cost) || 0), 0);
   }
 
-  async findOrCreateUser(email: string): Promise<User> {
-    const [user] = await User.findOrCreate({ where: { email }, defaults: { email } });
-    return user;
+  async findUserByEmail(email: string): Promise<DmpUser | null> {
+    return await DmpUser.findOne({ where: { email: email.trim().toLowerCase() } });
   }
 
-  async createOffer(data: CreateOfferInput, userEmail?: string): Promise<Offer> {
-    const customer = await this.findOrCreateCustomer(data.customer);
-    const exchangeRate = data.exchange_rate ?? (await configService.getExchangeRate());
-    const additionalItems = data.additional_items || [];
-    const additionalTotal = this.sumAdditionalItems(additionalItems);
-    const total = data.total + additionalTotal;
+  async createOffer(data: CreateOfferInput, userEmail?: string): Promise<any> {
+    const client = await this.findOrCreateClient(data.client);
+    const exchangeRate = data.exchangeRate ?? (await configService.getExchangeRate());
+    const additionalItems = (data.additionalItems || []).map((item: any) => this.normalizeAdditionalItem(item));
+    const groups = (data.items || []).map((group: any) => this.normalizeItemGroup(group));
+    const additionalSellTotal = additionalItems.reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0);
+    const sellMultiplier = Number(data.sellMultiplier) || 1;
+    const subtotal =
+      groups.reduce(
+        (sum: number, group: any) => sum + (group.items || []).reduce((s: number, item: any) => s + this.getUnitCost(item) * sellMultiplier * item.quantity, 0),
+        0,
+      ) + additionalSellTotal;
+    const total = subtotal - (Number(data.discount) || 0);
 
     let userId: string | undefined;
     if (userEmail) {
-      const user = await this.findOrCreateUser(userEmail);
-      userId = user.get("id") as string;
+      const user = await this.findUserByEmail(userEmail);
+      userId = user?.get("id") as string | undefined;
     }
 
-    const offer = await Offer.create({
-      customer_id: customer.get("id") as string,
+    const offer = await DmpOffer.create({
+      id: randomUUID(),
+      clientId: client.get("id") as string,
       title: data.title,
       description: data.description,
-      items: data.items || [],
-      additional_items: additionalItems,
-      subtotal: data.subtotal,
+      items: groups,
+      additionalItems,
+      subtotal: Number(subtotal.toFixed(2)),
       discount: data.discount || 0,
       tax: data.tax || 0,
       total,
       currency: data.currency || "EUR",
-      exchange_rate: exchangeRate,
-      status: data.status || "draft",
-      valid_until: data.valid_until ? new Date(data.valid_until) : undefined,
+      exchangeRate,
+      status: (data.status || "draft").toUpperCase() as any,
+      validUntil: data.validUntil ? new Date(data.validUntil) : undefined,
       notes: data.notes,
-      user_id: userId,
+      sellMultiplier: data.sellMultiplier,
+      userId,
     });
 
-    return (await Offer.findByPk(offer.get("id") as string, {
+    const created = await DmpOffer.findByPk(offer.get("id") as string, {
       include: [
-        { model: Customer, as: "customer" },
-        { model: User, as: "user" },
+        { model: DmpClient, as: "client" },
+        { model: DmpUser, as: "user" },
       ],
-    })) as Offer;
+    });
+    return this.toApiOffer(created);
   }
 
-  async listOffers(query: ListOffersQuery): Promise<{ data: Offer[]; total: number }> {
+  async listOffers(query: ListOffersQuery): Promise<{ data: any[]; total: number }> {
     const where: any = {};
 
     if (query.status) {
-      where.status = query.status;
+      where.status = query.status.toUpperCase();
     }
 
-    if (query.customer_id) {
-      where.customer_id = query.customer_id;
+    if (query.clientId) {
+      where.clientId = query.clientId;
     }
 
     const limit = query.limit || 50;
     const offset = query.offset || 0;
 
-    const { rows, count } = await Offer.findAndCountAll({
+    const { rows, count } = await DmpOffer.findAndCountAll({
       where,
       include: [
-        { model: Customer, as: "customer" },
-        { model: User, as: "user" },
+        { model: DmpClient, as: "client" },
+        { model: DmpUser, as: "user" },
       ],
       limit,
       offset,
-      order: [["created_at", "DESC"]],
+      order: [["createdAt", "DESC"]],
     });
 
-    return { data: rows, total: count };
+    return { data: rows.map((row) => this.toApiOffer(row)), total: count };
   }
 
-  async getOfferById(id: string): Promise<Offer | null> {
+  async getOfferById(id: string): Promise<any | null> {
     const include = [
-      { model: Customer, as: "customer" },
-      { model: User, as: "user" },
+      { model: DmpClient, as: "client" },
+      { model: DmpUser, as: "user" },
     ];
     if (/^\d+$/.test(id)) {
-      return await Offer.findOne({ where: { simple_id: parseInt(id) }, include });
+      return this.toApiOffer(await DmpOffer.findOne({ where: { simpleId: parseInt(id) }, include }));
     }
-    return await Offer.findByPk(id, { include });
+    return this.toApiOffer(await DmpOffer.findByPk(id, { include }));
   }
 
-  async updateOffer(id: string, data: UpdateOfferInput, userEmail?: string): Promise<Offer | null> {
+  async updateOffer(id: string, data: UpdateOfferInput, userEmail?: string): Promise<any | null> {
     const offer = await this.findOffer(id);
 
     if (!offer) {
       return null;
     }
 
-    if (userEmail && !offer.get("user_id")) {
-      const user = await this.findOrCreateUser(userEmail);
-      await offer.update({ user_id: user.get("id") as string });
+    if (userEmail && !offer.get("userId")) {
+      const user = await this.findUserByEmail(userEmail);
+      if (user) {
+        await offer.update({ userId: user.get("id") as string });
+      }
     }
 
-    const groups = data.items || (offer.get("items") as any[]) || [];
-    const additionalItems =
-      data.additional_items !== undefined ? data.additional_items : (offer.get("additional_items") as { title: string; price: number }[]) || [];
+    const groups = (data.items || (offer.get("items") as any[]) || []).map((group: any) => this.normalizeItemGroup(group));
+    const additionalItems = (
+      data.additionalItems !== undefined ? data.additionalItems : (offer.get("additionalItems") as { title: string; cost: number; price?: number }[]) || []
+    ).map((item: any) => this.normalizeAdditionalItem(item));
 
     const allItems = groups.flatMap((g: any) => (Array.isArray(g.items) ? g.items : []));
 
     const itemsSubtotal = allItems.reduce((sum: number, item: any) => {
-      return sum + item.unit_price * item.quantity;
+      return sum + this.getUnitCost(item) * item.quantity;
     }, 0);
 
-    const sellMultiplier = data.sell_multiplier !== undefined ? Number(data.sell_multiplier) : Number(offer.get("sell_multiplier")) || 1;
+    const sellMultiplier = data.sellMultiplier !== undefined ? Number(data.sellMultiplier) : Number(offer.get("sellMultiplier")) || 1;
 
     const groupsDiscount = groups.reduce((sum: number, g: any) => {
       const raw = Number(g.discount) || 0;
-      if (g.discount_type === "percent") {
+      if (this.getDiscountType(g) === "percent") {
         const groupSell = (g.items || []).reduce((s: number, item: any) => {
-          const vat = (item.vat_rate ?? 21) / 100;
-          return s + item.unit_price * (1 + vat) * sellMultiplier * item.quantity;
+          return s + this.getUnitCost(item) * sellMultiplier * item.quantity;
         }, 0);
         return sum + (groupSell * raw) / 100;
       }
       return sum + raw;
     }, 0);
 
-    const orderDiscount = data.discount !== undefined ? Number(data.discount) : Number(offer.get("order_discount")) || 0;
+    const orderDiscount = data.discount !== undefined ? Number(data.discount) : Number(offer.get("orderDiscount")) || 0;
 
     const totalDiscount = groupsDiscount + orderDiscount;
 
+    const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.price) || 0), 0);
+    const subtotal = allItems.reduce((sum: number, item: any) => sum + this.getUnitCost(item) * sellMultiplier * item.quantity, 0) + additionalSellTotal;
+    const total = subtotal - totalDiscount;
     const tax = data.tax !== undefined ? Number(data.tax) : Number(offer.get("tax")) || 0;
 
-    const additionalTotal = this.sumAdditionalItems(additionalItems);
-    const total = itemsSubtotal - totalDiscount + tax + additionalTotal;
-    const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.sell_price) || 0), 0);
-    const itemsSellSubtotal = allItems.reduce((sum: number, item: any) => {
-      const vat = (item.vat_rate ?? 21) / 100;
-      return sum + item.unit_price * (1 + vat) * sellMultiplier * item.quantity;
-    }, 0);
-    const totalSell = itemsSellSubtotal - totalDiscount + additionalSellTotal;
-
     const updatePayload: Record<string, unknown> = {
-      customer_id: data.customer_id,
+      clientId: data.clientId,
       title: data.title,
       description: data.description,
-      items: data.items,
-      additional_items: additionalItems,
-      subtotal: Number(itemsSubtotal.toFixed(2)),
-      items_discount: Number(groupsDiscount.toFixed(2)),
-      order_discount: Number(orderDiscount.toFixed(2)),
+      items: groups,
+      additionalItems,
+      subtotal: Number(subtotal.toFixed(2)),
+      itemsDiscount: Number(groupsDiscount.toFixed(2)),
+      orderDiscount: Number(orderDiscount.toFixed(2)),
       discount: Number(totalDiscount.toFixed(2)),
       tax: tax,
       total: Number(total.toFixed(2)),
-      total_sell: Number(totalSell.toFixed(2)),
-      status: data.status,
+      status: data.status ? data.status.toUpperCase() : undefined,
     };
-    if (data.exchange_rate !== undefined) {
-      updatePayload.exchange_rate = data.exchange_rate;
+    if (data.exchangeRate !== undefined) {
+      updatePayload.exchangeRate = data.exchangeRate;
     }
     if (data.notes !== undefined) {
       updatePayload.notes = data.notes;
     }
-    if (data.sell_multiplier !== undefined) {
-      updatePayload.sell_multiplier = data.sell_multiplier;
+    if (data.sellMultiplier !== undefined) {
+      updatePayload.sellMultiplier = data.sellMultiplier;
     }
-    if (data.total_rounded !== undefined) {
-      updatePayload.total_rounded = data.total_rounded ?? Math.round(totalSell);
+    if (data.totalRounded !== undefined) {
+      updatePayload.totalRounded = data.totalRounded ?? Math.round(total);
     }
-    if (data.company_profile !== undefined) {
-      updatePayload.company_profile = data.company_profile;
+    if (data.companyProfile !== undefined) {
+      updatePayload.companyProfile = data.companyProfile;
     }
-    if (data.proforma_url !== undefined) {
-      updatePayload.proforma_url = data.proforma_url;
+    if (data.proformaUrl !== undefined) {
+      updatePayload.proformaUrl = data.proformaUrl;
     }
-    if (data.proforma_id !== undefined) {
-      updatePayload.proforma_id = data.proforma_id;
+    if (data.proformaId !== undefined) {
+      updatePayload.proformaId = data.proformaId;
     }
     await offer.update(updatePayload);
 
-    return await Offer.findByPk(offer.get("id") as string, {
+    const updated = await DmpOffer.findByPk(offer.get("id") as string, {
       include: [
-        { model: Customer, as: "customer" },
-        { model: User, as: "user" },
+        { model: DmpClient, as: "client" },
+        { model: DmpUser, as: "user" },
       ],
     });
+    return this.toApiOffer(updated);
   }
 
-  async addItemsToOffer(id: string, data: AddItemsToOfferInput): Promise<Offer | null> {
+  async addItemsToOffer(id: string, data: AddItemsToOfferInput): Promise<any | null> {
     const offer = await this.findOffer(id);
 
     if (!offer) {
       return null;
     }
 
-    const existingGroups = (offer.get("items") as any[]) || [];
+    const existingGroups = ((offer.get("items") as any[]) || []).map((group: any) => this.normalizeItemGroup(group));
 
     let updatedGroups: any[];
-    if (data.group_id) {
-      const groupIndex = existingGroups.findIndex((g: any) => g.id === data.group_id);
+    if (data.groupId) {
+      const groupIndex = existingGroups.findIndex((g: any) => g.id === data.groupId);
       if (groupIndex >= 0) {
-        updatedGroups = existingGroups.map((g: any, i: number) => (i === groupIndex ? { ...g, items: [...(g.items || []), ...data.items] } : g));
+        updatedGroups = existingGroups.map((g: any, i: number) =>
+          i === groupIndex ? { ...g, items: [...(g.items || []), ...data.items.map((item: any) => this.normalizeLineItem(item))] } : g,
+        );
       } else {
         updatedGroups = existingGroups;
       }
@@ -237,78 +406,80 @@ export class OffersService {
           id: crypto.randomUUID(),
           name: "Produkty",
           discount: 0,
-          items: data.items,
+          discountType: "percent",
+          items: data.items.map((item: any) => this.normalizeLineItem(item)),
         },
       ];
     }
 
     const allItems = updatedGroups.flatMap((g: any) => (Array.isArray(g.items) ? g.items : []));
-    const itemsSubtotal = allItems.reduce((sum: number, item: any) => sum + item.unit_price * item.quantity, 0);
-    const sellMultiplier = Number(offer.get("sell_multiplier")) || 1;
+    const itemsSubtotal = allItems.reduce((sum: number, item: any) => sum + this.getUnitCost(item) * item.quantity, 0);
+    const sellMultiplier = Number(offer.get("sellMultiplier")) || 1;
     const groupsDiscount = updatedGroups.reduce((sum: number, g: any) => {
       const raw = Number(g.discount) || 0;
-      if (g.discount_type === "percent") {
+      if (this.getDiscountType(g) === "percent") {
         const groupSell = (g.items || []).reduce((s: number, item: any) => {
-          const vat = (item.vat_rate ?? 21) / 100;
-          return s + item.unit_price * (1 + vat) * sellMultiplier * item.quantity;
+          return s + this.getUnitCost(item) * sellMultiplier * item.quantity;
         }, 0);
         return sum + (groupSell * raw) / 100;
       }
       return sum + raw;
     }, 0);
-    const orderDiscount = Number(offer.get("order_discount")) || 0;
+    const orderDiscount = Number(offer.get("orderDiscount")) || 0;
     const totalDiscount = groupsDiscount + orderDiscount;
-    const tax = Number(offer.get("tax")) || 0;
-    const additionalItems = (offer.get("additional_items") as { title: string; price: number; sell_price?: number }[]) || [];
-    const additionalTotal = this.sumAdditionalItems(additionalItems);
-    const total = itemsSubtotal - totalDiscount + tax + additionalTotal;
-    const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.sell_price) || 0), 0);
-    const itemsSellSubtotal = allItems.reduce((sum: number, item: any) => {
-      const vat = (item.vat_rate ?? 21) / 100;
-      return sum + item.unit_price * (1 + vat) * sellMultiplier * item.quantity;
-    }, 0);
-    const totalSell = itemsSellSubtotal - totalDiscount + additionalSellTotal;
-
+    const additionalItems = ((offer.get("additionalItems") as { title: string; cost: number; price?: number }[]) || []).map((item: any) =>
+      this.normalizeAdditionalItem(item),
+    );
+    const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.price) || 0), 0);
+    const subtotal = allItems.reduce((sum: number, item: any) => sum + this.getUnitCost(item) * sellMultiplier * item.quantity, 0) + additionalSellTotal;
+    const total = subtotal - totalDiscount;
     await offer.update({
       items: updatedGroups,
-      subtotal: Number(itemsSubtotal.toFixed(2)),
-      items_discount: Number(groupsDiscount.toFixed(2)),
-      order_discount: Number(orderDiscount.toFixed(2)),
+      subtotal: Number(subtotal.toFixed(2)),
+      itemsDiscount: Number(groupsDiscount.toFixed(2)),
+      orderDiscount: Number(orderDiscount.toFixed(2)),
       discount: Number(totalDiscount.toFixed(2)),
       total: Number(total.toFixed(2)),
-      total_sell: Number(totalSell.toFixed(2)),
-      total_rounded: null as any,
+      totalRounded: null as any,
     });
 
-    return await Offer.findByPk(offer.get("id") as string, {
+    const updated = await DmpOffer.findByPk(offer.get("id") as string, {
       include: [
-        { model: Customer, as: "customer" },
-        { model: User, as: "user" },
+        { model: DmpClient, as: "client" },
+        { model: DmpUser, as: "user" },
       ],
     });
+    return this.toApiOffer(updated);
   }
 
-  async duplicateOffer(id: string): Promise<Offer> {
+  async duplicateOffer(id: string): Promise<any> {
     const original = await this.findOffer(id);
     if (!original) throw new Error("Offer not found");
 
     const d = original.get({ plain: true }) as any;
-    return await Offer.create({
-      customer_id: d.customer_id,
+    const duplicated = await DmpOffer.create({
+      id: randomUUID(),
+      clientId: d.clientId,
       title: `Kopie – ${d.title}`,
       description: d.description,
       items: d.items,
-      additional_items: d.additional_items,
+      additionalItems: d.additionalItems,
       subtotal: d.subtotal,
       total: d.total,
-      total_sell: d.total_sell,
       currency: d.currency,
-      exchange_rate: d.exchange_rate,
-      status: "draft",
+      exchangeRate: d.exchangeRate,
+      status: "DRAFT",
       notes: d.notes,
-      sell_multiplier: d.sell_multiplier,
-      user_id: d.user_id,
+      sellMultiplier: d.sellMultiplier,
+      userId: d.userId,
     } as any);
+    const hydrated = await DmpOffer.findByPk(duplicated.get("id") as string, {
+      include: [
+        { model: DmpClient, as: "client" },
+        { model: DmpUser, as: "user" },
+      ],
+    });
+    return this.toApiOffer(hydrated);
   }
 
   async deleteOffer(id: string): Promise<boolean> {
@@ -322,34 +493,35 @@ export class OffersService {
     return true;
   }
 
-  async listCustomers(): Promise<Customer[]> {
-    return await Customer.findAll({
-      order: [["created_at", "DESC"]],
+  async listClients(): Promise<any[]> {
+    const clients = await DmpClient.findAll({
+      order: [["createdAt", "DESC"]],
     });
+    return clients.map((client) => this.toApiClient(client));
   }
 
-  async updateCustomer(id: string, data: Partial<any>): Promise<Customer | null> {
-    const customer = await Customer.findByPk(id);
+  async updateClient(id: string, data: Partial<any>): Promise<any | null> {
+    const client = await DmpClient.findByPk(id);
 
-    if (!customer) {
+    if (!client) {
       return null;
     }
 
-    await customer.update({
+    await client.update({
       name: data.name,
-      email: data.email,
+      email: typeof data.email === "string" ? data.email.trim().toLowerCase() : data.email,
       phone: data.phone,
       address: data.address,
       city: data.city,
-      postal_code: data.postal_code,
+      postalCode: data.postalCode,
       country: data.country,
       notes: data.notes,
-      company_name: data.company_name,
-      company_ico: data.company_ico,
-      company_dic: data.company_dic,
+      companyName: data.companyName,
+      companyIco: data.companyIco,
+      companyDic: data.companyDic,
     });
 
-    return customer;
+    return this.toApiClient(client);
   }
 }
 

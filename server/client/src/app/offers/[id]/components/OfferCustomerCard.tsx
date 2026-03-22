@@ -6,33 +6,33 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Mail, Phone } from "lucide-react";
-import type { Customer } from "@/lib/api";
+import type { Client } from "@/lib/api";
 
-type OfferCustomerCardProps = {
-  customer: Customer;
-  allCustomers: Customer[];
-  selectedCustomerId: string | null;
-  onCustomerChange: (customerId: string) => void;
+type OfferClientCardProps = {
+  client: Client;
+  allClients: Client[];
+  selectedClientId: string | null;
+  onClientChange: (clientId: string) => void;
 };
 
-export function OfferCustomerCard({ customer, allCustomers, selectedCustomerId, onCustomerChange }: OfferCustomerCardProps) {
+export function OfferClientCard({ client, allClients, selectedClientId, onClientChange }: OfferClientCardProps) {
   const [search, setSearch] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const displayCustomer = allCustomers.find((c) => c.id === selectedCustomerId) ?? customer;
+  const displayClient = allClients.find((c) => c.id === selectedClientId) ?? client;
 
   const searchResults =
     search.length > 0
-      ? allCustomers
+      ? allClients
           .filter((c) => {
             const q = search.toLowerCase();
-            return c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || (c.company_name && c.company_name.toLowerCase().includes(q));
+            return c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || (c.companyName && c.companyName.toLowerCase().includes(q));
           })
           .slice(0, 6)
       : [];
 
-  const selectCustomer = (c: Customer) => {
-    if (c.id) onCustomerChange(c.id);
+  const selectClient = (c: Client) => {
+    if (c.id) onClientChange(c.id);
     setSearch("");
     setShowSuggestions(false);
   };
@@ -41,14 +41,14 @@ export function OfferCustomerCard({ customer, allCustomers, selectedCustomerId, 
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle>Klient</CardTitle>
-        <Link href="/customers">
+        <Link href="/clients">
           <Button variant="ghost" size="sm" className="gap-1">
             <ExternalLink className="h-4 w-4" />
           </Button>
         </Link>
       </CardHeader>
       <CardContent className="space-y-3">
-        {allCustomers.length > 1 && (
+        {allClients.length > 1 && (
           <div className="relative">
             <Input
               placeholder="Změnit klienta"
@@ -66,10 +66,10 @@ export function OfferCustomerCard({ customer, allCustomers, selectedCustomerId, 
             {showSuggestions && searchResults.length > 0 && (
               <ul className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-lg">
                 {searchResults.map((c) => (
-                  <li key={c.id} className="cursor-pointer px-3 py-2 hover:bg-muted" onMouseDown={() => selectCustomer(c)}>
+                  <li key={c.id} className="cursor-pointer px-3 py-2 hover:bg-muted" onMouseDown={() => selectClient(c)}>
                     <div className="text-sm font-medium">
                       {c.name}
-                      {c.company_name ? ` (${c.company_name})` : ""}
+                      {c.companyName ? ` (${c.companyName})` : ""}
                     </div>
                     <div className="text-xs text-muted-foreground">{c.email}</div>
                   </li>
@@ -79,35 +79,35 @@ export function OfferCustomerCard({ customer, allCustomers, selectedCustomerId, 
           </div>
         )}
 
-        <div className="font-semibold">{displayCustomer.name}</div>
-        {displayCustomer.company_name && (
+        <div className="font-semibold">{displayClient.name}</div>
+        {displayClient.companyName && (
           <div className="text-sm text-muted-foreground">
-            {displayCustomer.company_name}
-            {displayCustomer.company_ico && <span className="ml-2">IČO: {displayCustomer.company_ico}</span>}
-            {displayCustomer.company_dic && <span className="ml-2">DIČ: {displayCustomer.company_dic}</span>}
+            {displayClient.companyName}
+            {displayClient.companyIco && <span className="ml-2">IČO: {displayClient.companyIco}</span>}
+            {displayClient.companyDic && <span className="ml-2">DIČ: {displayClient.companyDic}</span>}
           </div>
         )}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
           <span className="inline-flex items-center gap-1">
             <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-            {displayCustomer.email}
+            {displayClient.email}
           </span>
-          {displayCustomer.phone && (
+          {displayClient.phone && (
             <span className="inline-flex items-center gap-1">
               <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-              {displayCustomer.phone}
+              {displayClient.phone}
             </span>
           )}
         </div>
-        {displayCustomer.address && (
+        {displayClient.address && (
           <>
             <hr className="border-border" />
             <div className="space-y-1 text-sm">
-              <div>{displayCustomer.address}</div>
+              <div>{displayClient.address}</div>
               <div>
-                {displayCustomer.postal_code} {displayCustomer.city}
+                {displayClient.postalCode} {displayClient.city}
               </div>
-              {displayCustomer.country && <div>{displayCustomer.country}</div>}
+              {displayClient.country && <div>{displayClient.country}</div>}
             </div>
           </>
         )}
