@@ -53,7 +53,7 @@ export class OffersService {
   }
 
   private getDiscountType(group: any): "fixed" | "percent" {
-    return (group?.discountType ?? group?.discount_type ?? "fixed") as "fixed" | "percent";
+    return "percent";
   }
 
   private normalizeAdditionalItem(item: any) {
@@ -100,6 +100,11 @@ export class OffersService {
   private toApiOffer(offer: any) {
     if (!offer) return null;
     const plain = typeof offer.get === "function" ? offer.get({ plain: true }) : offer;
+    const items = (plain.items ?? []).map((group: any) => this.normalizeItemGroup(group));
+    const additionalItems = (plain.additionalItems ?? []).map((item: any) => this.normalizeAdditionalItem(item));
+    const totalCost =
+      items.reduce((sum: number, group: any) => sum + (group.items || []).reduce((s: number, item: any) => s + this.getUnitCost(item) * item.quantity, 0), 0) +
+      additionalItems.reduce((sum: number, item: any) => sum + (Number(item.cost) || 0), 0);
     return {
       id: plain.id,
       simpleId: plain.simpleId ?? null,
@@ -107,9 +112,10 @@ export class OffersService {
       client: this.toApiClient(plain.client),
       title: plain.title,
       description: plain.description,
-      items: (plain.items ?? []).map((group: any) => this.normalizeItemGroup(group)),
-      additionalItems: (plain.additionalItems ?? []).map((item: any) => this.normalizeAdditionalItem(item)),
+      items,
+      additionalItems,
       subtotal: Number(plain.subtotal ?? 0),
+      totalCost: Number(totalCost.toFixed(2)),
       itemsDiscount: plain.itemsDiscount == null ? null : Number(plain.itemsDiscount),
       orderDiscount: plain.orderDiscount == null ? null : Number(plain.orderDiscount),
       discount: plain.discount == null ? null : Number(plain.discount),
@@ -198,8 +204,14 @@ export class OffersService {
     const exchangeRate = data.exchangeRate ?? (await configService.getExchangeRate());
     const additionalItems = (data.additionalItems || []).map((item: any) => this.normalizeAdditionalItem(item));
     const groups = (data.items || []).map((group: any) => this.normalizeItemGroup(group));
-    const additionalTotal = this.sumAdditionalItems(additionalItems);
-    const total = data.total + additionalTotal;
+    const additionalSellTotal = additionalItems.reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0);
+    const sellMultiplier = Number(data.sellMultiplier) || 1;
+    const subtotal =
+      groups.reduce(
+        (sum: number, group: any) => sum + (group.items || []).reduce((s: number, item: any) => s + this.getUnitCost(item) * sellMultiplier * item.quantity, 0),
+        0,
+      ) + additionalSellTotal;
+    const total = subtotal - (Number(data.discount) || 0);
 
     let userId: string | undefined;
     if (userEmail) {
@@ -214,7 +226,7 @@ export class OffersService {
       description: data.description,
       items: groups,
       additionalItems,
-      subtotal: data.subtotal,
+      subtotal: Number(subtotal.toFixed(2)),
       discount: data.discount || 0,
       tax: data.tax || 0,
       total,
@@ -306,8 +318,7 @@ export class OffersService {
       const raw = Number(g.discount) || 0;
       if (this.getDiscountType(g) === "percent") {
         const groupSell = (g.items || []).reduce((s: number, item: any) => {
-          const vat = this.getVatRate(item) / 100;
-          return s + this.getUnitCost(item) * (1 + vat) * sellMultiplier * item.quantity;
+          return s + this.getUnitCost(item) * sellMultiplier * item.quantity;
         }, 0);
         return sum + (groupSell * raw) / 100;
       }
@@ -318,17 +329,10 @@ export class OffersService {
 
     const totalDiscount = groupsDiscount + orderDiscount;
 
-    const tax = data.tax !== undefined ? Number(data.tax) : Number(offer.get("tax")) || 0;
-
-    const additionalTotal = this.sumAdditionalItems(additionalItems);
-    const total = itemsSubtotal - totalDiscount + tax + additionalTotal;
     const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.price) || 0), 0);
-    const itemsSellSubtotal = allItems.reduce((sum: number, item: any) => {
-      const vat = this.getVatRate(item) / 100;
-      return sum + this.getUnitCost(item) * (1 + vat) * sellMultiplier * item.quantity;
-    }, 0);
-    const itemsSellExclVat = allItems.reduce((sum: number, item: any) => sum + this.getUnitCost(item) * sellMultiplier * item.quantity, 0);
-    const totalSellExclVat = itemsSellExclVat - totalDiscount + additionalSellTotal;
+    const subtotal = allItems.reduce((sum: number, item: any) => sum + this.getUnitCost(item) * sellMultiplier * item.quantity, 0) + additionalSellTotal;
+    const total = subtotal - totalDiscount;
+    const tax = data.tax !== undefined ? Number(data.tax) : Number(offer.get("tax")) || 0;
 
     const updatePayload: Record<string, unknown> = {
       clientId: data.clientId,
@@ -336,7 +340,7 @@ export class OffersService {
       description: data.description,
       items: groups,
       additionalItems,
-      subtotal: Number(itemsSubtotal.toFixed(2)),
+      subtotal: Number(subtotal.toFixed(2)),
       itemsDiscount: Number(groupsDiscount.toFixed(2)),
       orderDiscount: Number(orderDiscount.toFixed(2)),
       discount: Number(totalDiscount.toFixed(2)),
@@ -354,7 +358,7 @@ export class OffersService {
       updatePayload.sellMultiplier = data.sellMultiplier;
     }
     if (data.totalRounded !== undefined) {
-      updatePayload.totalRounded = data.totalRounded ?? Math.round(totalSellExclVat);
+      updatePayload.totalRounded = data.totalRounded ?? Math.round(total);
     }
     if (data.companyProfile !== undefined) {
       updatePayload.companyProfile = data.companyProfile;
@@ -402,7 +406,7 @@ export class OffersService {
           id: crypto.randomUUID(),
           name: "Produkty",
           discount: 0,
-          discountType: "fixed",
+          discountType: "percent",
           items: data.items.map((item: any) => this.normalizeLineItem(item)),
         },
       ];
@@ -415,8 +419,7 @@ export class OffersService {
       const raw = Number(g.discount) || 0;
       if (this.getDiscountType(g) === "percent") {
         const groupSell = (g.items || []).reduce((s: number, item: any) => {
-          const vat = this.getVatRate(item) / 100;
-          return s + this.getUnitCost(item) * (1 + vat) * sellMultiplier * item.quantity;
+          return s + this.getUnitCost(item) * sellMultiplier * item.quantity;
         }, 0);
         return sum + (groupSell * raw) / 100;
       }
@@ -424,20 +427,15 @@ export class OffersService {
     }, 0);
     const orderDiscount = Number(offer.get("orderDiscount")) || 0;
     const totalDiscount = groupsDiscount + orderDiscount;
-    const tax = Number(offer.get("tax")) || 0;
     const additionalItems = ((offer.get("additionalItems") as { title: string; cost: number; price?: number }[]) || []).map((item: any) =>
       this.normalizeAdditionalItem(item),
     );
-    const additionalTotal = this.sumAdditionalItems(additionalItems);
-    const total = itemsSubtotal - totalDiscount + tax + additionalTotal;
     const additionalSellTotal = additionalItems.reduce((sum: number, a: any) => sum + (Number(a.price) || 0), 0);
-    const itemsSellSubtotal = allItems.reduce((sum: number, item: any) => {
-      const vat = this.getVatRate(item) / 100;
-      return sum + this.getUnitCost(item) * (1 + vat) * sellMultiplier * item.quantity;
-    }, 0);
+    const subtotal = allItems.reduce((sum: number, item: any) => sum + this.getUnitCost(item) * sellMultiplier * item.quantity, 0) + additionalSellTotal;
+    const total = subtotal - totalDiscount;
     await offer.update({
       items: updatedGroups,
-      subtotal: Number(itemsSubtotal.toFixed(2)),
+      subtotal: Number(subtotal.toFixed(2)),
       itemsDiscount: Number(groupsDiscount.toFixed(2)),
       orderDiscount: Number(orderDiscount.toFixed(2)),
       discount: Number(totalDiscount.toFixed(2)),

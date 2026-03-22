@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { GripVertical, Trash2, Plus, Pencil } from "lucide-react";
 import type { ItemGroup } from "@/lib/api";
-import { formatPrice, currencyLabel } from "../utils";
+import { formatPrice } from "../utils";
 import { useState } from "react";
 
 type OfferProductsTableProps = {
@@ -234,31 +234,12 @@ export function OfferProductsTable({
                         autoFocus
                         className="w-24 text-right text-red-600 border-red-300 focus-visible:ring-red-500"
                         value={group.discount === 0 ? "" : group.discount}
-                        onChange={(e) =>
-                          onGroupDiscountChange(groupIndex, e.target.value === "" ? 0 : parseFloat(e.target.value), group.discountType || "fixed")
-                        }
+                        onChange={(e) => onGroupDiscountChange(groupIndex, e.target.value === "" ? 0 : parseFloat(e.target.value), "percent")}
                         onBlur={() => setEditingDiscountIndex(null)}
                         onFocus={(e) => e.target.select()}
                         placeholder="0"
                       />
-                      <div className="flex rounded border border-red-300 overflow-hidden text-xs">
-                        <button
-                          type="button"
-                          className={`px-2 py-1 ${(group.discountType || "fixed") === "fixed" ? "bg-red-100 font-semibold" : "hover:bg-red-50"}`}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => onGroupDiscountChange(groupIndex, group.discount, "fixed")}
-                        >
-                          {currencyLabel(currency)}
-                        </button>
-                        <button
-                          type="button"
-                          className={`px-2 py-1 border-l border-red-300 ${group.discountType === "percent" ? "bg-red-100 font-semibold" : "hover:bg-red-50"}`}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => onGroupDiscountChange(groupIndex, group.discount, "percent")}
-                        >
-                          %
-                        </button>
-                      </div>
+                      <div className="rounded border border-red-300 bg-red-100 px-2 py-1 text-xs font-semibold">%</div>
                     </>
                   ) : (
                     <button
@@ -269,9 +250,7 @@ export function OfferProductsTable({
                       {group.discount > 0 ? (
                         <span>
                           −{" "}
-                          {group.discountType === "percent"
-                            ? `${group.discount} % (${formatPrice((groupSellSubtotal * group.discount) / 100, currency)})`
-                            : formatPrice(group.discount, currency)}
+                          {`${group.discount} % (${formatPrice((groupSellSubtotal * group.discount) / 100, currency)})`}
                         </span>
                       ) : (
                         <span>0</span>
@@ -286,7 +265,7 @@ export function OfferProductsTable({
                     {formatPrice(
                       Math.max(
                         0,
-                        groupSellSubtotal - (group.discountType === "percent" ? (groupSellSubtotal * (group.discount || 0)) / 100 : group.discount || 0),
+                        groupSellSubtotal - (groupSellSubtotal * (group.discount || 0)) / 100,
                       ),
                       currency,
                     )}

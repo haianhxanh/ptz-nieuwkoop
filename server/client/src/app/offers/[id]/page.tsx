@@ -139,7 +139,7 @@ export default function OfferDetailPage() {
     const multiplier = Number(sellMultiplier) || 1;
 
     const lineItems = editedGroups.flatMap((group) => {
-      const discountType = group.discountType || "fixed";
+      const discountType = "percent";
       const rawDiscount = Number(group.discount) || 0;
 
       const itemsWithVat = group.items.map((item) => {
@@ -149,7 +149,7 @@ export default function OfferDetailPage() {
       });
 
       const groupTotal = itemsWithVat.reduce((s, i) => s + i.totalWithVat, 0);
-      const discountAmount = rawDiscount > 0 ? (discountType === "percent" ? (groupTotal * rawDiscount) / 100 : rawDiscount) : 0;
+      const discountAmount = rawDiscount > 0 ? (groupTotal * rawDiscount) / 100 : 0;
       const discountRatio = groupTotal > 0 && discountAmount > 0 ? 1 - discountAmount / groupTotal : 1;
 
       return itemsWithVat.map((item) => {
@@ -174,7 +174,7 @@ export default function OfferDetailPage() {
       .map((a) => ({
         name: a.title,
         quantity: 1,
-        unit_price: Number(a.price) || 0,
+        unit_price: Math.round((Number(a.price) || 0) * 1.21 * 100) / 100,
         vat_rate: 21,
       }));
 
@@ -304,8 +304,8 @@ export default function OfferDetailPage() {
               onUnsavedChange={markUnsaved}
               currency={offer.currency}
               groupsDiscount={totals.groupsDiscount}
+              totalCost={totals.totalCost}
               total={totals.total}
-              totalSellExclVat={totals.totalSellExclVat}
               totalRounded={totalRounded}
               onTotalRoundedChange={setTotalRounded}
               sellMultiplier={sellMultiplier}

@@ -16,8 +16,8 @@ type OfferSummaryCardProps = {
   onUnsavedChange: () => void;
   currency: string;
   groupsDiscount: number;
+  totalCost: number;
   total: number;
-  totalSellExclVat: number;
   totalRounded: number | null;
   onTotalRoundedChange: (v: number | null) => void;
   sellMultiplier: number;
@@ -32,8 +32,8 @@ export function OfferSummaryCard({
   onUnsavedChange,
   currency,
   groupsDiscount,
+  totalCost,
   total,
-  totalSellExclVat,
   totalRounded,
   onTotalRoundedChange,
   sellMultiplier,
@@ -173,11 +173,11 @@ export function OfferSummaryCard({
         <div className="border-t pt-2 space-y-1">
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Celkem nákup</span>
-            <span>{formatPrice(total, currency)}</span>
+            <span>{formatPrice(totalCost, currency)}</span>
           </div>
           <div className="flex justify-between text-lg font-semibold">
             <span>Celkem prodej</span>
-            <span>{formatPrice(totalSellExclVat, currency)}</span>
+            <span>{formatPrice(total, currency)}</span>
           </div>
           <div className="flex justify-between items-center text-sm gap-2">
             <span className="text-muted-foreground shrink-0">Celkem prodej - zaokrouhleno</span>
@@ -186,7 +186,7 @@ export function OfferSummaryCard({
                 type="number"
                 className="w-32 h-7 text-right text-sm"
                 value={totalRounded ?? ""}
-                placeholder={String(Math.round(totalSellExclVat))}
+                placeholder={String(Math.round(total))}
                 onChange={(e) => onTotalRoundedChange(e.target.value === "" ? null : Number(e.target.value))}
               />
               <span className="text-xs text-muted-foreground">{currencyLabel(currency)}</span>
@@ -198,12 +198,12 @@ export function OfferSummaryCard({
               <span>-{formatPrice(groupsDiscount, currency)}</span>
             </div>
           )}
-          {totalSellExclVat > 0 && total > 0 && (
+          {total > 0 && totalCost > 0 && (
             <div className="flex justify-between text-sm text-green-700 font-medium">
               <span>Marže</span>
               <span>
-                {formatPrice(totalSellExclVat - total, currency)}{" "}
-                <span className="text-green-600 font-normal">({(((totalSellExclVat - total) / totalSellExclVat) * 100).toFixed(1)} %)</span>
+                {formatPrice(total - totalCost, currency)}{" "}
+                <span className="text-green-600 font-normal">({(((total - totalCost) / total) * 100).toFixed(1)} %)</span>
               </span>
             </div>
           )}

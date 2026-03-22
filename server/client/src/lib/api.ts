@@ -106,12 +106,12 @@ export interface Offer {
   items?: ItemGroup[];
   additionalItems?: AdditionalItem[];
   subtotal: number;
+  totalCost?: number;
   itemsDiscount?: number;
   orderDiscount?: number;
   discount?: number;
   tax?: number;
   total: number;
-  totalSell?: number;
   totalRounded?: number | null;
   currency: string;
   exchangeRate?: number;

@@ -22,7 +22,7 @@ function normalizeGroups(raw: any[]): ItemGroup[] {
   if (!raw || raw.length === 0) return [];
   // Detect old flat LineItem[] format (items have no `items` array property)
   if (!("items" in raw[0])) {
-    return [{ id: crypto.randomUUID(), name: "Produkty", discount: 0, discountType: "fixed" as const, items: raw as LineItem[] }];
+    return [{ id: crypto.randomUUID(), name: "Produkty", discount: 0, discountType: "percent" as const, items: raw as LineItem[] }];
   }
   return raw as ItemGroup[];
 }
@@ -116,7 +116,7 @@ export function useOfferDetail() {
 
   const addGroup = async (name: string) => {
     if (!offer) return;
-    const newGroup: ItemGroup = { id: crypto.randomUUID(), name, discount: 0, discountType: "fixed", items: [] };
+    const newGroup: ItemGroup = { id: crypto.randomUUID(), name, discount: 0, discountType: "percent", items: [] };
     const newGroups = [...editedGroups, newGroup];
     setEditedGroups(newGroups);
     try {
@@ -145,7 +145,7 @@ export function useOfferDetail() {
   };
 
   const updateGroupDiscount = (groupIndex: number, discount: number, discountType?: "fixed" | "percent") => {
-    setEditedGroups((prev) => prev.map((g, i) => (i === groupIndex ? { ...g, discount, ...(discountType !== undefined ? { discountType } : {}) } : g)));
+    setEditedGroups((prev) => prev.map((g, i) => (i === groupIndex ? { ...g, discount, discountType: "percent" } : g)));
     setTotalRounded(null);
     setHasUnsavedChanges(true);
   };
@@ -222,8 +222,7 @@ export function useOfferDetail() {
 
   const resolveGroupDiscount = (group: ItemGroup, groupSellSubtotal: number): number => {
     const raw = Number(group.discount) || 0;
-    if (group.discountType === "percent") return (groupSellSubtotal * raw) / 100;
-    return raw;
+    return (groupSellSubtotal * raw) / 100;
   };
 
   const calculateTotalsForState = (groups: ItemGroup[], multiplier: number, extras: AdditionalItem[]): OfferTotals => {
@@ -237,7 +236,7 @@ export function useOfferDetail() {
     const totalDiscountAmount = groupsDiscount;
     const additionalCostTotal = extras.reduce((sum, a) => sum + (Number(a.cost) || 0), 0);
     const additionalSellTotal = extras.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
-    const total = itemsSubtotal - totalDiscountAmount + additionalCostTotal;
+    const totalCost = itemsSubtotal + additionalCostTotal;
     const itemsSellSubtotal = groups.reduce(
       (sum, g) =>
         sum +
@@ -247,9 +246,9 @@ export function useOfferDetail() {
         }, 0),
       0,
     );
-    const itemsSellExclVat = groups.reduce((sum, g) => sum + g.items.reduce((s, item) => s + item.unitCost * multiplier * item.quantity, 0), 0);
-    const totalSell = itemsSellSubtotal - totalDiscountAmount + additionalSellTotal;
-    const totalSellExclVat = itemsSellExclVat - totalDiscountAmount + additionalSellTotal;
+    const subtotal = groups.reduce((sum, g) => sum + g.items.reduce((s, item) => s + item.unitCost * multiplier * item.quantity, 0), 0) + additionalSellTotal;
+    const total = subtotal - totalDiscountAmount;
+    const totalWithVat = itemsSellSubtotal - totalDiscountAmount + additionalSellTotal;
 
     return {
       itemsSubtotal,
@@ -257,17 +256,17 @@ export function useOfferDetail() {
       totalDiscountAmount,
       additionalCostTotal,
       additionalSellTotal,
-      subtotal: itemsSubtotal,
+      subtotal,
+      totalCost,
       total,
-      totalSell,
-      totalSellExclVat,
+      totalWithVat,
     };
   };
 
   const shouldResetLegacyRoundedTotal = (storedRounded: number | null, totals: OfferTotals): boolean => {
     if (storedRounded == null) return false;
-    const roundedNoVat = Math.round(totals.totalSellExclVat);
-    const roundedWithVat = Math.round(totals.totalSell);
+    const roundedNoVat = Math.round(totals.total);
+    const roundedWithVat = Math.round(totals.totalWithVat);
     return storedRounded === roundedWithVat && roundedWithVat !== roundedNoVat;
   };
 
@@ -347,7 +346,7 @@ export function useOfferDetail() {
       const sanitizedGroups: ItemGroup[] = editedGroups.map((g) => ({
         ...g,
         discount: Number(g.discount) || 0,
-        discountType: g.discountType || "fixed",
+        discountType: "percent",
         items: g.items.map((item) => {
           const unitCost = Number(item.unitCost) || 0;
           const unitCostEur = item.unitCostEur != null ? Number(item.unitCostEur) : Math.round((unitCost / rate) * 100) / 100;

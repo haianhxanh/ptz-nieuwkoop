@@ -48,10 +48,10 @@ interface OfferTotals {
   additionalCostTotal: number;
   additionalSellTotal: number;
   subtotal: number;
+  totalCost: number;
   total: number;
-  totalSell: number;
   totalRounded?: number | null;
-  totalSellExclVat: number;
+  totalWithVat: number;
 }
 
 interface PdfRequestBody {
@@ -105,7 +105,7 @@ function todayStr(): string {
 
 const getUnitCost = (item: any) => Number(item.unitCost ?? item.unitPrice ?? item.unit_cost ?? item.unit_price ?? 0);
 const getVatRate = (item: any) => Number(item.vatRate ?? item.vat_rate ?? 21);
-const getDiscountType = (group: any) => group.discountType ?? group.discount_type ?? "fixed";
+const getDiscountType = () => "percent";
 const getPotSize = (dimensions?: any) => dimensions?.potSize ?? dimensions?.pot_size;
 const getAdditionalPrice = (item: any) => Number(item.cost != null ? (item.price ?? 0) : (item.sellPrice ?? item.sell_price ?? 0));
 const getClientPostalCode = (client: any) => client.postalCode ?? client.postal_code;
@@ -125,12 +125,21 @@ function renderOfferHtml(data: PdfRequestBody): string {
 
   const groupsHtml = editedGroups
     .map((group) => {
-      const sectionSell = group.items.reduce((sum, i) => {
-        const vat = getVatRate(i) / 100;
-        return sum + getUnitCost(i) * (1 + vat) * sellMultiplier * i.quantity;
+      const sectionExcl = group.items.reduce((sum, i) => sum + getUnitCost(i) * sellMultiplier * i.quantity, 0);
+      const isPercentDiscount = true;
+      const netSell = group.items.reduce((sum, item) => {
+        const lineExcl = getUnitCost(item) * sellMultiplier * item.quantity;
+        const vat = getVatRate(item) / 100;
+        const itemDiscountExcl = isPercentDiscount && sectionExcl > 0 ? (((sectionExcl * (group.discount || 0)) / 100) * lineExcl) / sectionExcl : 0;
+        const discountedExcl = lineExcl - itemDiscountExcl;
+        return sum + discountedExcl * (1 + vat);
       }, 0);
-      const discountAmount = getDiscountType(group) === "percent" ? (sectionSell * (group.discount || 0)) / 100 : group.discount || 0;
-      const netSell = sectionSell - discountAmount;
+      const discountAmount = group.items.reduce((sum, item) => {
+        const lineExcl = getUnitCost(item) * sellMultiplier * item.quantity;
+        const vat = getVatRate(item) / 100;
+        const itemDiscountExcl = isPercentDiscount && sectionExcl > 0 ? (((sectionExcl * (group.discount || 0)) / 100) * lineExcl) / sectionExcl : 0;
+        return sum + itemDiscountExcl * (1 + vat);
+      }, 0);
 
       const rowsHtml = group.items
         .map((item) => {
@@ -164,7 +173,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
         })
         .join("");
 
-      const discountLabel = getDiscountType(group) === "percent" ? `Sleva ${group.discount} %` : "Sleva";
+      const discountLabel = `Sleva ${group.discount} %`;
       const discountHtml =
         discountAmount > 0
           ? `<tr class="discount-row"><td colspan="6" class="discount-label">${discountLabel}</td><td class="discount-value">−${fmt(discountAmount)}</td></tr>`
@@ -231,22 +240,22 @@ function renderOfferHtml(data: PdfRequestBody): string {
        </table>`
     : "";
 
-  const finalSell = totalRounded != null ? Number(totalRounded) : Math.round(Number(totals.totalSellExclVat));
-
   let calcExclVat = 0;
   let calcInclVat = 0;
   let totalDiscountInclVat = 0;
   for (const group of editedGroups) {
-    const sectionSell = group.items.reduce((sum, i) => {
-      const vat = getVatRate(i) / 100;
-      return sum + getUnitCost(i) * (1 + vat) * sellMultiplier * i.quantity;
-    }, 0);
-    const disc = getDiscountType(group) === "percent" ? (sectionSell * (group.discount || 0)) / 100 : group.discount || 0;
     const sectionExcl = group.items.reduce((sum, i) => sum + getUnitCost(i) * sellMultiplier * i.quantity, 0);
-    const exclDisc = sectionExcl > 0 && sectionSell > 0 ? sectionExcl * (1 - disc / sectionSell) : sectionExcl;
-    totalDiscountInclVat += disc;
-    calcExclVat += exclDisc;
-    calcInclVat += sectionSell - disc;
+    const isPercentDiscount = true;
+    for (const item of group.items) {
+      const lineExcl = getUnitCost(item) * sellMultiplier * item.quantity;
+      const vat = getVatRate(item) / 100;
+      const itemDiscountExcl = isPercentDiscount && sectionExcl > 0 ? (((sectionExcl * (group.discount || 0)) / 100) * lineExcl) / sectionExcl : 0;
+      const discountedExcl = lineExcl - itemDiscountExcl;
+      const itemVat = discountedExcl * vat;
+      calcExclVat += discountedExcl;
+      calcInclVat += discountedExcl + itemVat;
+      totalDiscountInclVat += itemDiscountExcl * (1 + vat);
+    }
   }
   for (const a of additionalItems) {
     const sp = getAdditionalPrice(a);
@@ -256,6 +265,7 @@ function renderOfferHtml(data: PdfRequestBody): string {
     }
   }
   const dphAmount = calcInclVat - calcExclVat;
+  const finalSell = calcInclVat;
 
   const summaryRows: string[] = [];
   if (totalDiscountInclVat > 0) {
