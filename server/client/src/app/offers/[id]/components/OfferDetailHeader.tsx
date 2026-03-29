@@ -22,6 +22,7 @@ type OfferDetailHeaderProps = {
   onSave: () => void;
   onExportExcel: () => void;
   onExportPdf: () => void;
+  generatingPdf: boolean;
   onBack: () => void;
   onDiscard: () => void;
   onAddSection: (name: string) => void;
@@ -46,6 +47,7 @@ export function OfferDetailHeader({
   onSave,
   onExportExcel,
   onExportPdf,
+  generatingPdf,
   onBack,
   onDiscard,
   onAddSection,
@@ -160,9 +162,9 @@ export function OfferDetailHeader({
             <FileDown className="mr-2 h-4 w-4" />
             Excel
           </Button>
-          <Button variant="outline" onClick={onExportPdf}>
-            <FileText className="mr-2 h-4 w-4" />
-            PDF
+          <Button variant="outline" onClick={onExportPdf} disabled={generatingPdf}>
+            {generatingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+            {generatingPdf ? "Generuji PDF..." : "PDF"}
           </Button>
           {status === "accepted" && (
             <Button

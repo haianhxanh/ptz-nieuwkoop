@@ -77,6 +77,7 @@ export default function OfferDetailPage() {
   } = useOfferDetail();
 
   const [creatingProforma, setCreatingProforma] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   if (loading) {
     return (
@@ -231,12 +232,16 @@ export default function OfferDetailPage() {
   };
 
   const handleExportPdf = async () => {
+    if (generatingPdf) return;
     try {
+      setGeneratingPdf(true);
       const { downloadOfferPdf } = await import("./export-offer-pdf");
       await downloadOfferPdf(offer, editedGroups, additionalItems, totals, sellMultiplier, notesText, totalRounded, () => toast.success("PDF exportováno"));
     } catch (err) {
       console.error("PDF generation error:", err);
       toast.error("Chyba při generování PDF");
+    } finally {
+      setGeneratingPdf(false);
     }
   };
 
@@ -255,6 +260,7 @@ export default function OfferDetailPage() {
           onSave={saveChanges}
           onExportExcel={exportToExcel}
           onExportPdf={handleExportPdf}
+          generatingPdf={generatingPdf}
           onBack={() => router.push("/offers")}
           onDiscard={() => loadOffer(offer.simpleId.toString())}
           onAddSection={handleAddSection}
