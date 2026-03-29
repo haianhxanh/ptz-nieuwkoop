@@ -72,6 +72,7 @@ export function OfferProductsTable({
         const multiplier = Number(sellMultiplier) || 1;
         const groupCostSubtotal = group.items.reduce((s, item) => s + item.unitCost * item.quantity, 0);
         const groupSellSubtotal = group.items.reduce((s, item) => s + item.unitCost * multiplier * item.quantity, 0);
+        const groupItemCount = group.items.reduce((s, item) => s + item.quantity, 0);
 
         return (
           <Card
@@ -221,6 +222,9 @@ export function OfferProductsTable({
               {/* Group subtotal + discount row */}
               <div className="mt-3 flex items-center justify-end gap-4 border-t pt-3 text-sm">
                 <span className="text-muted-foreground">
+                  Počet ks: <span className="font-medium text-foreground">{groupItemCount}</span>
+                </span>
+                <span className="text-muted-foreground">
                   Mezisoučet (N.): <span className="font-medium text-foreground">{formatPrice(groupCostSubtotal, currency)}</span>
                 </span>
                 <div className="flex items-center gap-1.5 text-red-600">
@@ -248,10 +252,7 @@ export function OfferProductsTable({
                       className="flex items-center gap-1 rounded px-2 py-1 text-right text-sm text-red-600 hover:bg-red-50"
                     >
                       {group.discount > 0 ? (
-                        <span>
-                          −{" "}
-                          {`${group.discount} % (${formatPrice((groupSellSubtotal * group.discount) / 100, currency)})`}
-                        </span>
+                        <span>− {`${group.discount} % (${formatPrice((groupSellSubtotal * group.discount) / 100, currency)})`}</span>
                       ) : (
                         <span>0</span>
                       )}
@@ -262,13 +263,7 @@ export function OfferProductsTable({
                 <span className="text-muted-foreground">
                   (P.):{" "}
                   <span className="font-semibold text-foreground">
-                    {formatPrice(
-                      Math.max(
-                        0,
-                        groupSellSubtotal - (groupSellSubtotal * (group.discount || 0)) / 100,
-                      ),
-                      currency,
-                    )}
+                    {formatPrice(Math.max(0, groupSellSubtotal - (groupSellSubtotal * (group.discount || 0)) / 100), currency)}
                   </span>
                 </span>
               </div>
