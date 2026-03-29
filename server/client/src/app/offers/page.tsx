@@ -198,7 +198,7 @@ export default function OffersPage() {
                           <TableHead>Název</TableHead>
                           <TableHead>Klient</TableHead>
                           <TableHead>Stav</TableHead>
-                          <TableHead>Počet položek</TableHead>
+                          <TableHead>Počet ks</TableHead>
                           <TableHead>Celkem P.</TableHead>
                           <TableHead>Vytvořeno</TableHead>
                           <TableHead className="w-20"></TableHead>
@@ -216,7 +216,12 @@ export default function OffersPage() {
                             <TableCell>
                               <Badge variant={statusConfig[offer.status].variant}>{statusConfig[offer.status].label}</Badge>
                             </TableCell>
-                            <TableCell>{offer.items?.length || 0}</TableCell>
+                            <TableCell>
+                              {offer.items?.reduce(
+                                (sum, group) => sum + (group.items?.reduce((groupSum, item) => groupSum + (item.quantity || 0), 0) || 0),
+                                0,
+                              ) || 0}
+                            </TableCell>
                             <TableCell className="font-semibold">
                               {formatPrice(offer.totalRounded != null ? Number(offer.totalRounded) : Math.round(computeSellTotal(offer)), offer.currency)}
                             </TableCell>
