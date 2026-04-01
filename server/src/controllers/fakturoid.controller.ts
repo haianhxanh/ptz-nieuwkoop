@@ -147,6 +147,7 @@ function parseClientBody(body: any) {
     client_phone: body.client_phone,
     note: body.note,
     due: body.due,
+    language: "cz",
   };
 }
 
