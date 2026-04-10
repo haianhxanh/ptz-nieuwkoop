@@ -74,6 +74,13 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
           const unitCostEur = Math.round(parsePriceEur(product.Salesprice ?? product.salesprice) * discountMultiplier * 100) / 100;
           const unitCost = Math.round(unitCostEur * rate * 100) / 100;
           const vatRate = product.MainGroupDescription_EN === "Planten" ? 12 : 21;
+
+          // Construct potSize from DiameterCulturePot and HeightCulturePot
+          let potSize = null;
+          if (product.DiameterCulturePot && product.HeightCulturePot) {
+            potSize = `${product.DiameterCulturePot}/${product.HeightCulturePot}`;
+          }
+
           return {
             id: product.Itemcode,
             title: product.Description,
@@ -92,16 +99,16 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
               diameter: product.Diameter,
               opening: product.Opening,
               length: product.Length,
-              potSize: product.PotSize,
+              potSize,
             },
             deliveryTime: product.DeliveryTimeInDays,
           };
         });
 
-        setProducts(mapped);
+        setProducts(mapped as Product[]);
 
         const cacheData: CachedData = {
-          products: mapped,
+          products: mapped as unknown as Product[],
           timestamp: Date.now(),
         };
         localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
