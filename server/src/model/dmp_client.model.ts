@@ -14,6 +14,7 @@ export type DMP_CLIENT = {
   companyName?: string | null;
   companyIco?: string | null;
   companyDic?: string | null;
+  source?: string | null;
   isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -69,6 +70,10 @@ DmpClient.init(
       allowNull: true,
     },
     companyDic: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    source: {
       type: DataTypes.STRING,
       allowNull: true,
     },

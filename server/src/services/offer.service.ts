@@ -5,6 +5,8 @@ import DmpUser from "../model/dmp_user.model";
 import { configService } from "./config.service";
 import { CreateOfferInput, UpdateOfferInput, ListOffersQuery, AddItemsToOfferInput } from "../schemas/offer.schema";
 
+const CLIENT_SOURCE = "maintenance_app";
+
 export class OffersService {
   private toApiClient(client: any) {
     if (!client) return null;
@@ -22,6 +24,7 @@ export class OffersService {
       companyName: plain.companyName ?? null,
       companyIco: plain.companyIco ?? null,
       companyDic: plain.companyDic ?? null,
+      source: plain.source ?? null,
       createdAt: plain.createdAt ?? null,
       updatedAt: plain.updatedAt ?? null,
     };
@@ -159,6 +162,7 @@ export class OffersService {
   async findOrCreateClient(clientData: any): Promise<DmpClient> {
     const normalizedEmail = clientData.email?.trim().toLowerCase();
     const where = normalizedEmail ? { email: normalizedEmail } : { name: clientData.name };
+
     const defaults: Partial<DMP_CLIENT> = {
       id: randomUUID(),
       name: clientData.name,
@@ -172,6 +176,7 @@ export class OffersService {
       companyName: clientData.companyName,
       companyIco: clientData.companyIco,
       companyDic: clientData.companyDic,
+      source: CLIENT_SOURCE,
     };
     const [client] = await DmpClient.findOrCreate({
       where,
@@ -495,6 +500,7 @@ export class OffersService {
 
   async listClients(): Promise<any[]> {
     const clients = await DmpClient.findAll({
+      where: { source: CLIENT_SOURCE },
       order: [["createdAt", "DESC"]],
     });
     return clients.map((client) => this.toApiClient(client));
@@ -519,6 +525,7 @@ export class OffersService {
       companyName: data.companyName,
       companyIco: data.companyIco,
       companyDic: data.companyDic,
+      source: data.source,
     });
 
     return this.toApiClient(client);
