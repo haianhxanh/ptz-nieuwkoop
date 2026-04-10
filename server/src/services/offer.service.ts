@@ -5,7 +5,7 @@ import DmpUser from "../model/dmp_user.model";
 import { configService } from "./config.service";
 import { CreateOfferInput, UpdateOfferInput, ListOffersQuery, AddItemsToOfferInput } from "../schemas/offer.schema";
 
-const CLIENT_SOURCE = "maintenance_app";
+const CLIENT_SOURCE = "offers_app";
 
 export class OffersService {
   private toApiClient(client: any) {
