@@ -13,7 +13,7 @@ import { configsApi, type AppConfig } from "@/lib/api";
 import { Plus, Search, Edit } from "lucide-react";
 import { toast } from "sonner";
 
-const EXAMPLE_KEYS = ["EXCHANGE_RATE_EUR_CZK", "NIEUWKOOP_DISCOUNT", "COMPANY_PROFILES"];
+const EXAMPLE_KEYS = ["EXCHANGE_RATE_EUR_CZK", "COMPANY_PROFILES"];
 
 type EditableConfig = {
   key: string;

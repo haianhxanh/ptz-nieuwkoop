@@ -324,7 +324,6 @@ export const pricesApi = {
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 let exchangeRateCache: {
   rate: number;
-  nieuwkoopDiscount: number;
   company?: { name: string; ico: string; dic: string };
   companies?: CompanyProfile[];
   date: string | null;
@@ -334,7 +333,6 @@ let exchangeRateCache: {
 export const exchangeRateApi = {
   get: async (): Promise<{
     rate: number;
-    nieuwkoopDiscount: number;
     date: string | null;
     company: { name: string; ico: string; dic: string };
     companies: CompanyProfile[];
@@ -343,7 +341,6 @@ export const exchangeRateApi = {
     if (exchangeRateCache && now - exchangeRateCache.fetchedAt < CACHE_TTL_MS) {
       return {
         rate: exchangeRateCache.rate,
-        nieuwkoopDiscount: exchangeRateCache.nieuwkoopDiscount,
         date: exchangeRateCache.date,
         company: exchangeRateCache.company ?? { name: "", ico: "", dic: "" },
         companies: exchangeRateCache.companies ?? [],
@@ -351,17 +348,16 @@ export const exchangeRateApi = {
     }
     const response = await apiClient.get<{
       success: boolean;
-      data: { rate: number; nieuwkoopDiscount: number; company: { name: string; ico: string; dic: string }; companies: CompanyProfile[]; date: string | null };
+      data: { rate: number; company: { name: string; ico: string; dic: string }; companies: CompanyProfile[]; date: string | null };
     }>("/api/offers/exchange-rate");
-    const { rate, nieuwkoopDiscount, company, companies, date } = response.data.data;
+    const { rate, company, companies, date } = response.data.data;
     exchangeRateCache = {
       rate,
-      nieuwkoopDiscount: nieuwkoopDiscount ?? 0,
       company: company ?? { name: "", ico: "", dic: "" },
       companies: companies ?? [],
       date,
       fetchedAt: now,
     };
-    return { rate, nieuwkoopDiscount: nieuwkoopDiscount ?? 0, company: company ?? { name: "", ico: "", dic: "" }, companies: companies ?? [], date };
+    return { rate, company: company ?? { name: "", ico: "", dic: "" }, companies: companies ?? [], date };
   },
 };

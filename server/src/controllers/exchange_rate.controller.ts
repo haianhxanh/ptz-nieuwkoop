@@ -6,17 +6,10 @@ export const exchangeRate = async (req: Request, res: Response) => {
   try {
     const todayFormatted = new Date().toISOString().split("T")[0];
 
-    const [lastUpdateDate, discountRaw, companies] = await Promise.all([
-      configService.getExchangeRateLastUpdated(),
-      configService.get("NIEUWKOOP_DISCOUNT"),
-      configService.getCompanyProfiles(),
-    ]);
+    const [lastUpdateDate, companies] = await Promise.all([configService.getExchangeRateLastUpdated(), configService.getCompanyProfiles()]);
 
-    const nieuwkoopDiscount = discountRaw ? parseFloat(discountRaw) : 0;
     const first = companies[0];
-    const company = first
-      ? { name: first.companyName, ico: first.companyIco, dic: first.companyDic }
-      : { name: "", ico: "", dic: "" };
+    const company = first ? { name: first.companyName, ico: first.companyIco, dic: first.companyDic } : { name: "", ico: "", dic: "" };
 
     if (lastUpdateDate !== todayFormatted) {
       console.log("Exchange rate not from today, fetching fresh rate...");
@@ -31,7 +24,7 @@ export const exchangeRate = async (req: Request, res: Response) => {
           await configService.setExchangeRate(parseFloat(eurRate));
           return res.status(200).json({
             success: true,
-            data: { rate: parseFloat(eurRate), nieuwkoopDiscount, company, companies, source: "ČNB", updated: true, date: todayFormatted },
+            data: { rate: parseFloat(eurRate), company, companies, source: "ČNB", updated: true, date: todayFormatted },
           });
         }
 
@@ -45,7 +38,7 @@ export const exchangeRate = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       success: true,
-      data: { rate, nieuwkoopDiscount, company, companies, source: "ČNB", updated: false, date: lastUpdateDate },
+      data: { rate, company, companies, source: "ČNB", updated: false, date: lastUpdateDate },
     });
   } catch (error) {
     console.error("Error getting exchange rate:", error);
