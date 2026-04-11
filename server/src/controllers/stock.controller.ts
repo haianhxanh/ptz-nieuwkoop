@@ -18,7 +18,7 @@ export const getStock = async (_req: Request, res: Response) => {
 
     for (const s of stock) {
       const data = s.get();
-      stockMap[data.itemcode] = {
+      stockMap[data.itemCode] = {
         stockAvailable: Number(data.stockAvailable),
         firstAvailable: data.firstAvailable ? new Date(data.firstAvailable).toISOString() : null,
       };

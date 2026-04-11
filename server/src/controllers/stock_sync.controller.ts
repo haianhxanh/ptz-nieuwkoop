@@ -1,100 +1,55 @@
 import axios from "axios";
-import { Op } from "sequelize";
 import dotenv from "dotenv";
 import DmpProductStock from "../model/dmp_product_stock.model";
 
 dotenv.config();
 
-const { NIEUWKOOP_API_ENDPOINT, NIEUWKOOP_API_STOCK_ENDPOINT, NIEUWKOOP_USERNAME, NIEUWKOOP_PASSWORD } = process.env;
+const { NIEUWKOOP_API_STOCK_ENDPOINT, NIEUWKOOP_USERNAME, NIEUWKOOP_PASSWORD } = process.env;
 
-const SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function getAllItemcodes(): Promise<string[]> {
+async function fetchAllStock() {
   const auth = Buffer.from(`${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`).toString("base64");
-  const res = await axios.get(NIEUWKOOP_API_ENDPOINT || "", {
+
+  const res = await axios.get(NIEUWKOOP_API_STOCK_ENDPOINT || "", {
     headers: { Authorization: `Basic ${auth}` },
     timeout: 60000,
   });
 
-  const products = res.data.filter((p: any) => p.IsStockItem === true && p.ItemStatus !== "E" && p.DeliveryTimeInDays !== 999 && p.ShowOnWebsite === true);
-
-  return products.map((p: any) => p.Itemcode).filter(Boolean);
-}
-
-async function fetchStock(itemcode: string) {
-  const auth = Buffer.from(`${NIEUWKOOP_USERNAME}:${NIEUWKOOP_PASSWORD}`).toString("base64");
-  const url = NIEUWKOOP_API_STOCK_ENDPOINT + `&itemCode=${itemcode}`;
-
-  const res = await axios.get(url, {
-    headers: { Authorization: `Basic ${auth}` },
-    timeout: 15000,
-  });
-
-  if (res.data && res.data.length > 0) {
-    return res.data[0];
-  }
-  return null;
+  return res.data;
 }
 
 export async function syncAllStock() {
   console.log("[StockSync] Starting stock sync...");
   const startTime = Date.now();
 
-  let itemcodes: string[];
+  let stockData: any[];
   try {
-    itemcodes = await getAllItemcodes();
+    stockData = await fetchAllStock();
   } catch (err) {
-    console.error("[StockSync] Failed to fetch product list:", err);
+    console.error("[StockSync] Failed to fetch stock:", err);
     return;
   }
 
-  console.log(`[StockSync] Found ${itemcodes.length} products total`);
-
-  const cutoff = new Date(Date.now() - SYNC_INTERVAL_MS);
-  const recentlyUpdated = await DmpProductStock.findAll({
-    attributes: ["itemcode"],
-    where: { updatedAt: { [Op.gte]: cutoff } },
-  });
-  const recentSet = new Set(recentlyUpdated.map((r) => r.get("itemcode") as string));
-  const toSync = itemcodes.filter((code) => !recentSet.has(code));
-
-  console.log(`[StockSync] Skipping ${itemcodes.length - toSync.length} recently synced, syncing ${toSync.length}`);
+  console.log(`[StockSync] Found ${stockData.length} items to sync`);
 
   let synced = 0;
   let failed = 0;
 
-  for (const itemcode of toSync) {
+  for (const item of stockData) {
     try {
-      const stockData = await fetchStock(itemcode);
-
-      if (stockData) {
-        await DmpProductStock.upsert({
-          itemcode: stockData.Itemcode,
-          stockAvailable: stockData.StockAvailable ?? 0,
-          firstAvailable: stockData.FirstAvailable ? new Date(stockData.FirstAvailable) : null,
-          sysmodified: stockData.Sysmodified ? new Date(stockData.Sysmodified) : null,
-          updatedAt: new Date(),
-        });
-        synced++;
-      } else {
-        await DmpProductStock.upsert({
-          itemcode,
-          stockAvailable: 0,
-          firstAvailable: null,
-          sysmodified: null,
-          updatedAt: new Date(),
-        });
-        synced++;
-      }
+      await DmpProductStock.upsert({
+        itemCode: item.Itemcode,
+        stockAvailable: item.StockAvailable ?? 0,
+        firstAvailable: item.FirstAvailable ? new Date(item.FirstAvailable) : null,
+        sysmodified: item.Sysmodified ? new Date(item.Sysmodified) : null,
+        updatedAt: new Date(),
+      });
+      synced++;
     } catch (err) {
       failed++;
       if (failed <= 5) {
-        console.error(`[StockSync] Failed for ${itemcode}:`, (err as Error).message);
+        console.error(`[StockSync] Failed for ${item.Itemcode}:`, (err as Error).message);
       }
     }
-
-    await sleep(150);
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);

@@ -2,7 +2,7 @@ import { DataTypes, Model } from "sequelize";
 import { DMP_DB_CONNECTION } from "../database_connection/dmp_db_connect";
 
 export type DMP_PRODUCT_STOCK = {
-  itemcode: string;
+  itemCode: string;
   stockAvailable: number;
   firstAvailable?: Date | null;
   sysmodified?: Date | null;
@@ -13,7 +13,7 @@ class DmpProductStock extends Model<DMP_PRODUCT_STOCK> {}
 
 DmpProductStock.init(
   {
-    itemcode: {
+    itemCode: {
       type: DataTypes.STRING,
       primaryKey: true,
       allowNull: false,
