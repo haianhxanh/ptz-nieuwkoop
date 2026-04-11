@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { productsApi, exchangeRateApi, stockApi, type Product, type StockMap } from "@/lib/api";
+import { productsApi, exchangeRateApi, stockApi, pricesApi, type Product, type StockMap, type PriceMap } from "@/lib/api";
 
 interface ProductsContextType {
   products: Product[];
@@ -19,14 +19,6 @@ const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 interface CachedData {
   products: Product[];
   timestamp: number;
-}
-
-function parsePriceEur(value: unknown): number {
-  if (value == null) return 0;
-  if (typeof value === "number" && !Number.isNaN(value)) return value;
-  const str = String(value).trim().replace(",", ".");
-  const n = parseFloat(str);
-  return Number.isNaN(n) ? 0 : n;
 }
 
 export function ProductsProvider({ children }: { children: ReactNode }) {
@@ -60,19 +52,24 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       }
 
       console.log("Fetching fresh products from API");
-      const [data, { rate: exchangeRate, nieuwkoopDiscount }, stock] = await Promise.all([
+      const [data, { rate: exchangeRate }, stock, prices] = await Promise.all([
         productsApi.list(),
         exchangeRateApi.get(),
         stockApi.getAll().catch(() => ({}) as StockMap),
+        pricesApi.getAll().catch(() => ({}) as PriceMap),
       ]);
       setStockMap(stock);
 
       if (data.products && Array.isArray(data.products)) {
         const rate = Number(exchangeRate) || 25;
-        const discountMultiplier = 1 - (Number(nieuwkoopDiscount) || 0) / 100;
         const mapped = data.products.map((product: any) => {
-          const unitCostEur = Math.round(parsePriceEur(product.Salesprice ?? product.salesprice) * discountMultiplier * 100) / 100;
+          const itemCode = product.Itemcode;
+
+          // Get price from ProductPrice table (priceNett)
+          const priceData = prices[itemCode];
+          const unitCostEur = priceData ? Number(priceData.priceNett) : 0;
           const unitCost = Math.round(unitCostEur * rate * 100) / 100;
+
           const vatRate = product.MainGroupDescription_EN === "Planten" ? 12 : 21;
 
           // Construct potSize from DiameterCulturePot and HeightCulturePot
@@ -82,9 +79,9 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
           }
 
           return {
-            id: product.Itemcode,
+            id: itemCode,
             title: product.Description,
-            sku: product.Itemcode,
+            sku: itemCode,
             brand: product.Tags.find((tag: any) => tag.Code === "Brand")?.Values[0]?.Description_EN || "",
             unitCostEur,
             unitCost,

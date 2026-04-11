@@ -304,6 +304,23 @@ export const stockApi = {
   },
 };
 
+export type PriceMap = Record<
+  string,
+  {
+    priceGross: number;
+    discountPercentage: number;
+    priceNett: number;
+    sysmodified: string | null;
+  }
+>;
+
+export const pricesApi = {
+  getAll: async (): Promise<PriceMap> => {
+    const response = await apiClient.get<{ prices: PriceMap }>("/api/prices");
+    return response.data.prices;
+  },
+};
+
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 let exchangeRateCache: {
   rate: number;
