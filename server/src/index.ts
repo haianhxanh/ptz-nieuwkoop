@@ -10,6 +10,7 @@ import api_routes from "./routes/api.route";
 import bodyParser from "body-parser";
 import { db } from "./database_connection/db_connect";
 import { syncAllStock } from "./controllers/stock_sync.controller";
+import { syncAllPrices } from "./controllers/price_sync.controller";
 
 dotenv.config();
 
@@ -68,6 +69,12 @@ db.sync({ alter: true })
         syncAllStock().catch((err) => console.error("[StockSync] Scheduled sync failed:", err));
       });
       console.log("[StockSync] Cron scheduled: every 6 hours");
+
+      syncAllPrices().catch((err) => console.error("[PriceSync] Initial sync failed:", err));
+      cron.schedule("30 */6 * * *", () => {
+        syncAllPrices().catch((err) => console.error("[PriceSync] Scheduled sync failed:", err));
+      });
+      console.log("[PriceSync] Cron scheduled: every 6 hours");
     } else {
       console.log("[StockSync] Skipped in development — use GET /get-stock/sync to trigger manually");
     }
