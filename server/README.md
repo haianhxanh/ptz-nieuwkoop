@@ -34,7 +34,6 @@ NP FRONTEND API_ROUTES
 /stores/order-pickup-notification-sms
 /stores/inventory-sync
 /giftcard/create
-/giftcard/prepolulate-codes
 /giftcard/update
 /order/update/ready-for-pickup
 /stores/sync/price
